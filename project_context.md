@@ -16,7 +16,7 @@ Browser
 Application Assistant (FastAPI, Port 8080)
   |-- PostgreSQL: kanonische Daten und Ergebnisse
   |-- Redis: konfigurierter Infrastrukturanschluss
-  |-- Dify API: CV-Extraktion und Matching-Workflow
+  |-- Dify API: CV-Extraktion, semantische Job-Metadaten und Matching
   `-- MinerU: OCR-/Layout-Fallback für PDF-Importe
 ```
 
@@ -83,6 +83,9 @@ oder Browser-Code gespeichert werden.
 | `DIFY_CV_WORKFLOW_TIMEOUT_SECONDS` | `300` | maximale Laufzeit des CV-Workflows |
 | `DIFY_MATCHING_WORKFLOW_API_KEY` | leer | API-Schlüssel des veröffentlichten Matching-v3-Workflows |
 | `DIFY_MATCHING_WORKFLOW_TIMEOUT_SECONDS` | `300` | maximale Laufzeit des Matching-Workflows |
+| `DIFY_METADATA_WORKFLOW_API_KEY` | leer | API-Schlüssel des semantischen Job-Metadaten-Fallbacks |
+| `DIFY_METADATA_WORKFLOW_TIMEOUT_SECONDS` | `120` | maximale Laufzeit des Metadaten-Workflows |
+| `SEMANTIC_METADATA_MAX_CHARACTERS` | `15000` | maximal vollständig übergebener Anzeigentext |
 
 Die Schlüssel stammen aus der API-Zugangsseite der jeweiligen veröffentlichten
 Dify-App. Der direkte Aufruf aus dem Backend benötigt keine Konfiguration als
@@ -97,7 +100,8 @@ Dify-App. Der direkte Aufruf aus dem Backend benötigt keine Konfiguration als
 | `MINERU_BACKEND` | `pipeline` | MinerU-Verarbeitungsbackend |
 
 MinerU wird nur für PDFs verwendet, deren native Textextraktion die
-Qualitätsprüfung nicht besteht. HTML/SingleFile wird lokal verarbeitet.
+Qualitätsprüfung nicht besteht. Dazu zählen auch auffällig viele
+Unicode-Ersatzzeichen. HTML/SingleFile wird lokal verarbeitet.
 
 ### Datenhaltung
 
@@ -105,6 +109,8 @@ Qualitätsprüfung nicht besteht. HTML/SingleFile wird lokal verarbeitet.
 |---|---|---|
 | `DATABASE_URL` | `postgresql+psycopg://USER:PASSWORD@db_postgres:5432/application_assistant` | eigene Datenbank der Kernanwendung |
 | `REDIS_URL` | `redis://redis:6379/0` | Redis-Verbindung |
+| `APPLICATION_DOCUMENTS_PATH` | `/app/data/application-documents` | zentraler Ablageort archivierter Bewerbungs-PDFs im Container |
+| `APPLICATION_DOCUMENT_MAX_BYTES` | `20000000` | maximale Größe einer Bewerbungs-PDF |
 
 Die Anwendung verwendet die separate Datenbank `application_assistant` auf der
 vorhandenen PostgreSQL-Instanz. Dify-Datenbanken und Dify-Tabellen werden nicht
@@ -127,6 +133,11 @@ docker exec -it docker-db_postgres-1 `
 
 Zugangsdaten werden ausschließlich der lokalen `.env` beziehungsweise der
 PostgreSQL-Konfiguration entnommen und hier nicht dokumentiert.
+
+Archivierte Lebensläufe, Anschreiben und Anlagen liegen als Dateien im
+benannten Docker-Volume `application-documents`. PostgreSQL speichert nur
+Dateimetadaten, Prüfsumme und Zuordnung zur Bewerbung. Das Volume bleibt bei
+einem normalen Container-Neubau erhalten.
 
 ### Importgrenzen
 
@@ -187,8 +198,9 @@ Aktuell relevant sind:
 | DSL | Zweck |
 |---|---|
 | `workflow/dify/01-import-job-url-v3.yml` | Stellen-URL über das Backend importieren und strukturieren |
-| `workflow/dify/import_cv_pdf.yml` | CV-PDF extrahieren und Vorschläge beim ausgewählten Profil anlegen |
-| `workflow/dify/03-matching-v3.yml` | Jobtext strukturieren und evidenzbasiertes Matching ausführen |
+| `workflow/dify/00-import_cv_pdf.yml` | CV-PDF extrahieren und Vorschläge beim ausgewählten Profil anlegen |
+| `workflow/dify/03-job-metadata-fallback-v1.yml` | fehlende oder unplausible Job-Metadaten mit Fundstellen ergänzen |
+| `workflow/dify/02-matching-v3.yml` | Jobtext strukturieren und evidenzbasiertes Matching ausführen |
 
 Workflows werden manuell in Dify importiert, getestet und veröffentlicht.
 Eine neue DSL überschreibt keine bestehende Dify-App automatisch. Details zu
@@ -203,14 +215,65 @@ nur als Sicherung unter `workflow/backup`.
 
 - Ungültige oder qualitativ unzureichende Jobimporte erzeugen keinen Job.
 - Identischer Jobinhalt wird per SHA-256 erkannt und nicht doppelt angelegt.
+- Ein expliziter PDF-Reimport aktualisiert den vorhandenen Job bei gleicher
+  Prüfsumme und behält Job-ID, Bewerbung und archivierte Unterlagen.
+- Beim Reimport werden veraltete Anforderungen und Matches entfernt.
+- Native PDF-Extraktion fällt bei beschädigten Glyphen oder unzureichender
+  Textqualität auf MinerU zurück.
+- Ein gemeinsamer Regelparser verarbeitet PDF-, MinerU-, HTML- und URL-Texte.
+- Quellportal und Bewerbungsweg sind getrennte Daten. Das Quellportal kann aus
+  Dateiname oder URL abgeleitet und als Parserhinweis verwendet werden.
+- Der semantische Metadaten-Fallback läuft nur bei fehlenden Pflichtfeldern
+  oder unplausiblen Werten. Automatische Übernahme erfordert mindestens `0,85`
+  Konfidenz und eine im Ausgangstext überprüfbare Fundstelle.
+- Der semantische Fallback darf bestehende sichere Regelwerte nicht
+  überschreiben und darf Benefits nicht als Arbeitsmodell interpretieren.
 - CV-Importe erzeugen ausschließlich prüfbare Vorschläge.
 - Duplikate und Konflikte erfordern eine bewusste Entscheidung.
 - Angepasste CV-Profiltexte gelten nicht als kanonische Profildaten.
 - Matching verwendet Skills, Berufserfahrung, Ausbildung und Zertifikate.
+- Nationalität sowie daraus belegbare Arbeits- und Aufenthaltsberechtigung
+  werden als Matching-Evidenz berücksichtigt.
 - Referenzen und Kontaktdaten werden nicht als Matching-Evidenz an Dify
   übergeben.
 - Änderungen an Profilentitäten erzeugen Revisionssnapshots.
 - Portfolio-Daten dürfen künftig ausschließlich lesend angebunden werden.
+
+## Job-Metadatenpipeline
+
+```text
+URL / PDF / HTML
+  |
+  +-- native Extraktion
+  |     `-- PDF bei Qualitätsmangel -> MinerU
+  |
+  +-- gemeinsamer Regelparser
+  |     `-- Titel, Firma, Ort, Arbeitsmodell, Beschäftigungsart,
+  |         Befristung und Quellportal
+  |
+  +-- Plausibilitäts- und Vollständigkeitsprüfung
+  |     `-- bei Bedarf semantischer Dify-Fallback
+  |
+  `-- validierte Persistenz mit Warnungen und Fundstellen
+```
+
+Der Regelparser bleibt die deterministische Primärstufe und wird anhand realer
+Portalvarianten durch Regressionstests erweitert. Der semantische Fallback
+erhält den vollständigen Text bis 15.000 Zeichen sowie Dateiname, URL,
+Quellportal und bisherige Regelergebnisse. Fehlende optionale Angaben werden
+nicht erfunden.
+
+Strukturierte Job-Metadaten bleiben in der Jobdetailansicht manuell editierbar.
+Dazu gehören Titel, Firma, Ort, Arbeitsmodell, Beschäftigungsart, Befristung,
+Sprache, Veröffentlichungsdatum, Bewerbungsfrist und Quellportal.
+
+## Bewerbungsverlauf
+
+Eine Bewerbung ist einem Job und einem Profil zugeordnet. Statuswechsel und
+Kommunikation werden als getrennte Ereignisse geführt. Bei
+`channel=job_portal` kann `portal_name` den tatsächlichen Kanal, beispielsweise
+LinkedIn oder Indeed, näher beschreiben. Dieser Wert ist unabhängig vom
+Quellportal der Stellenanzeige.
 
 ## Importsicherheit
 

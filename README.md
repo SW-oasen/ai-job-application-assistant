@@ -10,9 +10,12 @@ MinerU dient als OCR- und Layout-Fallback für schwierige PDFs.
 - kanonische, deutsch/englische Profilverwaltung
 - kontrollierter CV-Import mit Konflikt- und Duplikatprüfung
 - Import von Stellenanzeigen per URL, PDF oder HTML/SingleFile
-- persistente Jobliste mit strukturierten Metadaten und Detailansicht
+- PDF-Reimport unter Beibehaltung derselben Job-ID
+- persistente Jobliste mit editierbaren strukturierten Metadaten und Detailansicht
+- regelbasierte und optional semantische Metadatenextraktion mit Fundstellen
 - evidenzbasiertes Matching gegen ein ausgewähltes Profil
-- Bewerbungsstatus, Ereignisverlauf und Dashboard-Kennzahlen
+- Bewerbungsstatus, Ereignisverlauf und archivierte Bewerbungs-PDFs
+- getrennte Erfassung von Quellportal und tatsächlichem Bewerbungsweg
 - filterbares Dashboard und zentrale Verwaltungsoberfläche
 
 Die Anwendung ist derzeit für den privaten lokalen Betrieb vorgesehen. Die
@@ -46,8 +49,8 @@ Redis- und MinerU-Dienste im gemeinsamen Docker-Netzwerk.
    ```
 
 2. In `.env` mindestens die Datenbankverbindung eintragen. Für den direkten
-   CV-Import und das Matching aus der GUI zusätzlich die API-Schlüssel der
-   veröffentlichten Dify-Workflows hinterlegen.
+   CV-Import, das Matching und den semantischen Metadaten-Fallback zusätzlich
+   die API-Schlüssel der veröffentlichten Dify-Workflows hinterlegen.
 
 3. Backend bauen und starten:
 
@@ -86,15 +89,52 @@ Redis- und MinerU-Dienste im gemeinsamen Docker-Netzwerk.
 4. In der Zentralverwaltung eine Stellenanzeige per URL importieren.
 5. Bei gesperrten oder dynamischen Seiten den Browserabruf versuchen oder die
    Anzeige als PDF beziehungsweise HTML/SingleFile importieren.
-6. Den gespeicherten Job öffnen und das Matching für das gewünschte Profil
+6. Bereits vorhandene PDF-Jobs bei Bedarf mit aktivierter Reimport-Option
+   erneut verarbeiten. Job-ID, Bewerbungsstand und Unterlagen bleiben erhalten.
+7. Erkannte Job-Metadaten prüfen und bei Bedarf bearbeiten. Das Quellportal
+   beschreibt die Herkunft der Anzeige, nicht den Bewerbungsweg.
+8. Den gespeicherten Job öffnen und das Matching für das gewünschte Profil
    starten.
-7. Bewerbungsstatus und Kommunikationsereignisse auf der Jobdetailseite
-   pflegen.
-8. Fortschritt und offene Stellen im Dashboard verfolgen und über die
+9. Bewerbungsstatus und Kommunikationsereignisse auf der Jobdetailseite
+   pflegen. Bei `Jobportal` kann der konkrete Portalname erfasst werden.
+10. Tatsächlich versendete Lebensläufe, Anschreiben und Anlagen als PDF am
+    Bewerbungsdatensatz archivieren.
+11. Fortschritt und offene Stellen im Dashboard verfolgen und über die
    Kennzahlen filtern.
 
 Ein Import wird nur gespeichert, wenn ausreichend verwertbarer Inhalt
 vorliegt. CV-Importe überschreiben das kanonische Profil niemals automatisch.
+
+## Jobimport und Metadaten
+
+PDFs werden zunächst nativ gelesen. Unzureichender Text, beschädigte Glyphen
+oder problematische Layouts lösen den MinerU-Fallback aus. Der gemeinsame
+Regelparser extrahiert unter anderem:
+
+- Titel, Firma und Arbeitsort
+- Arbeitsmodell und Beschäftigungsart
+- Befristung
+- Quellportal
+
+Bekannte Portale können vorsichtig aus Dateiname oder URL abgeleitet werden.
+Fehlen Titel, Firma oder Ort beziehungsweise ist ein Wert unplausibel, kann
+der semantische Dify-Fallback den bereits extrahierten Text auswerten. Bis zu
+15.000 Zeichen werden vollständig übergeben. Ein KI-Wert wird nur automatisch
+übernommen, wenn das Feld bisher leer ist, die Konfidenz mindestens `0,85`
+beträgt und eine überprüfbare Fundstelle im Ausgangstext vorhanden ist.
+
+Für den semantischen Fallback wird
+`workflow/dify/03-job-metadata-fallback-v1.yml` in Dify importiert,
+veröffentlicht und sein API-Schlüssel als
+`DIFY_METADATA_WORKFLOW_API_KEY` hinterlegt.
+
+## Bewerbungsunterlagen
+
+Archivierte Bewerbungsunterlagen werden nicht als Binärdaten in PostgreSQL
+gespeichert. Die Datenbank enthält Metadaten und Zuordnung zur Bewerbung; die
+PDF-Dateien liegen zentral im Docker-Volume unter
+`/app/data/application-documents`. Der Hostpfad muss deshalb im normalen
+Docker-Betrieb nicht separat konfiguriert werden.
 
 ## Tests
 
