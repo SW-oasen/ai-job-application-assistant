@@ -1,0 +1,141 @@
+import hashlib
+
+from app.core.config import get_settings
+from app.core.errors import ApplicationError
+from app.importers.http_importer import HttpImporter
+from app.importers.playwright_importer import PlaywrightImporter
+from app.database.repositories.jobs import persist_imported_job
+from app.parsers.html_to_markdown import html_to_document
+from app.parsers.text_quality import assess_text_quality
+from app.schemas.imports import UrlImportRequest, UrlImportResponse
+from app.services.semantic_metadata_service import enrich_job_metadata
+
+NON_FALLBACK_ERROR_CODES = {
+    "invalid_url",
+    "invalid_url_scheme",
+    "url_credentials_forbidden",
+    "url_resolution_failed",
+    "private_network_forbidden",
+    "source_too_large",
+    "unsupported_content_type",
+}
+
+
+async def import_url(payload: UrlImportRequest) -> UrlImportResponse:
+    settings = get_settings()
+    if payload.force_browser and not settings.playwright_enabled:
+        raise ApplicationError(
+            "Browser-based imports are disabled.",
+            code="browser_import_disabled",
+            status_code=503,
+        )
+
+    importer = HttpImporter(
+        timeout_seconds=settings.url_import_timeout_seconds,
+        max_bytes=settings.url_import_max_bytes,
+        max_redirects=settings.url_import_max_redirects,
+        user_agent=settings.url_import_user_agent,
+    )
+    if payload.force_browser:
+        response = await _import_with_browser(payload.url, fallback_used=False)
+        return await _persist_response(response)
+
+    try:
+        imported = await importer.fetch(payload.url)
+    except ApplicationError as exception:
+        if not settings.playwright_enabled or exception.code in NON_FALLBACK_ERROR_CODES:
+            raise
+        response = await _import_with_browser(payload.url, fallback_used=True)
+        return await _persist_response(response)
+
+    response = _build_response(
+        source_url=imported.final_url,
+        raw_html=imported.content,
+        retrieval_method="http",
+    )
+    if response.quality_sufficient or not settings.playwright_enabled:
+        return await _persist_response(response)
+    response = await _import_with_browser(payload.url, fallback_used=True)
+    return await _persist_response(response)
+
+
+async def _import_with_browser(url: str, *, fallback_used: bool) -> UrlImportResponse:
+    settings = get_settings()
+    importer = PlaywrightImporter(
+        timeout_seconds=settings.playwright_timeout_seconds,
+        max_bytes=settings.url_import_max_bytes,
+        user_agent=settings.url_import_user_agent,
+    )
+    imported = await importer.fetch(url)
+    warnings = ["browser_fallback_used"] if fallback_used else []
+    return _build_response(
+        source_url=imported.final_url,
+        raw_html=imported.content,
+        retrieval_method="browser",
+        extra_warnings=warnings,
+    )
+
+
+def _build_response(
+    *,
+    source_url: str,
+    raw_html: str,
+    retrieval_method: str,
+    extra_warnings: list[str] | None = None,
+) -> UrlImportResponse:
+    settings = get_settings()
+    document = html_to_document(raw_html)
+    quality = assess_text_quality(
+        document.plain_text,
+        title=document.title,
+        minimum_length=settings.url_import_min_text_length,
+    )
+    warnings = [*(extra_warnings or []), *quality.warnings]
+    return UrlImportResponse(
+        success=True,
+        source_url=source_url,
+        retrieval_method=retrieval_method,
+        title=document.title,
+        raw_html=raw_html,
+        markdown=document.markdown,
+        content_hash=hashlib.sha256(document.markdown.encode("utf-8")).hexdigest(),
+        text_length=quality.text_length,
+        quality_sufficient=quality.sufficient,
+        browser_fallback_recommended=False,
+        warnings=warnings,
+    )
+
+
+async def _persist_response(response: UrlImportResponse) -> UrlImportResponse:
+    if not response.quality_sufficient:
+        response.job_id = None
+        response.duplicate = False
+        return response
+
+    semantic = await enrich_job_metadata(
+        response.markdown,
+        source_url=response.source_url,
+    )
+    response.warnings.extend(
+        warning for warning in semantic.warnings if warning not in response.warnings
+    )
+    persisted = await persist_imported_job(
+        source_type="url",
+        source_url=response.source_url,
+        source_filename=None,
+        title=response.title,
+        raw_content=response.raw_html,
+        normalized_content=response.markdown,
+        content_hash=response.content_hash,
+        retrieval_method=response.retrieval_method,
+        warnings=response.warnings,
+        metadata_override=semantic.metadata,
+        extracted_json=(
+            {"semantic_metadata": semantic.details}
+            if semantic.details
+            else None
+        ),
+    )
+    response.job_id = persisted.job_id
+    response.duplicate = persisted.duplicate
+    return response

@@ -1,0 +1,575 @@
+app:
+  description: Extrahiert Anforderungen aus einem gespeicherten Job und gleicht sie mit dem ausgewählten kanonischen Profil ab.
+  icon: scales
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: matching v3
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: http-request
+      id: start-source-context-target
+      source: start
+      sourceHandle: source
+      target: context
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: context-source-validate-context-target
+      source: context
+      sourceHandle: source
+      target: validate_context
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: validate-context-source-extract-target
+      source: validate_context
+      sourceHandle: source
+      target: extract
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: extract-source-prepare-target
+      source: extract
+      sourceHandle: source
+      target: prepare
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: prepare-source-evaluate-target
+      source: prepare
+      sourceHandle: source
+      target: evaluate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: evaluate-source-validate-target
+      source: evaluate
+      sourceHandle: source
+      target: validate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: validate-source-end-target
+      source: validate
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: IDs aus Job-Import und Profilverwaltung.
+        selected: false
+        title: Matching Input
+        type: start
+        variables:
+        - default: ''
+          hint: UUID aus dem Job-Import
+          label: job_id
+          max_length: 64
+          options: []
+          placeholder: 00000000-0000-0000-0000-000000000000
+          required: true
+          type: text-input
+          variable: job_id
+        - default: ''
+          hint: UUID aus der Profilverwaltung
+          label: profile_id
+          max_length: 64
+          options: []
+          placeholder: 00000000-0000-0000-0000-000000000000
+          required: true
+          type: text-input
+          variable: profile_id
+      height: 142
+      id: start
+      position:
+        x: 30
+        y: 220
+      positionAbsolute:
+        x: 30
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          type: no-auth
+        body:
+          data: []
+          type: none
+        desc: Lädt Jobtext und freigegebene Evidenz des ausgewählten Profils.
+        headers: ''
+        method: GET
+        params: ''
+        retry_config:
+          enabled: true
+          max_retries: 2
+          retry_interval: 500
+        selected: false
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        title: Load Matching Context
+        type: http-request
+        url: http://application-assistant-backend:8080/matching/context?job_id={{#start.job_id#}}&profile_id={{#start.profile_id#}}
+      height: 160
+      id: context
+      position:
+        x: 334
+        y: 220
+      positionAbsolute:
+        x: 334
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          import uuid
+
+          def main(body: str, status_code: int, job_id: str, profile_id: str) -> dict:
+              uuid.UUID(job_id)
+              uuid.UUID(profile_id)
+              data = json.loads(body)
+              if status_code != 200:
+                  error = data.get("error", {})
+                  message = error.get("message", "Matching-Kontext konnte nicht geladen werden")
+                  raise ValueError(f"{error.get('code', 'matching_context_failed')}: {message}")
+              content = str(data.get("job_content") or "").strip()
+              if len(content) < 80:
+                  raise ValueError("Der gespeicherte Job enthält zu wenig Text für ein Matching")
+              return {
+                  "job_content": content,
+                  "job_title": str(data.get("job_title") or ""),
+              }
+        code_language: python3
+        desc: Prüft Backend-Antwort und Jobtext.
+        outputs:
+          job_content:
+            children: null
+            type: string
+          job_title:
+            children: null
+            type: string
+        selected: false
+        title: Validate Context
+        type: code
+        variables:
+        - value_selector: [context, body]
+          value_type: string
+          variable: body
+        - value_selector: [context, status_code]
+          value_type: number
+          variable: status_code
+        - value_selector: [start, job_id]
+          value_type: string
+          variable: job_id
+        - value_selector: [start, profile_id]
+          value_type: string
+          variable: profile_id
+      height: 110
+      id: validate_context
+      position:
+        x: 638
+        y: 220
+      positionAbsolute:
+        x: 638
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            max_tokens: 3072
+            temperature: 0.1
+          mode: chat
+          name: qwen2.5vl:7b
+          provider: langgenius/ollama/ollama
+        prompt_template:
+        - id: matching-system
+          role: system
+          text: |
+            Du extrahierst ausschließlich Anforderungen aus einer Stellenanzeige.
+            Erfinde keine Anforderungen. Zerlege Sammelanforderungen in einzelne,
+            prüfbare Aussagen. Priorität ist must bei zwingender Formulierung,
+            nice_to_have bei optionaler Formulierung, sonst should. Keywords müssen
+            kurz, fachlich aussagekräftig und direkt aus der Anforderung ableitbar sein.
+            WICHTIG: Ein Element im Array "requirements" darf genau eine eigenständig
+            bewertbare Kompetenz oder Voraussetzung enthalten. Überschriften wie
+            "Must-have" und "Nice-to-have" sind nur Prioritäten, keine Anforderungen.
+            Erzeuge für jeden Aufzählungspunkt und für jede unabhängige Kompetenz
+            ein eigenes Array-Element. Zerlege auch Fließtext mit mehreren Kompetenzen
+            semantisch. Zerlege nicht blind an Kommas: Alternativen und gemeinsame
+            Werkzeugfamilien bleiben zusammen, zum Beispiel "Python oder Go",
+            "Terraform/Helm" oder "Kafka, Flink oder ähnliche Streaming-Technologien".
+            Beispiel: "Terraform, moderne Query Engines, Airflow und Python oder Go"
+            ergibt vier Anforderungen, nicht eine Anforderung mit vier Keywords.
+            Eng zusammengehörige Praktiken eines ausdrücklich genannten Kompetenzfeldes
+            bleiben dagegen eine Anforderung. Beispiel: "Clean Code, Tests, Git, Pull
+            Requests, CI/CD und technische Dokumentation" ist eine gemeinsame
+            Anforderung "Software-Engineering-Praxis", keine Liste isolierter Tools.
+            "requirement" beschreibt den einzelnen Punkt vollständig; "keywords"
+            enthält nur Suchbegriffe und Synonyme genau dieses Punktes.
+            Verwende für "category" ausschließlich: technical_skill, experience,
+            education, language, soft_skill, domain_knowledge oder other.
+            soft_skill ist nur für ausdrücklich im Anforderungsabschnitt verlangte
+            Verhaltenskompetenzen bestimmt, nicht für beschriebene Zusammenarbeit.
+            Extrahiere nur Voraussetzungen, die eine Person bereits vor Bewerbung oder
+            Teilnahme mitbringen muss. Kursinhalte, Aufgaben des Anbieters, Leistungen,
+            Benefits, Gehalt, Lernziele sowie Zertifikate oder Fähigkeiten, die erst im
+            angebotenen Programm erworben werden, sind keine Anforderungen und dürfen
+            nicht ausgegeben werden. Bei Weiterbildungs- oder Schulungsangeboten dürfen
+            ausschließlich ausdrücklich genannte Eingangsvoraussetzungen aus Abschnitten
+            wie Qualifikation, Voraussetzungen oder "Was bringst du mit?" erscheinen.
+            Unterscheide strikt zwischen Aufgaben und Anforderungen. Inhalte aus
+            Abschnitten wie "Deine Aufgaben", "Dein Einsatz", "What you'll do" oder
+            Formulierungen wie "du arbeitest mit", "du entwickelst" und "du übernimmst"
+            sind keine Anforderungen, sofern dieselbe Kompetenz nicht ausdrücklich im
+            Anforderungs-/Skills-Abschnitt verlangt wird. Kontakte zu Fachexperten,
+            Product Ownern, Kunden oder technischen Teams sind Arbeitskontext und keine
+            soziale Kompetenz.
+            Ignoriere Benefits und Arbeitgeberangebote vollständig, insbesondere
+            Homeoffice, Firmenevents, Urlaub, flexible Arbeitszeiten, Vergütung,
+            Gesundheits- und Familienleistungen. Auch eine Benefit-Aufzählung darf
+            niemals als must-, should- oder nice-to-have-Anforderung erscheinen.
+            Gib nur Daten gemäß dem strukturierten Ausgabeschema zurück.
+        - id: matching-user
+          role: user
+          text: |
+            Stellentitel: {{#validate_context.job_title#}}
+            JOB_START
+            {{#validate_context.job_content#}}
+            JOB_END
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              requirements:
+                items:
+                  additionalProperties: false
+                  properties:
+                    category:
+                      enum: [technical_skill, experience, education, language, soft_skill, domain_knowledge, other]
+                      type: string
+                    keywords:
+                      items:
+                        type: string
+                      type: array
+                    priority:
+                      enum: [must, should, nice_to_have]
+                      type: string
+                    requirement:
+                      type: string
+                  required: [requirement, category, priority, keywords]
+                  type: object
+                type: array
+            required: [requirements]
+            type: object
+        structured_output_enabled: true
+        title: Extract Requirements
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: extract
+      position:
+        x: 942
+        y: 220
+      positionAbsolute:
+        x: 942
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          import uuid
+
+          def main(job_id: str, profile_id: str, extracted: dict) -> dict:
+              uuid.UUID(job_id)
+              uuid.UUID(profile_id)
+              raw_requirements = extracted.get("requirements") or []
+              allowed_categories = {
+                  "technical_skill", "experience", "education", "language",
+                  "soft_skill", "domain_knowledge", "other",
+              }
+              allowed_priorities = {"must", "should", "nice_to_have"}
+              requirements = []
+              for item in raw_requirements:
+                  if not isinstance(item, dict):
+                      continue
+                  requirement = str(item.get("requirement") or "").strip()
+                  if len(requirement) < 3:
+                      continue
+                  category = str(item.get("category") or "other").strip()
+                  if category not in allowed_categories:
+                      category = "other"
+                  priority = str(item.get("priority") or "should").strip()
+                  if priority not in allowed_priorities:
+                      priority = "should"
+                  raw_keywords = item.get("keywords") or []
+                  if not isinstance(raw_keywords, list):
+                      raw_keywords = [raw_keywords]
+                  keywords = []
+                  for keyword in raw_keywords:
+                      value = str(keyword or "").strip()
+                      if value and value not in keywords:
+                          keywords.append(value)
+                      if len(keywords) >= 50:
+                          break
+                  requirements.append({
+                      "requirement": requirement[:4000],
+                      "category": category[:100],
+                      "priority": priority,
+                      "keywords": keywords,
+                  })
+                  if len(requirements) >= 200:
+                      break
+              if not requirements:
+                  raise ValueError("Keine prüfbaren Anforderungen in der Stellenanzeige erkannt")
+
+              return {
+                  "payload": json.dumps({
+                      "job_id": job_id,
+                      "profile_id": profile_id,
+                      "requirements": requirements,
+                      "evidence": [],
+                  }, ensure_ascii=False),
+                  "requirements_json": json.dumps(requirements, ensure_ascii=False),
+              }
+        code_language: python3
+        desc: Baut den evidenzbasierten Backend-Aufruf.
+        outputs:
+          payload:
+            children: null
+            type: string
+          requirements_json:
+            children: null
+            type: string
+        selected: false
+        title: Prepare Evaluation
+        type: code
+        variables:
+        - value_selector: [start, job_id]
+          value_type: string
+          variable: job_id
+        - value_selector: [start, profile_id]
+          value_type: string
+          variable: profile_id
+        - value_selector: [extract, structured_output]
+          value_type: object
+          variable: extracted
+      height: 110
+      id: prepare
+      position:
+        x: 1246
+        y: 220
+      positionAbsolute:
+        x: 1246
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          type: no-auth
+        body:
+          data:
+          - type: text
+            value: '{{#prepare.payload#}}'
+          type: json
+        desc: Lädt kanonische Profilevidenz, bewertet und persistiert Matches.
+        headers: 'Content-Type:application/json'
+        method: POST
+        params: ''
+        retry_config:
+          enabled: false
+        selected: false
+        timeout:
+          connect: 10
+          read: 120
+          write: 30
+        title: Evaluate Matching
+        type: http-request
+        url: http://application-assistant-backend:8080/matching/evaluate
+      height: 160
+      id: evaluate
+      position:
+        x: 1550
+        y: 220
+      positionAbsolute:
+        x: 1550
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          def main(body: str, status_code: int) -> dict:
+              data = json.loads(body)
+              if status_code != 200:
+                  error = data.get("error", {})
+                  message = error.get("message", "Matching fehlgeschlagen")
+                  details = error.get("details") or []
+                  if details:
+                      first = details[0]
+                      location = ".".join(str(part) for part in first.get("loc", []))
+                      reason = first.get("msg", "")
+                      message = f"{message} Feld: {location}. Ursache: {reason}"
+                  raise ValueError(f"{error.get('code', 'matching_failed')}: {message}")
+              return {
+                  "job_id": data["job_id"],
+                  "matches_json": json.dumps(data["matches"], ensure_ascii=False),
+                  "summary_json": json.dumps(data["summary"], ensure_ascii=False),
+              }
+        code_language: python3
+        desc: Gibt Backend-Fehler verständlich weiter.
+        outputs:
+          job_id:
+            children: null
+            type: string
+          matches_json:
+            children: null
+            type: string
+          summary_json:
+            children: null
+            type: string
+        selected: false
+        title: Validate Result
+        type: code
+        variables:
+        - value_selector: [evaluate, body]
+          value_type: string
+          variable: body
+        - value_selector: [evaluate, status_code]
+          value_type: number
+          variable: status_code
+      height: 110
+      id: validate
+      position:
+        x: 1854
+        y: 220
+      positionAbsolute:
+        x: 1854
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Persistierte, erklärbare Matches und aggregierte Match-Level.
+        outputs:
+        - value_selector: [validate, job_id]
+          value_type: string
+          variable: job_id
+        - value_selector: [prepare, requirements_json]
+          value_type: string
+          variable: requirements_json
+        - value_selector: [validate, matches_json]
+          value_type: string
+          variable: matches_json
+        - value_selector: [validate, summary_json]
+          value_type: string
+          variable: summary_json
+        selected: false
+        title: Matching Output
+        type: end
+      height: 168
+      id: end
+      position:
+        x: 2158
+        y: 220
+      positionAbsolute:
+        x: 2158
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.55
+  rag_pipeline_variables: []

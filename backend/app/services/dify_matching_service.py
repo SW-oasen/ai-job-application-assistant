@@ -1,0 +1,91 @@
+from typing import Any
+
+import httpx
+
+from app.core.config import get_settings
+from app.core.errors import ApplicationError
+from app.schemas.matching import MatchingWorkflowRequest
+
+
+def _workflow_url() -> str:
+    base = str(get_settings().dify_base_url).rstrip("/")
+    if not base.endswith("/v1"):
+        base = f"{base}/v1"
+    return f"{base}/workflows/run"
+
+
+def _workflow_error(response: httpx.Response) -> ApplicationError:
+    try:
+        body: Any = response.json()
+    except ValueError:
+        body = {}
+    message = body.get("message") if isinstance(body, dict) else None
+    return ApplicationError(
+        message or "Der Dify-Matching-Workflow konnte nicht ausgeführt werden.",
+        code="dify_matching_workflow_failed",
+        status_code=502,
+        details={"dify_status": response.status_code},
+    )
+
+
+async def run_matching_workflow(payload: MatchingWorkflowRequest) -> dict:
+    settings = get_settings()
+    if settings.dify_matching_workflow_api_key is None:
+        raise ApplicationError(
+            "Matching ist noch nicht für die GUI konfiguriert. "
+            "DIFY_MATCHING_WORKFLOW_API_KEY fehlt im Backend.",
+            code="dify_matching_workflow_not_configured",
+            status_code=503,
+        )
+    token = settings.dify_matching_workflow_api_key.get_secret_value().strip()
+    if not token:
+        raise ApplicationError(
+            "Matching ist noch nicht für die GUI konfiguriert. "
+            "DIFY_MATCHING_WORKFLOW_API_KEY ist leer.",
+            code="dify_matching_workflow_not_configured",
+            status_code=503,
+        )
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(settings.dify_matching_workflow_timeout_seconds)
+        ) as client:
+            response = await client.post(
+                _workflow_url(),
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "inputs": {
+                        "job_id": str(payload.job_id),
+                        "profile_id": str(payload.profile_id),
+                    },
+                    "response_mode": "blocking",
+                    "user": f"matching-{payload.profile_id}",
+                },
+            )
+    except httpx.RequestError as exception:
+        raise ApplicationError(
+            "Die lokale Dify-Instanz ist für das Matching nicht erreichbar.",
+            code="dify_unavailable",
+            status_code=503,
+        ) from exception
+
+    if response.status_code != 200:
+        raise _workflow_error(response)
+    result = response.json()
+    data = result.get("data") or {}
+    if data.get("status") != "succeeded":
+        raise ApplicationError(
+            data.get("error") or "Der Dify-Matching-Workflow ist fehlgeschlagen.",
+            code="dify_matching_workflow_failed",
+            status_code=502,
+        )
+    return {
+        "workflow_run_id": data.get("id") or result.get("workflow_run_id"),
+        "status": data.get("status"),
+        "job_id": str(payload.job_id),
+        "profile_id": str(payload.profile_id),
+        "outputs": data.get("outputs") or {},
+    }

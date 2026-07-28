@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Application Assistant · Matching</title>
+  <style>
+    :root {
+      --ink:#18212f; --muted:#647084; --paper:#f4f7fa; --surface:#fff;
+      --line:#dce3eb; --accent:#155eef; --accent-soft:#e9eef6;
+      --danger:#b42318; --warning:#8a4b08; --header:#132033;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:15px/1.5 Inter,system-ui,"Segoe UI",sans-serif; }
+    button,select { font:inherit; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:24px max(22px,calc((100% - 1180px)/2)); background:var(--header); color:#fff; }
+    h1 { margin:0; font-size:25px; line-height:1.2; }
+    .subtitle,.hint { color:var(--muted); }
+    .subtitle { margin:5px 0 0; color:#c9d4e4; font-size:13px; }
+    .header-actions { display:flex; gap:16px; flex-wrap:wrap; }
+    .nav-link { color:#fff; text-underline-offset:3px; }
+    a { color:var(--accent); }
+    .button { display:inline-block; border:0; border-radius:8px; padding:10px 15px; background:var(--accent); color:#fff; font-weight:700; text-decoration:none; cursor:pointer; }
+    .button.ghost { background:var(--accent-soft); color:#27364a; }
+    main { max-width:1180px; margin:auto; padding:26px 22px 60px; }
+    .controls { display:grid; grid-template-columns:1fr 1fr auto auto; gap:14px; align-items:end; padding:22px; border:1px solid var(--line); border-radius:13px; background:var(--surface); }
+    label { display:block; margin-bottom:5px; color:var(--muted); font-size:12px; font-weight:700; }
+    select { width:100%; padding:10px 11px; border:1px solid #bdc8d6; border-radius:8px; background:#fff; color:var(--ink); }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; margin:24px 0; }
+    .metric { padding:10px 12px; border:1px solid var(--line); border-radius:13px; background:var(--surface); color:inherit; text-align:left; cursor:pointer; }
+    .metric:hover { border-color:#9bb9f5; }
+    .metric.active { border-color:var(--accent); background:#eef4ff; box-shadow:inset 0 0 0 1px var(--accent); }
+    .metric strong { display:block; font-size:21px; line-height:1.1; }
+    .metric span { color:var(--muted); font-size:12px; }
+    .job-head { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; margin:26px 0 12px; }
+    .job-head h2 { margin:0; font-size:25px; line-height:1.2; }
+    .results { display:grid; gap:14px; }
+    .match { border:1px solid var(--line); border-left:5px solid #999; border-radius:13px; background:var(--surface); }
+    .match.strong_match { border-left-color:var(--accent); }
+    .match.partial_match { border-left-color:#667b18; }
+    .match.transferable { border-left-color:#2e90fa; }
+    .match.gap { border-left-color:var(--danger); }
+    .match.unknown { border-left-color:var(--warning); }
+    .match-title { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; padding:13px 16px; cursor:pointer; list-style:none; }
+    .match-title::-webkit-details-marker { display:none; }
+    .match-title::before { content:"›"; flex:0 0 auto; color:var(--muted); font-size:22px; line-height:18px; transition:transform .15s ease; }
+    .match[open] .match-title::before { transform:rotate(90deg); }
+    .match-title h3 { flex:1; }
+    .match-body { padding:0 16px 16px; border-top:1px solid var(--line); }
+    .match h3 { margin:0; font-size:17px; }
+    .badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .badge { padding:3px 8px; border-radius:999px; background:#eef2f6; color:#40506a; font-size:11px; }
+    .badge.level { background:var(--accent-soft); color:#27364a; font-weight:700; }
+    .details { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:15px; }
+    .box { padding:12px; border-radius:9px; background:#f6f8fb; }
+    .box strong { display:block; margin-bottom:5px; font-size:12px; }
+    .evidence { margin-top:14px; }
+    .evidence article { margin-top:8px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; }
+    .evidence article strong { display:block; }
+    .empty { margin-top:20px; padding:50px 24px; border:1px dashed #bdc8d6; border-radius:13px; text-align:center; color:var(--muted); background:#fff; }
+    [hidden] { display:none!important; }
+    @media(max-width:800px) { .topbar{align-items:flex-start;flex-direction:column}.controls{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.details{grid-template-columns:1fr}main{padding:20px} }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Matching-Auswertung</h1>
+      <p class="subtitle">Stellenanforderungen gegen belegte, kanonische Profildaten</p>
+    </div>
+    <div class="header-actions">
+      <a class="nav-link" href="/">Dashboard</a>
+      <a class="nav-link" href="/profiles/admin">Profilverwaltung</a>
+    </div>
+  </header>
+  <main>
+    <section class="controls">
+      <div><label for="jobSelect">Stelle</label><select id="jobSelect"></select></div>
+      <div><label for="profileSelect">Profil</label><select id="profileSelect"></select></div>
+      <button class="button" id="loadResults">Auswertung laden</button>
+      <button class="button" id="runMatching">Neu berechnen</button>
+    </section>
+    <div id="empty" class="empty">Wähle Stelle und Profil, um ein gespeichertes Matching zu laden.</div>
+    <section id="content" hidden>
+      <div class="job-head">
+        <div><h2 id="jobTitle"></h2><p class="hint" id="jobMeta"></p></div>
+        <a id="jobLink" class="button ghost" target="_blank" rel="noopener" hidden>Stellenanzeige öffnen</a>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="results" id="results"></div>
+    </section>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const LEVELS = {
+      strong_match:["Starker Match","Stark"],
+      partial_match:["Teilweiser Match","Teilweise"],
+      transferable:["Übertragbare Erfahrung","Übertragbar"],
+      gap:["Lücke","Lücken"],
+      unknown:["Unklar","Unklar"]
+    };
+    const CONTEXT = {professional:"Berufserfahrung",project:"Portfolio-Projekt",training:"Training/Zertifikat",education:"Ausbildung",other:"Weitere Evidenz"};
+    let currentData = null;
+    let activeLevel = "all";
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+    const formatDate = value => value ? new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).format(new Date(value)) : "nicht angegeben";
+    const sourceName = job => {
+      if (job.source_url) {
+        try { return new URL(job.source_url).origin; } catch {}
+      }
+      return job.source_filename || job.source_portal || "unbekannte Quelle";
+    };
+    async function request(url, options = {}) {
+      const response = await fetch(url, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error?.message || `HTTP ${response.status}`);
+      return data;
+    }
+    async function init() {
+      try {
+        const [jobs, profiles] = await Promise.all([request("/matching/jobs"),request("/profiles")]);
+        $("jobSelect").innerHTML = jobs.length ? jobs.map(job => `<option value="${job.id}">${escapeHtml(job.title)} · ${escapeHtml(job.company || "Firma unbekannt")} · ${escapeHtml(sourceName(job))} · veröffentlicht ${escapeHtml(job.published_text || formatDate(job.published_at))} · importiert ${escapeHtml(formatDate(job.imported_at))}</option>`).join("") : `<option value="">Keine Stelle</option>`;
+        $("profileSelect").innerHTML = profiles.length ? profiles.map(profile => `<option value="${profile.id}">${escapeHtml(profile.display_name)}</option>`).join("") : `<option value="">Kein Profil</option>`;
+        const selectedJob = new URLSearchParams(location.search).get("job_id");
+        if (selectedJob && jobs.some(job => job.id === selectedJob)) {
+          $("jobSelect").value = selectedJob;
+        }
+      } catch (error) { showEmpty(error.message); }
+    }
+    function showEmpty(message) {
+      $("content").hidden = true;
+      $("empty").hidden = false;
+      $("empty").innerHTML = `<p>${escapeHtml(message)}</p><p>Mit „Neu berechnen“ kannst du Matching v3 direkt aus dieser Oberfläche starten.</p>`;
+    }
+    async function loadResults() {
+      const jobId = $("jobSelect").value, profileId = $("profileSelect").value;
+      if (!jobId || !profileId) return showEmpty("Stelle und Profil müssen ausgewählt sein.");
+      try {
+        const data = await request(`/matching/results?job_id=${encodeURIComponent(jobId)}&profile_id=${encodeURIComponent(profileId)}`);
+        if (!data.matches.length) return showEmpty("Für diese Kombination ist noch keine Matching-Auswertung gespeichert.");
+        render(data);
+      } catch (error) { showEmpty(error.message); }
+    }
+    async function runMatching() {
+      const jobId = $("jobSelect").value, profileId = $("profileSelect").value;
+      if (!jobId || !profileId) return showEmpty("Stelle und Profil müssen ausgewählt sein.");
+      const button = $("runMatching");
+      button.disabled = true;
+      showEmpty("Matching wird in Dify ausgeführt. Dies kann etwas dauern …");
+      try {
+        await request("/matching/run", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({job_id: jobId, profile_id: profileId})
+        });
+        await loadResults();
+      } catch (error) {
+        showEmpty(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    }
+    function render(data) {
+      currentData = data;
+      activeLevel = "all";
+      $("empty").hidden = true; $("content").hidden = false;
+      $("jobTitle").textContent = data.job.title;
+      $("jobMeta").textContent = [
+        data.job.company || "Firma unbekannt",
+        sourceName(data.job),
+        `veröffentlicht: ${data.job.published_text || formatDate(data.job.published_at)}`,
+        `importiert: ${formatDate(data.job.imported_at)}`,
+        `Profil: ${data.profile.display_name}`
+      ].join(" · ");
+      $("jobLink").hidden = !data.job.source_url; $("jobLink").href = data.job.source_url || "#";
+      renderSummary();
+      renderMatches();
+    }
+    function renderSummary() {
+      const cards = [
+        ...Object.entries(LEVELS).map(([key,label]) => [key,label[1],currentData.summary[key] || 0]),
+        ["all","Gesamt",currentData.matches.length]
+      ];
+      $("summary").innerHTML = cards.map(([key,label,count]) => `<button type="button" class="metric ${activeLevel === key ? "active" : ""}" data-level="${key}" aria-pressed="${activeLevel === key}"><strong>${count}</strong><span>${escapeHtml(label)}</span></button>`).join("");
+      document.querySelectorAll(".metric").forEach(card => card.onclick = () => {
+        activeLevel = activeLevel === card.dataset.level && activeLevel !== "all" ? "all" : card.dataset.level;
+        renderSummary();
+        renderMatches();
+        $("results").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+    }
+    function renderMatches() {
+      const matches = activeLevel === "all"
+        ? currentData.matches
+        : currentData.matches.filter(match => match.match_level === activeLevel);
+      $("results").innerHTML = matches.length ? matches.map(match => `
+        <details class="match ${match.match_level}">
+          <summary class="match-title"><h3>${escapeHtml(match.requirement)}</h3><span class="badge level">${escapeHtml(LEVELS[match.match_level]?.[0] || match.match_level)}</span></summary>
+          <div class="match-body">
+          <div class="badges"><span class="badge">${escapeHtml(match.priority)}</span><span class="badge">${escapeHtml(match.category)}</span><span class="badge">${Math.round((match.confidence || 0) * 100)} % Sicherheit</span></div>
+          <div class="details">
+            <div class="box"><strong>Bewertung</strong>${escapeHtml(match.explanation)}</div>
+            <div class="box"><strong>Empfehlung</strong>${escapeHtml(match.recommended_action || "Keine Empfehlung")}</div>
+          </div>
+          <div class="evidence"><strong>Belege (${match.evidence.length})</strong>
+            ${match.evidence.length ? match.evidence.map(item => `<article><strong>${escapeHtml(item.label)}</strong><span class="hint">${escapeHtml(CONTEXT[item.experience_context] || item.experience_context)}</span><div>${escapeHtml(item.evidence_text)}</div></article>`).join("") : `<p class="hint">Keine belegte Profilevidenz gefunden.</p>`}
+          </div>
+          </div>
+        </details>`).join("") : `<div class="empty">Keine Anforderungen in dieser Kategorie.</div>`;
+    }
+    $("loadResults").onclick = loadResults;
+    $("runMatching").onclick = runMatching;
+    init();
+  </script>
+</body>
+</html>

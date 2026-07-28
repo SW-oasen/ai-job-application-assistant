@@ -1,0 +1,323 @@
+import re
+
+COMPANY_PATTERNS = (
+    re.compile(
+        r"(?im)^\s*(?:>\s*)?"
+        r"(?:Arbeitgeber|Unternehmen|Company|Employer)\s*:\s*(.+?)\s*$"
+    ),
+    re.compile(
+        r"(?im)^\s*(?:>\s*)?"
+        r"\[([^\]\r\n]+)\]\(https?://[^)\r\n]*/cmp/[^)\r\n]*\)\s*$"
+    ),
+)
+PUBLISHED_TEXT_PATTERNS = (
+    re.compile(
+        r"(?im)^\s*(?:>\s*)?"
+        r"(?:Veröffentlichungsdatum|Published)\s*:\s*(.+?)\s*$"
+    ),
+)
+
+
+def first_metadata_match(
+    content: str,
+    patterns: tuple[re.Pattern, ...],
+) -> str | None:
+    for pattern in patterns:
+        match = pattern.search(content)
+        if match:
+            return match.group(1).strip()
+    return None
+
+
+def _clean_line(line: str) -> str:
+    value = re.sub(r"^\s*>\s?", "", line).strip()
+    value = re.sub(r"^\s*[-*]\s+", "", value)
+    value = re.sub(r"^(?:!\[[^\]]*\]\([^)]+\)\s*)+", "", value).strip()
+    markdown_link = re.fullmatch(r"\[([^\]]+)\]\([^)]+\)", value)
+    return markdown_link.group(1).strip() if markdown_link else value
+
+
+def _clean_title(title: str | None) -> str | None:
+    if not title:
+        return None
+    value = _clean_line(title)
+    value = re.sub(
+        r"^Al(?=\s+(?:Engineer|Scientist|Developer|Researcher)\b)",
+        "AI",
+        value,
+        flags=re.IGNORECASE,
+    )
+    return value or None
+
+
+def _normalized_heading(line: str) -> str:
+    value = _clean_line(line).lstrip("#").strip().strip("*_").strip()
+    value = re.sub(r"^[^\w]+", "", value, flags=re.UNICODE)
+    return value.casefold()
+
+
+def _is_portal_chrome(line: str) -> bool:
+    return _normalized_heading(line) in {"arbeit", "job", "stelle", "stellenangebot"}
+
+
+def _section_value(content: str, headings: set[str]) -> str | None:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        heading = _normalized_heading(line)
+        if heading not in headings:
+            continue
+        for candidate in lines[index + 1 : index + 6]:
+            value = _clean_line(candidate)
+            if value and not value.startswith("#") and value != "&nbsp;":
+                return value
+    return None
+
+
+def _inline_value(content: str, headings: set[str]) -> str | None:
+    heading_pattern = "|".join(
+        re.escape(heading)
+        for heading in sorted(headings, key=len, reverse=True)
+    )
+    match = re.search(
+        rf"(?im)^[ \t]*(?:>[ \t]*)?(?:{heading_pattern})"
+        rf"[ \t]*[:\-–]?[ \t]+(.+?)[ \t]*$",
+        content,
+    )
+    return _clean_line(match.group(1)) if match else None
+
+
+def _value_before_heading(content: str, headings: set[str]) -> str | None:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if _normalized_heading(line) not in headings:
+            continue
+        for candidate in reversed(lines[max(0, index - 3) : index]):
+            value = _clean_line(candidate)
+            if value and not value.startswith("#") and value != "&nbsp;":
+                return value
+    return None
+
+
+def _plain_pdf_header(content: str) -> tuple[str | None, str | None]:
+    lines = [_clean_line(line) for line in content.splitlines()]
+    lines = [line for line in lines if line and line != "&nbsp;"][:15]
+    company_pattern = re.compile(
+        r"\b(?:GmbH|UG|AG|SE|KG|OHG|GbR|Ltd\.?|Limited|Inc\.?|"
+        r"Corporation|Corp\.?|LLC)\b",
+        re.IGNORECASE,
+    )
+    for index, line in enumerate(lines):
+        if not company_pattern.search(line):
+            continue
+        title_parts = [
+            part.lstrip("#").strip()
+            for part in lines[:index]
+            if (
+                not part.startswith("[")
+                and not _is_portal_chrome(part)
+                and len(part) <= 100
+            )
+        ]
+        return " ".join(title_parts).strip() or None, line
+    return None, None
+
+
+def _standalone_legal_company(content: str) -> str | None:
+    legal_suffix = (
+        r"(?:GmbH(?:\s*&\s*Co\.\s*KG)?|UG|AG|SE|KG|OHG|GbR|"
+        r"Ltd\.?|Limited|Inc\.?|Corporation|Corp\.?|LLC)"
+    )
+    pattern = re.compile(
+        rf"(?im)^\s*(?:>\s*)?([^\r\n]{{2,180}}\b{legal_suffix})\s*$"
+    )
+    candidates = [_clean_line(match.group(1)) for match in pattern.finditer(content)]
+    return candidates[-1] if candidates else None
+
+
+def _compact_header_metadata(content: str) -> dict[str, str | None]:
+    lines = [_clean_line(line) for line in content.splitlines()]
+    lines = [line for line in lines if line and line != "&nbsp;"][:15]
+    for index, line in enumerate(lines):
+        parts = [part.strip() for part in re.split(r"\s+[·•|]\s+", line)]
+        if len(parts) < 2 or not re.search(
+            r"\((?:hybrid|remote|on-?site)\)",
+            line,
+            re.IGNORECASE,
+        ):
+            continue
+        title = lines[index - 1].lstrip("#").strip() if index else None
+        location = re.sub(
+            r"\s*\((?:hybrid|remote|on-?site)\)\s*$",
+            "",
+            parts[1],
+            flags=re.IGNORECASE,
+        )
+        work_match = re.search(
+            r"\((hybrid|remote|on-?site)\)",
+            line,
+            re.IGNORECASE,
+        )
+        return {
+            "title": title,
+            "company": parts[0],
+            "location": location.strip() or None,
+            "work_model": work_match.group(1).title() if work_match else None,
+        }
+    return {"title": None, "company": None, "location": None, "work_model": None}
+
+
+def _company_below_main_title(content: str) -> str | None:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if not re.match(r"^\s*(?:>\s*)?#\s+\S", line):
+            continue
+        for candidate in lines[index + 1 : index + 5]:
+            value = _clean_line(candidate)
+            if not value:
+                continue
+            if value.startswith("#") or value == "&nbsp;":
+                break
+            if len(value) <= 200 and not re.match(r"^(https?://|www\.)", value):
+                return value
+        break
+    return None
+
+
+def _instaffo_metadata(content: str) -> dict[str, str | None]:
+    title_match = re.search(r"(?m)^#\s+([^#\r\n]+?)\s*$", content)
+    company_match = re.search(
+        r"(?ims)^##\s+\**(?:Firmendetails|Company details)\**\s*$"
+        r"\s*^#{1,3}\s+([^#\r\n]+?)\s*$",
+        content,
+    )
+    location_match = re.search(
+        r"(?im)^\s*([^\r\n]{2,100}?)\s+Bürostandorte\s*$",
+        content,
+    )
+    employment_match = re.search(
+        r"(?im)^\s*[^A-Za-z\r\n]{0,3}"
+        r"(Vollzeit|Teilzeit|Full[- ]time|Part[- ]time)\b",
+        content,
+    )
+    return {
+        "title": _clean_line(title_match.group(1)) if title_match else None,
+        "company": _clean_line(company_match.group(1)) if company_match else None,
+        "location": location_match.group(1).strip() if location_match else None,
+        "employment_type": employment_match.group(1) if employment_match else None,
+    }
+
+
+def _source_portal(
+    *,
+    source_filename: str | None,
+    source_url: str | None = None,
+) -> str | None:
+    source = f"{source_filename or ''} {source_url or ''}".casefold()
+    portals = (
+        ("indeed", "Indeed"),
+        ("instaffo", "Instaffo"),
+        ("linkedin", "LinkedIn"),
+        ("stepstone", "StepStone"),
+        ("xing", "XING"),
+        ("jobsuche der ba", "Bundesagentur für Arbeit"),
+        ("arbeitsagentur", "Bundesagentur für Arbeit"),
+    )
+    return next((label for marker, label in portals if marker in source), None)
+
+
+def extract_job_metadata(
+    content: str,
+    *,
+    source_filename: str | None = None,
+    source_url: str | None = None,
+) -> dict[str, str | None]:
+    lowered = content.casefold()
+    instaffo = (
+        _instaffo_metadata(content)
+        if source_filename and "instaffo" in source_filename.casefold()
+        else {}
+    )
+    compact = _compact_header_metadata(content)
+    if re.search(
+        r"\b(100\s*%\s*remote|fully remote|vollständig remote|"
+        r"remote in (?:de|germany|deutschland))\b",
+        lowered,
+    ):
+        work_model = "Remote"
+    elif re.search(r"\b(hybrid|hybrides arbeiten)\b", lowered):
+        work_model = "Hybrid"
+    elif re.search(r"\b(homeoffice|remote work|work remotely|remotely)\b", lowered):
+        work_model = "Remote möglich"
+    else:
+        work_model = None
+    plain_title, plain_company = _plain_pdf_header(content)
+    company = instaffo.get("company") or (
+        first_metadata_match(content, COMPANY_PATTERNS)
+        or _company_below_main_title(content)
+        or _section_value(content, {"informationen", "information", "company information"})
+        or compact["company"]
+        or plain_company
+        or _standalone_legal_company(content)
+    )
+    location_headings = {"arbeitsort", "arbeitsorte", "location", "locations"}
+    location = instaffo.get("location") or _inline_value(
+        content,
+        location_headings,
+    ) or _section_value(
+        content,
+        location_headings,
+    ) or _value_before_heading(
+        content,
+        {"bürostandorte", "standorte", "office locations"},
+    ) or compact["location"]
+    if location and re.match(
+        r"^\d+\s*(?:min(?:ute)?n?|stunden?|hours?)\s+ab\b",
+        location,
+        re.IGNORECASE,
+    ):
+        location = _inline_value(
+            content,
+            {"job address", "adresse", "anschrift"},
+        ) or _section_value(
+            content,
+            {"job address", "adresse", "anschrift"},
+        )
+    inline_employment_type = _inline_value(
+        content,
+        {"anstellungsart", "beschäftigungsart", "employment type"},
+    )
+    employment_type = instaffo.get("employment_type") or inline_employment_type or _section_value(
+        content,
+        {"anstellungsart", "beschäftigungsart", "employment type"},
+    )
+    if employment_type is None:
+        employment_type = first_metadata_match(
+            "\n".join(content.splitlines()[:40]),
+            (
+                re.compile(
+                    r"(?im)^\s*((?:Teilzeit,\s*)?Vollzeit|Teilzeit|"
+                    r"Full[- ]time|Part[- ]time)\s*$"
+                ),
+            ),
+        )
+    return {
+        "title": _clean_title(
+            instaffo.get("title") or compact["title"] or plain_title
+        ),
+        "company": company,
+        "published_text": first_metadata_match(content, PUBLISHED_TEXT_PATTERNS),
+        "location": location,
+        "employment_type": employment_type,
+        "contract_term": _inline_value(
+            content,
+            {"befristung", "vertragsdauer", "contract term", "contract duration"},
+        ) or _section_value(
+            content,
+            {"befristung", "vertragsdauer", "contract term", "contract duration"},
+        ),
+        "work_model": work_model or compact["work_model"],
+        "source_portal": _source_portal(
+            source_filename=source_filename,
+            source_url=source_url,
+        ),
+    }

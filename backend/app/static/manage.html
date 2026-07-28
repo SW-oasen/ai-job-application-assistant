@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Application Assistant · Zentralverwaltung</title>
+  <style>
+    :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#155eef;--line:#dce3eb;--muted:#647084}
+    *{box-sizing:border-box}body{margin:0}header{display:flex;justify-content:space-between;align-items:center;gap:20px;background:#132033;color:#fff;padding:28px max(22px,calc((100% - 1180px)/2))}
+    header h1{margin:0 0 5px;font-size:27px}header p{margin:0;color:#c9d4e4}.header-actions{display:flex;gap:16px;flex-wrap:wrap}.nav-link{color:#fff;text-underline-offset:3px}main{max-width:1180px;margin:auto;padding:26px 22px 60px}
+    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px}.step,.panel{background:#fff;border:1px solid var(--line);border-radius:13px}
+    .step{min-height:116px;padding:17px;color:inherit;text-decoration:none}.step:not(.disabled):hover{border-color:#9bb9f5;box-shadow:0 4px 16px #20304a12}
+    .step small{color:var(--blue);font-weight:750;text-transform:uppercase}.step h2{font-size:17px;margin:7px 0 5px}.step p,.panel>p{color:var(--muted);margin:0;line-height:1.45;font-size:13px}
+    .step.disabled{background:#f0f2f5;color:#7a8492}.step.disabled small{color:#7a8492}.panel+.panel{margin-top:18px}
+    .panel{padding:22px}.panel h2{font-size:19px;margin:0 0 6px}.panel>p{font-size:14px;margin-bottom:19px}.tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);margin-bottom:18px}
+    button,.button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    button:disabled{opacity:.55}.tab{background:none;color:var(--muted);border-radius:0;border-bottom:2px solid transparent}.tab.active{color:var(--blue);border-color:var(--blue)}
+    .secondary{background:#e9eef6;color:#27364a}.pane{display:none}.pane.active{display:block}label{font-size:13px;font-weight:700;display:block;margin-bottom:6px}
+    input[type=url],input[type=file]{width:100%;border:1px solid #bdc8d6;border-radius:8px;padding:11px;background:#fff}.check{display:flex;gap:8px;align-items:center;margin:12px 0 16px;font-size:14px}.check input{width:17px;height:17px}
+    .message{display:none;border-radius:9px;padding:13px;margin-top:16px;font-size:14px;line-height:1.45}.message.show{display:block}.success{background:#e9f8f0;color:#087443}.error{background:#fff0ee;color:#b42318}.warning{background:#fff5df;color:#8a4b08}
+    .jobs{display:grid;gap:9px;margin-top:15px}.job-row{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:9px;overflow:hidden}.job{display:block;min-width:0;flex:1;padding:14px;color:inherit;text-decoration:none}.job:hover{background:#f8fbff}.job strong{display:block;font-size:14px}.job span,.empty{font-size:12px;color:var(--muted)}.job-actions{display:flex;align-items:stretch}.job-actions .button,.delete-job{display:flex;align-items:center;border-radius:0;padding:8px 13px;border-left:1px solid var(--line)}.delete-job{background:#fff0ee;color:#b42318}.delete-job:hover{background:#fee4e2}code{word-break:break-all}
+    @media(max-width:850px){header{align-items:flex-start;flex-direction:column}.steps{grid-template-columns:1fr 1fr}}@media(max-width:620px){.steps{grid-template-columns:1fr}.job-row{display:block}.job-actions{border-top:1px solid var(--line)}.job-actions .button,.delete-job{flex:1;justify-content:center;border-left:0}.delete-job{border-left:1px solid var(--line)}}
+  </style>
+</head>
+<body>
+<header>
+  <div><h1>Zentralverwaltung</h1><p>Profile pflegen, Stellen erfassen und belegbar abgleichen.</p></div>
+  <div class="header-actions"><a class="nav-link" href="/">Dashboard</a></div>
+</header>
+<main>
+  <nav class="steps">
+    <a class="step" href="/profiles/admin"><small>Schritt 1</small><h2>Profilverwaltung</h2><p>Profil und Erfahrungen bearbeiten sowie CV importieren.</p></a>
+    <a class="step" href="#job-import"><small>Schritt 2</small><h2>Job importieren</h2><p>URL verwenden oder auf PDF ausweichen.</p></a>
+    <a class="step" href="/matching/admin"><small>Schritt 3</small><h2>Matching</h2><p>Anforderungen mit Profilnachweisen vergleichen.</p></a>
+    <div class="step disabled"><small>Schritt 4 · in Überarbeitung</small><h2>CV &amp; Anschreiben</h2><p>Wird nach den neuen Vorgaben neu gestaltet.</p></div>
+  </nav>
+  <section class="panel" id="job-import">
+      <h2>Stellenanzeige importieren</h2><p>Ein Job wird nur bei ausreichendem, verwendbarem Inhalt gespeichert.</p>
+      <div class="tabs"><button class="tab active" data-pane="url-pane">URL</button><button class="tab" data-pane="pdf-pane">Datei-Fallback</button></div>
+      <div class="pane active" id="url-pane">
+        <form id="url-form"><label for="job-url">URL der Stellenanzeige</label><input id="job-url" type="url" required placeholder="https://…">
+          <label class="check"><input id="force-browser" type="checkbox"> Browser-Abruf erzwingen</label><button id="url-submit">URL importieren</button></form>
+      </div>
+      <div class="pane" id="pdf-pane">
+        <form id="pdf-form"><label for="job-pdf">Gespeicherte Stellenanzeige als PDF oder HTML</label><input id="job-pdf" type="file" accept="application/pdf,text/html,.pdf,.html,.htm" required>
+          <p class="empty">Firefox-SingleFile (.html/.htm) wird lokal und ohne JavaScript verarbeitet. PDF nutzt bei Bedarf MinerU.</p>
+          <label class="check" id="replace-existing-option"><input id="replace-existing" type="checkbox"> Bereits vorhandenen PDF-Job neu importieren</label>
+          <button id="pdf-submit">Datei importieren</button></form>
+      </div>
+      <div id="message" class="message" role="status"></div>
+  </section>
+  <section class="panel">
+    <h2>Jobliste</h2>
+    <p>Stellenanzeigen öffnen, mit einem Profil abgleichen oder vollständig löschen.</p>
+    <div id="jobs" class="jobs"><div class="empty">Jobs werden geladen…</div></div>
+  </section>
+</main>
+<script>
+const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function show(kind,text,id=""){const x=$("message");x.className=`message show ${kind}`;x.innerHTML=`${esc(text)}${id?`<br>Job-ID: <code>${esc(id)}</code>`:""}`}
+async function req(url,opt={}){const r=await fetch(url,opt),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error?.message||`HTTP ${r.status}`);return d}
+function sourceName(job){if(job.source_url){try{return new URL(job.source_url).origin}catch{}}return job.source_filename||job.source_portal||"Unbekannte Quelle"}
+async function deleteJob(id,title){if(!confirm(`Job „${title}“ wirklich löschen?\n\nMatching-Ergebnisse, Bewerbungsstatus und zugehörige Dokumente werden ebenfalls gelöscht.`))return;try{await req(`/matching/jobs/${encodeURIComponent(id)}`,{method:"DELETE"});show("success",`Job „${title}“ wurde gelöscht.`);await jobs()}catch(e){show("error",e.message)}}
+async function jobs(){try{const a=await req("/matching/jobs");$("jobs").innerHTML=a.length?a.map(j=>`<div class="job-row"><a class="job" href="/jobs/${encodeURIComponent(j.id)}"><strong>${esc(j.title||"Ohne Titel")}</strong><span>${esc(j.company||"Firma unbekannt")} · ${esc(sourceName(j))}</span></a><div class="job-actions"><a class="button secondary" href="/matching/admin?job_id=${encodeURIComponent(j.id)}">Matching</a><button class="delete-job" type="button" data-job-id="${esc(j.id)}" data-job-title="${esc(j.title||"Ohne Titel")}">Löschen</button></div></div>`).join(""):'<div class="empty">Noch keine Jobs gespeichert.</div>';document.querySelectorAll(".delete-job").forEach(button=>button.onclick=()=>deleteJob(button.dataset.jobId,button.dataset.jobTitle))}catch(e){$("jobs").innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab,.pane").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.pane).classList.add("active");$("message").className="message"});
+$("url-form").onsubmit=async e=>{e.preventDefault();const b=$("url-submit");b.disabled=true;show("warning","Import läuft…");try{const d=await req("/imports/url",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:$("job-url").value.trim(),force_browser:$("force-browser").checked})});if(!d.success)show("error",d.error?.message||"Import fehlgeschlagen.");else if(!d.job_id)show("warning","Inhalt gelesen, aber wegen unzureichender Qualität nicht gespeichert.");else{show("success",d.duplicate?"Job war bereits vorhanden.":"Job erfolgreich importiert.",d.job_id);jobs()}}catch(x){show("error",x.message)}finally{b.disabled=false}};
+$("job-pdf").onchange=()=>{$("replace-existing-option").style.display=/\.html?$/i.test($("job-pdf").files[0]?.name||"")?"none":"flex"};
+$("pdf-form").onsubmit=async e=>{e.preventDefault();const f=$("job-pdf").files[0],b=$("pdf-submit");if(!f)return;const html=/\.html?$/i.test(f.name),endpoint=html?"/imports/html":"/imports/pdf";b.disabled=true;show("warning",`${html?"HTML":"PDF"} wird verarbeitet…`);try{const form=new FormData;form.append("file",f);if(!html)form.append("replace_existing",$("replace-existing").checked?"true":"false");const d=await req(endpoint,{method:"POST",body:form});if(!d.success||!d.job_id)show("warning",`Datei gelesen, aber nicht gespeichert: ${(d.warnings||[]).join(", ")||"unzureichende Qualität"}`);else{const message=d.reimported?"Vorhandener PDF-Job wurde neu importiert.":d.duplicate?"Job war bereits vorhanden.":`${html?"HTML":"PDF"}-Job erfolgreich importiert.`;show("success",message,d.job_id);jobs()}}catch(x){show("error",x.message)}finally{b.disabled=false}};
+jobs();
+</script>
+</body></html>

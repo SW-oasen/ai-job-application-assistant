@@ -1,0 +1,245 @@
+app:
+  description: Ergänzt fehlende Job-Metadaten aus bereits extrahiertem Anzeigentext.
+  icon: magnifying_glass_tilted_left
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: job metadata fallback v1
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-source-extract-target
+      source: start
+      sourceHandle: source
+      target: extract
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: extract-source-serialize-target
+      source: extract
+      sourceHandle: source
+      target: serialize
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: serialize-source-end-target
+      source: serialize
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: Vollständiger Jobtext bis zur konfigurierten Zeichengrenze.
+        selected: false
+        title: Metadata Input
+        type: start
+        variables:
+        - default: ''
+          label: job_content
+          max_length: 15000
+          options: []
+          required: true
+          type: paragraph
+          variable: job_content
+        - default: ''
+          label: source_filename
+          max_length: 500
+          options: []
+          required: false
+          type: text-input
+          variable: source_filename
+        - default: ''
+          label: source_url
+          max_length: 2048
+          options: []
+          required: false
+          type: text-input
+          variable: source_url
+        - default: '{}'
+          label: rule_metadata_json
+          max_length: 5000
+          options: []
+          required: true
+          type: paragraph
+          variable: rule_metadata_json
+      height: 194
+      id: start
+      position: {x: 30, y: 220}
+      positionAbsolute: {x: 30, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            max_tokens: 2048
+            temperature: 0.1
+          mode: chat
+          name: qwen2.5vl:7b
+          provider: langgenius/ollama/ollama
+        prompt_template:
+        - id: metadata-system
+          role: system
+          text: |
+            Extrahiere ausschließlich belegbare Metadaten aus der Stellenanzeige.
+            Erfinde keine Werte. Bestehende Regelwerte dienen als Kontext, sind aber
+            keine Belege. Jede nichtleere Angabe benötigt ein kurzes wörtliches
+            Textfragment als evidence. confidence liegt zwischen 0 und 1.
+            Portalüberschriften, Seitentitel, Navigation und Benefits sind keine
+            Metadaten. "Mobiles Arbeiten" in Benefits allein beweist kein Arbeitsmodell.
+            company ist der konkrete Arbeitgeber, nicht das Jobportal oder die
+            Muttergesellschaft. Suche für company im gesamten Text ausdrücklich auch
+            nach indirekten Selbstvorstellungen wie "wir sind X", "Willkommen bei X",
+            "X ist Teil der Y-Gruppe" oder wiederkehrenden Eigennamen rund um den
+            Stellentitel. In Indeed-Druckansichten steht der Arbeitgeber häufig nur
+            in solchen Einleitungssätzen und nicht im Seitenkopf. Bei "wir sind X"
+            ist X der Arbeitgeber; bei "X ist Teil der Y-Gruppe" ist X der konkrete
+            Arbeitgeber und Y nur die Muttergesellschaft.
+            Ein Arbeitsmodell darf nicht allein aus Abschnitten zu Leistungen,
+            Benefits, Work-Life-Balance oder Arbeitgeberangeboten abgeleitet werden.
+            Wenn ein Wert nicht belegt ist, verwende einen leeren String, confidence
+            0 und einen leeren evidence-String.
+        - id: metadata-user
+          role: user
+          text: |
+            Quelldatei: {{#start.source_filename#}}
+            Quell-URL: {{#start.source_url#}}
+            Regelparser: {{#start.rule_metadata_json#}}
+            Nutze ein dort enthaltenes source_portal ausschließlich als Hinweis auf
+            das Seitenlayout. Das Quellportal ist nicht automatisch der Arbeitgeber
+            und nicht automatisch der spätere Bewerbungsweg.
+            JOB_START
+            {{#start.job_content#}}
+            JOB_END
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              title: {$ref: '#/$defs/field'}
+              company: {$ref: '#/$defs/field'}
+              location: {$ref: '#/$defs/field'}
+              work_model: {$ref: '#/$defs/field'}
+              employment_type: {$ref: '#/$defs/field'}
+              contract_term: {$ref: '#/$defs/field'}
+            required: [title, company, location, work_model, employment_type, contract_term]
+            type: object
+            $defs:
+              field:
+                additionalProperties: false
+                properties:
+                  value: {type: string}
+                  confidence: {type: number}
+                  evidence: {type: string}
+                required: [value, confidence, evidence]
+                type: object
+        structured_output_enabled: true
+        title: Extract Metadata
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: extract
+      position: {x: 334, y: 220}
+      positionAbsolute: {x: 334, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          def main(metadata: dict) -> dict:
+              return {
+                  "metadata_json": json.dumps(metadata, ensure_ascii=False)
+              }
+        code_language: python3
+        desc: Serialisiert das validierte strukturierte Ergebnis für das Backend.
+        outputs:
+          metadata_json:
+            children: null
+            type: string
+        selected: false
+        title: Serialize Metadata
+        type: code
+        variables:
+        - value_selector: [extract, structured_output]
+          value_type: object
+          variable: metadata
+      height: 82
+      id: serialize
+      position: {x: 638, y: 220}
+      positionAbsolute: {x: 638, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Strukturierte Metadaten mit Konfidenz und Fundstelle.
+        outputs:
+        - value_selector: [serialize, metadata_json]
+          value_type: string
+          variable: metadata_json
+        selected: false
+        title: Metadata Output
+        type: end
+      height: 90
+      id: end
+      position: {x: 942, y: 220}
+      positionAbsolute: {x: 942, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.8
+  rag_pipeline_variables: []

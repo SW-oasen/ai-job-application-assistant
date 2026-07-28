@@ -1,0 +1,38 @@
+services:
+  application-assistant-backend:
+    build:
+      context: ./backend
+    image: application-assistant-backend:0.1.0
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      DATABASE_URL: "${DATABASE_URL:-}"
+      APPLICATION_DOCUMENTS_PATH: /app/data/application-documents
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - application-documents:/app/data/application-documents
+    networks:
+      - ai-services
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  ai-services:
+    external: true
+    name: "${DOCKER_NETWORK_NAME:-docker_default}"
+
+volumes:
+  application-documents:

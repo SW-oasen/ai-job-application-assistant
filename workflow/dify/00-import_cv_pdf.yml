@@ -1,0 +1,733 @@
+app:
+  description: Lebenslauf aus PDF importieren und als JSON ausgeben
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: import CV PDF
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:1.0.0@ae50a2db261bffa7289677f2b0a60e60762ceb187b602113b72425ccbe772dc3
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 1784646740484-source-prepare-target
+      source: '1784646740484'
+      sourceHandle: source
+      target: prepare
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: document-extractor
+      id: 1784646417711-source-1784653040514-target
+      source: '1784646417711'
+      sourceHandle: source
+      target: '1784653040514'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: llm
+      id: 1784653040514-source-1784646740484-target
+      source: '1784653040514'
+      sourceHandle: source
+      target: '1784646740484'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: prepare-source-store-target
+      source: prepare
+      sourceHandle: source
+      target: store
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: store-source-validate-target
+      source: store
+      sourceHandle: source
+      target: validate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: validate-source-1784647040906-target
+      source: validate
+      sourceHandle: source
+      target: '1784647040906'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: true
+        title: Import CV PDF
+        type: start
+        variables:
+        - default: ''
+          hint: UUID aus der Profilverwaltung
+          label: profile_id
+          max_length: 64
+          options: []
+          placeholder: 00000000-0000-0000-0000-000000000000
+          required: true
+          type: text-input
+          variable: profile_id
+        - default: de
+          hint: Sprache des Lebenslaufs
+          label: source_language
+          max_length: null
+          options:
+          - de
+          - en
+          placeholder: ''
+          required: true
+          type: select
+          variable: source_language
+        - default: lebenslauf.pdf
+          hint: Optionaler Anzeigename für die Importhistorie
+          label: source_filename
+          max_length: 500
+          options: []
+          placeholder: lebenslauf.pdf
+          required: false
+          type: text-input
+          variable: source_filename
+        - allowed_file_extensions:
+          - .PDF
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          default: ''
+          hide: false
+          hint: ''
+          label: local_cv_pdf
+          max_length: 1
+          options: []
+          placeholder: ''
+          required: true
+          type: file-list
+          variable: local_cv_pdf
+      height: 109
+      id: '1784646417711'
+      position:
+        x: 252.28571428571433
+        y: 447.85714285714283
+      positionAbsolute:
+        x: 252.28571428571433
+        y: 447.85714285714283
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1784653040514'
+          - text
+        model:
+          completion_params:
+            temperature: 0.1
+          mode: chat
+          name: qwen3:8b
+          provider: langgenius/ollama/ollama
+        prompt_template:
+        - id: cffcf4f8-5865-4858-b6c1-740c7afa415e
+          role: system
+          text: 'You are a deterministic CV data extraction engine.
+
+
+            Extract only information explicitly present in the supplied CV.
+
+
+            Rules:
+
+
+            1. Never invent, infer, complete, or simulate information.
+
+            2. Preserve the wording of descriptions and activities.
+
+            3. Use null, empty strings, empty objects, or empty arrays for missing
+            values.
+
+            4. Do not add projects unless a project section is explicitly present
+            in the CV.
+
+            5. Do not interpret nationality as location.
+
+            6. Natural languages belong under skills.languages.
+
+            7. Preserve the skill categories from the source document.
+
+            8. Do not generate evidence fields.
+
+            9. Do not add employment type, work location, or current-status fields.
+
+            10. Normalize dates only when the month and year are explicitly available.
+
+            11. Return valid JSON matching the configured structured-output schema.
+
+            12. REFERENCES section. Preserve names, professional titles, companies,
+            and LinkedIn URLs. If only the word "LinkedIn" is available but no URL
+            target was extracted, return an empty string for linkedin.
+
+            13. Return no explanation or additional text.'
+        - id: 15198a09-509f-46cc-8ca3-b59861c36bfc
+          role: user
+          text: "Extract the CV below into the configured structured output. The content\
+            \ between CV_START and CV_END is the only permitted source. \nCV_START\
+            \ \n{{#1784653040514.text#}}\nCV_END \nBefore extraction, verify that\
+            \ the supplied content contains actual CV information. Do not use prior\
+            \ knowledge, examples, templates, or imagined content."
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              certificates:
+                description: Certificates explicitly present in the source document.
+                items:
+                  additionalProperties: false
+                  properties:
+                    date:
+                      description: Certification date exactly as stated; use an empty
+                        string if absent.
+                      type: string
+                    institution:
+                      description: Issuing institution exactly as stated; use an empty
+                        string if absent.
+                      type: string
+                    name:
+                      description: Certificate name exactly as stated.
+                      type: string
+                  required:
+                  - name
+                  - institution
+                  - date
+                  type: object
+                type: array
+              education:
+                description: Education and formal training entries explicitly present
+                  in the source document.
+                items:
+                  additionalProperties: false
+                  properties:
+                    date:
+                      description: Date or date range exactly as stated; use an empty
+                        string if absent.
+                      type: string
+                    field:
+                      description: Field of study or specialization exactly as stated;
+                        use an empty string if absent.
+                      type: string
+                    institution:
+                      description: Institution or university exactly as stated.
+                      type: string
+                    qualification:
+                      description: Qualification, degree, or training name exactly
+                        as stated.
+                      type: string
+                  required:
+                  - qualification
+                  - institution
+                  - date
+                  - field
+                  type: object
+                type: array
+              profile:
+                additionalProperties: false
+                properties:
+                  email:
+                    description: Email address exactly as stated; use an empty string
+                      if absent.
+                    type: string
+                  github:
+                    description: GitHub URL or identifier exactly as stated; use an
+                      empty string if absent.
+                    type: string
+                  linkedin:
+                    description: LinkedIn URL or identifier exactly as stated; use
+                      an empty string if absent.
+                    type: string
+                  name:
+                    description: Full name exactly as stated in the source document;
+                      use an empty string if absent.
+                    type: string
+                  nationality:
+                    description: Nationality only if explicitly stated in the source
+                      document; otherwise use an empty string.
+                    type: string
+                  phone:
+                    description: Phone number exactly as stated; use an empty string
+                      if absent.
+                    type: string
+                  portfolio:
+                    description: Portfolio URL exactly as stated; use an empty string
+                      if absent.
+                    type: string
+                  professional_title:
+                    description: Professional titles or roles explicitly stated in
+                      the source document.
+                    items:
+                      type: string
+                    type: array
+                  summary:
+                    description: Profile summary from the source document without
+                      invented information; use an empty string if absent.
+                    type: string
+                required:
+                - name
+                - professional_title
+                - nationality
+                - phone
+                - email
+                - linkedin
+                - portfolio
+                - github
+                - summary
+                type: object
+              references:
+                description: Professional references explicitly present in the source
+                  document.
+                items:
+                  additionalProperties: false
+                  properties:
+                    company:
+                      description: Reference person's company or organization exactly
+                        as stated; use an empty string if absent.
+                      type: string
+                    job_title:
+                      description: Reference person's professional title exactly as
+                        stated; use an empty string if absent.
+                      type: string
+                    linkedin:
+                      description: LinkedIn URL exactly as extracted from the source
+                        document; use an empty string if the URL target is unavailable.
+                      type: string
+                    name:
+                      description: Reference person's name exactly as stated.
+                      type: string
+                  required:
+                  - name
+                  - job_title
+                  - company
+                  - linkedin
+                  type: object
+                type: array
+              skills:
+                additionalProperties: false
+                properties:
+                  categories:
+                    description: Technical and professional skill categories explicitly
+                      present in the source document.
+                    items:
+                      additionalProperties: false
+                      properties:
+                        category:
+                          description: Skill category exactly as stated.
+                          type: string
+                        skills:
+                          description: Skills explicitly listed within the category.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - category
+                      - skills
+                      type: object
+                    type: array
+                  languages:
+                    description: Natural languages explicitly stated in the source
+                      document.
+                    items:
+                      additionalProperties: false
+                      properties:
+                        language:
+                          description: Language name exactly as stated.
+                          type: string
+                        level:
+                          description: Proficiency level exactly as stated; use an
+                            empty string if absent.
+                          type: string
+                      required:
+                      - language
+                      - level
+                      type: object
+                    type: array
+                required:
+                - categories
+                - languages
+                type: object
+              work_experience:
+                description: Work experience entries explicitly present in the source
+                  document.
+                items:
+                  additionalProperties: false
+                  properties:
+                    activities:
+                      description: Responsibilities and activities stated for this
+                        role, without inference.
+                      items:
+                        type: string
+                      type: array
+                    company:
+                      description: Employer or organization exactly as stated.
+                      type: string
+                    end_date:
+                      description: End date exactly as stated; use an empty string
+                        if unavailable.
+                      type: string
+                    job_title:
+                      description: Job title exactly as stated.
+                      type: string
+                    start_date:
+                      description: Start date exactly as stated; use an empty string
+                        if unavailable.
+                      type: string
+                  required:
+                  - company
+                  - job_title
+                  - start_date
+                  - end_date
+                  - activities
+                  type: object
+                type: array
+            required:
+            - profile
+            - skills
+            - work_experience
+            - education
+            - certificates
+            - references
+            type: object
+        structured_output_enabled: true
+        title: Structure CV
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: '1784646740484'
+      position:
+        x: 990.5714285714287
+        y: 468.85714285714283
+      positionAbsolute:
+        x: 990.5714285714287
+        y: 468.85714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        outputs:
+        - value_selector:
+          - '1784646740484'
+          - structured_output
+          value_type: object
+          variable: structured_cv
+        - value_selector:
+          - validate
+          - import_id
+          value_type: string
+          variable: import_id
+        - value_selector:
+          - validate
+          - suggestion_count
+          value_type: number
+          variable: suggestion_count
+        - value_selector:
+          - validate
+          - status
+          value_type: string
+          variable: status
+        selected: false
+        title: Output
+        type: end
+      height: 89
+      id: '1784647040906'
+      position:
+        x: 2160
+        y: 468.85714285714283
+      positionAbsolute:
+        x: 2160
+        y: 468.85714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: |
+          import json
+          import re
+
+          def main(
+              profile_id: str,
+              source_filename: str,
+              source_language: str,
+              structured_cv: dict,
+          ) -> dict:
+              profile_id = profile_id.strip()
+              if not re.fullmatch(
+                  r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+                  r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+                  profile_id,
+              ):
+                  raise ValueError("profile_id must be a UUID from profile administration")
+              if source_language not in ("de", "en"):
+                  raise ValueError("source_language must be de or en")
+              if not isinstance(structured_cv, dict):
+                  raise ValueError("structured_cv must contain one JSON object")
+              payload = {
+                  "source_filename": source_filename.strip() or "lebenslauf.pdf",
+                  "source_language": source_language,
+                  "structured_cv": structured_cv,
+              }
+              return {
+                  "profile_id": profile_id,
+                  "payload_json": json.dumps(payload, ensure_ascii=False),
+              }
+        code_language: python3
+        desc: Validiert Zielprofil und Extraktion; erstellt nur prüfbare Vorschläge.
+        outputs:
+          payload_json:
+            children: null
+            type: string
+          profile_id:
+            children: null
+            type: string
+        selected: false
+        title: Prepare Profile Import
+        type: code
+        variables:
+        - value_selector:
+          - '1784646417711'
+          - profile_id
+          value_type: string
+          variable: profile_id
+        - value_selector:
+          - '1784646417711'
+          - source_filename
+          value_type: string
+          variable: source_filename
+        - value_selector:
+          - '1784646417711'
+          - source_language
+          value_type: string
+          variable: source_language
+        - value_selector:
+          - '1784646740484'
+          - structured_output
+          value_type: object
+          variable: structured_cv
+      height: 110
+      id: prepare
+      position:
+        x: 1260
+        y: 468.85714285714283
+      positionAbsolute:
+        x: 1260
+        y: 468.85714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        authorization:
+          type: no-auth
+        body:
+          data:
+          - type: text
+            value: '{{#prepare.payload_json#}}'
+          type: json
+        desc: Speichert Vorschläge beim ausgewählten Profil; keine ungeprüfte Übernahme.
+        headers: 'Content-Type:application/json'
+        method: POST
+        params: ''
+        retry_config:
+          enabled: false
+        selected: false
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        title: Store Profile Proposals
+        type: http-request
+        url: http://application-assistant-backend:8080/profiles/{{#prepare.profile_id#}}/cv-imports/structured
+      height: 160
+      id: store
+      position:
+        x: 1560
+        y: 468.85714285714283
+      positionAbsolute:
+        x: 1560
+        y: 468.85714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: |
+          import json
+
+          def main(body: str, status_code: int) -> dict:
+              data = json.loads(body)
+              if status_code != 200:
+                  error = data.get("error") or {}
+                  code = error.get("code", f"http_{status_code}")
+                  message = error.get("message", "Backend request failed")
+                  raise ValueError(f"{code}: {message}")
+              suggestions = data.get("suggestions") or []
+              return {
+                  "import_id": data.get("id", ""),
+                  "suggestion_count": len(suggestions),
+                  "status": data.get("status", ""),
+              }
+        code_language: python3
+        desc: Gibt Backendfehler verständlich und ohne automatische Wiederholung zurück.
+        outputs:
+          import_id:
+            children: null
+            type: string
+          status:
+            children: null
+            type: string
+          suggestion_count:
+            children: null
+            type: number
+        selected: false
+        title: Validate Profile Import
+        type: code
+        variables:
+        - value_selector:
+          - store
+          - body
+          value_type: string
+          variable: body
+        - value_selector:
+          - store
+          - status_code
+          value_type: number
+          variable: status_code
+      height: 110
+      id: validate
+      position:
+        x: 1860
+        y: 468.85714285714283
+      positionAbsolute:
+        x: 1860
+        y: 468.85714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_array_file: true
+        selected: false
+        title: Doc Extractor
+        type: document-extractor
+        variable_selector:
+        - '1784646417711'
+        - local_cv_pdf
+      height: 105
+      id: '1784653040514'
+      position:
+        x: 630.7142857142859
+        y: 468.85714285714283
+      positionAbsolute:
+        x: 630.7142857142859
+        y: 468.85714285714283
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: -31.5
+      y: 96.5
+      zoom: 0.7
+  rag_pipeline_variables: []
