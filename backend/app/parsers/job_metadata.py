@@ -134,6 +134,19 @@ def _standalone_legal_company(content: str) -> str | None:
     return candidates[-1] if candidates else None
 
 
+def _legal_company_from_prose(content: str) -> str | None:
+    legal_suffix = (
+        r"(?:GmbH(?:\s*&\s*Co\.\s*KG)?|UG|AG|SE|KG|OHG|GbR|"
+        r"Ltd\.?|Limited|Inc\.?|Corporation|Corp\.?|LLC)"
+    )
+    match = re.search(
+        rf"(?im)^\s*(?:Die|Bei)\s+"
+        rf"([A-ZÄÖÜ][^\r\n.!?]{{1,160}}?\b{legal_suffix})\b",
+        content,
+    )
+    return _clean_line(match.group(1)) if match else None
+
+
 def _compact_header_metadata(content: str) -> dict[str, str | None]:
     lines = [_clean_line(line) for line in content.splitlines()]
     lines = [line for line in lines if line and line != "&nbsp;"][:15]
@@ -256,6 +269,7 @@ def extract_job_metadata(
         or _company_below_main_title(content)
         or _section_value(content, {"informationen", "information", "company information"})
         or compact["company"]
+        or _legal_company_from_prose(content)
         or plain_company
         or _standalone_legal_company(content)
     )

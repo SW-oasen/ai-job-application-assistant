@@ -8,11 +8,11 @@
     :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#155eef;--line:#dce3eb;--muted:#647084}
     *{box-sizing:border-box}body{margin:0}header{background:#132033;color:#fff;padding:24px max(22px,calc((100% - 1050px)/2));display:flex;justify-content:space-between;align-items:center;gap:18px}
     header h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#c9d4e4}.actions{display:flex;gap:16px;flex-wrap:wrap}.nav-link{color:#fff;text-underline-offset:3px}
-    .button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;text-decoration:none;display:inline-block}.button.secondary{background:#e9eef6;color:#27364a}
+    .button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;text-decoration:none;display:inline-block;cursor:pointer}.button:hover{background:#0f4dcc}.button:focus-visible{outline:3px solid #91b4ff;outline-offset:2px}.button:disabled{cursor:not-allowed;opacity:.6}.button.secondary{background:#e9eef6;color:#27364a}.button.secondary:hover{background:#d9e2ef}.button.strong{background:#193a63;color:#fff}.button.strong:hover{background:#102a49}
     main{max-width:1050px;margin:auto;padding:26px 22px 60px}.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:22px;margin-bottom:18px}
     .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.meta div{padding:11px;border-radius:9px;background:#f6f8fb}.meta strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
     .content{overflow-wrap:anywhere;line-height:1.62}.content h1{font-size:1.55rem;margin:1.5em 0 .55em}.content h2{font-size:1.35rem;margin:1.4em 0 .5em}.content h3,.content h4{font-size:1.12rem;margin:1.25em 0 .45em}.content p{margin:.65em 0}.content ul,.content ol{padding-left:1.55rem}.content li{margin:.35em 0}.content blockquote{margin:1em 0;padding:.15em 1em;border-left:4px solid #b9c8dd;background:#f6f8fb;color:#40506a}.content a{color:var(--blue)}.content pre{overflow:auto;padding:12px;background:#f2f5f8;border-radius:8px}.content hr{border:0;border-top:1px solid var(--line);margin:1.5em 0}.warning{color:#8a4b08}.error{color:#b42318}.source{overflow-wrap:anywhere}
-    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid label{font-size:12px;font-weight:700;color:var(--muted)}select,input,textarea{display:block;width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit}.full{grid-column:1/-1}.timeline{display:grid;gap:8px;margin-top:18px}.event{padding:11px;border-left:4px solid var(--blue);background:#f6f8fb;border-radius:7px;cursor:pointer}.event:hover{background:#edf3ff}.event strong{display:block}.event span{font-size:12px;color:var(--muted)}.hidden{display:none}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid label{font-size:12px;font-weight:700;color:var(--muted)}select,input,textarea{display:block;width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit}.full{grid-column:1/-1}.timeline{display:grid;gap:8px;margin-top:18px}.event{position:relative;padding:11px 86px 11px 11px;border-left:4px solid var(--blue);background:#f6f8fb;border-radius:7px;cursor:pointer}.event:hover{background:#edf3ff}.event strong{display:block}.event span{font-size:12px;color:var(--muted)}.delete-event{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:none;color:#b42318;font:inherit;font-weight:700;cursor:pointer;padding:7px}.hidden{display:none}
     .documents{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}.documents h3{margin:0 0 8px}.document-list{display:grid;gap:8px;margin-top:14px}.document-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px;background:#f6f8fb;border-radius:8px}.document-row span{display:block;font-size:12px;color:var(--muted);margin-top:3px}.document-actions{display:flex;gap:8px;flex-shrink:0}.document-actions a,.document-actions button{font:inherit;font-weight:700;color:var(--blue);background:none;border:0;padding:5px;cursor:pointer}.document-warning{padding:10px;border-radius:8px;background:#fff4e5;color:#8a4b08}
     details.inline-editor{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}details.inline-editor summary{cursor:pointer;color:var(--blue);font-weight:700}.application-overview{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.application-overview span{padding:8px 11px;border-radius:8px;background:#f6f8fb}
     @media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
@@ -50,7 +50,7 @@
             <label>Veröffentlicht am<input id="metadataPublishedAt" type="date"></label>
             <label>Bewerbungsfrist<input id="metadataDeadline" type="date"></label>
           </div>
-          <p><button class="button secondary" id="saveMetadata" type="submit">Metadaten speichern</button></p>
+          <p><button class="button strong" id="saveMetadata" type="submit">Metadaten speichern</button></p>
         </form>
       </details>
     </section>
@@ -92,7 +92,7 @@
             </select></label>
             <label>PDF-Datei<input id="documentFile" type="file" accept="application/pdf,.pdf" required></label>
           </div>
-          <p><button class="button secondary" id="uploadDocument" type="submit">PDF hochladen</button></p>
+          <p><button class="button strong" id="uploadDocument" type="submit">PDF hochladen</button></p>
         </form>
         <div class="document-list" id="documentList"></div>
         </div>
@@ -157,8 +157,17 @@
     }
     function renderTimeline(events){
       currentEvents=events;
-      document.getElementById("timeline").innerHTML=events.length?events.map(event=>`<article class="event" data-event-id="${esc(event.id)}" title="Zum Bearbeiten anklicken"><strong>${esc(statusLabels[event.status]||event.event_type)}</strong><span>${esc(formatDate(event.occurred_at))}${event.channel?` · ${esc(channelLabels[event.channel]||event.channel)}${event.portal_name?` (${esc(event.portal_name)})`:""}`:""}</span>${event.note?`<div>${esc(event.note)}</div>`:""}</article>`).join(""):`<p class="warning">Noch kein Bewerbungsverlauf vorhanden.</p>`;
+      document.getElementById("timeline").innerHTML=events.length?events.map(event=>`<article class="event" data-event-id="${esc(event.id)}" title="Zum Bearbeiten anklicken"><strong>${esc(statusLabels[event.status]||event.event_type)}</strong><span>${esc(formatDate(event.occurred_at))}${event.channel?` · ${esc(channelLabels[event.channel]||event.channel)}${event.portal_name?` (${esc(event.portal_name)})`:""}`:""}</span>${event.note?`<div>${esc(event.note)}</div>`:""}<button type="button" class="delete-event" data-delete-event-id="${esc(event.id)}" title="Eintrag löschen">Löschen</button></article>`).join(""):`<p class="warning">Noch kein Bewerbungsverlauf vorhanden.</p>`;
       document.querySelectorAll(".event[data-event-id]").forEach(element=>element.onclick=()=>editEvent(element.dataset.eventId));
+      document.querySelectorAll("[data-delete-event-id]").forEach(button=>button.onclick=event=>{event.stopPropagation();deleteEvent(button.dataset.deleteEventId)});
+    }
+    async function deleteEvent(eventId){
+      if(!confirm("Diesen Eintrag aus dem Bewerbungsverlauf wirklich löschen?"))return;
+      try{
+        const response=await fetch(`/applications/${encodeURIComponent(currentApplication.id)}/events/${encodeURIComponent(eventId)}`,{method:"DELETE"});
+        if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error?.message||`HTTP ${response.status}`)}
+        await loadApplication();
+      }catch(error){alert(error.message)}
     }
     function formatBytes(value){
       if(value<1024)return `${value} B`;if(value<1048576)return `${(value/1024).toFixed(1)} KB`;return `${(value/1048576).toFixed(1)} MB`;

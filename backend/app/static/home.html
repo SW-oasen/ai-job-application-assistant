@@ -9,7 +9,7 @@
     *{box-sizing:border-box}body{margin:0}header{background:#132033;color:#fff;padding:28px max(22px,calc((100% - 1180px)/2));display:flex;justify-content:space-between;align-items:center;gap:20px}
     h1{margin:0 0 5px;font-size:28px}header p{margin:0;color:#c9d4e4}.actions{display:flex;gap:16px;flex-wrap:wrap}.nav-link{color:#fff;text-underline-offset:3px}.toolbar .nav-link{color:var(--blue)}
     .button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;text-decoration:none;display:inline-block}.button.secondary{background:#e9eef6;color:#27364a}
-    main{max-width:1180px;margin:auto;padding:26px 22px 60px}.toolbar{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:20px}.toolbar label{font-size:12px;font-weight:700;color:var(--muted)}select{display:block;margin-top:5px;min-width:250px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+    main{max-width:1180px;margin:auto;padding:26px 22px 60px}.toolbar{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:20px}.toolbar-fields{display:flex;align-items:end;gap:14px;flex-wrap:wrap}.toolbar label{font-size:12px;font-weight:700;color:var(--muted)}select,input[type=search]{display:block;margin-top:5px;min-width:250px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit}
     .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.metric,.panel{background:#fff;border:1px solid var(--line);border-radius:13px}.metric{padding:10px 12px;text-align:left;color:inherit;cursor:pointer}.metric:hover{border-color:#9bb9f5}.metric.active{border-color:var(--blue);background:#eef4ff;box-shadow:inset 0 0 0 1px var(--blue)}.metric strong{display:block;font-size:21px;line-height:1.1}.metric span{color:var(--muted);font-size:12px}
     .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:20px}.panel{padding:20px}.panel h2{margin:0 0 14px;font-size:19px}.list{display:grid;gap:9px}.item{display:block;padding:12px;border:1px solid var(--line);border-radius:9px;color:inherit;text-decoration:none}.item:hover{border-color:#9bb9f5}.item strong{display:block}.item span,.empty{color:var(--muted);font-size:12px}.status{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:999px;background:#e9eef6;color:#27364a;font-size:11px}
     [hidden]{display:none!important}@media(max-width:850px){header,.toolbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}}@media(max-width:500px){.metrics{grid-template-columns:repeat(2,1fr)}}
@@ -21,7 +21,7 @@
   <div class="actions"><a class="nav-link" href="/manage">Zentralverwaltung</a><a class="nav-link" href="/jobs">Alle Jobs</a></div>
 </header>
 <main>
-  <div class="toolbar"><div><label for="profile">Profil</label><select id="profile"></select></div><a class="nav-link" href="/matching/admin">Matching öffnen</a></div>
+  <div class="toolbar"><div class="toolbar-fields"><label for="profile">Profil<select id="profile"></select></label><label for="search">Suche<input id="search" type="search" placeholder="Titel, Firma, Ort, Stichwort"></label></div><a class="nav-link" href="/matching/admin">Matching öffnen</a></div>
   <section class="metrics" id="metrics"></section>
   <div class="grid">
     <section class="panel" id="applicationsPanel"><h2 id="applicationsTitle">Aktuelle Bewerbungen</h2><div class="list" id="applications"></div></section>
@@ -33,28 +33,36 @@ const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,
 const labels={draft:"Entwurf",applied:"Beworben",followed_up:"Nachgefragt",interview:"Vorstellungsgespräch",rejected:"Abgelehnt",offer:"Angebot",accepted:"Angenommen",withdrawn:"Zurückgezogen",closed:"Geschlossen"};
 const channels={email:"E-Mail",company_portal:"Arbeitgeberportal",job_portal:"Jobportal",phone:"Telefon",personal:"Persönlich",other:"Sonstiges"};
 const date=value=>value?new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).format(new Date(value)):"ohne Datum";
-let activeFilter="total";
+let activeFilter="total",dashboardJobs=[],dashboardApps=[];
 async function req(url){const r=await fetch(url),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error?.message||`HTTP ${r.status}`);return d}
-async function render(){
-  const profileId=$("profile").value;if(!profileId)return;
-  const [jobs,apps]=await Promise.all([req(`/matching/jobs?profile_id=${encodeURIComponent(profileId)}`),req(`/applications?profile_id=${encodeURIComponent(profileId)}`)]);
+function normalized(value){return String(value??"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLocaleLowerCase("de")}
+function searchable(job){return normalized([job.title,job.company,job.location,job.work_model,job.employment_type,job.source_portal].filter(Boolean).join(" "))}
+function render(){
+  const terms=normalized($("search").value).trim().split(/\s+/).filter(Boolean);
+  const jobs=terms.length?dashboardJobs.filter(job=>{const text=searchable(job);return terms.every(term=>text.includes(term))}):dashboardJobs;
+  const jobIds=new Set(jobs.map(job=>job.id));
+  const apps=dashboardApps.filter(app=>jobIds.has(app.job_id));
   const byJob=new Map(apps.map(a=>[a.job_id,a])),open=jobs.filter(j=>!byJob.has(j.id));
   const count=status=>apps.filter(a=>a.status===status).length;
-  const cards=[["open_matched","Offen mit Matching",open.filter(j=>j.has_matching).length],["open_unmatched","Offen ohne Matching",open.filter(j=>!j.has_matching).length],["applied","Beworben",count("applied")],["followed_up","Nachgefragt",count("followed_up")],["rejected","Abgelehnt",count("rejected")],["interview","Gespräch",count("interview")],["offer","Angebot",count("offer")],["total","Gesamt",jobs.length]];
+  const cards=[["open","Offen",open.length],["applied","Beworben",count("applied")],["followed_up","Nachgefragt",count("followed_up")],["rejected","Abgelehnt",count("rejected")],["interview","Gespräch",count("interview")],["offer","Angebot",count("offer")],["total","Gesamt",jobs.length]];
   $("metrics").innerHTML=cards.map(([key,label,total])=>`<button type="button" class="metric ${activeFilter===key?"active":""}" data-filter="${key}" aria-pressed="${activeFilter===key}"><strong>${total}</strong><span>${esc(label)}</span></button>`).join("");
   document.querySelectorAll(".metric").forEach(card=>card.onclick=()=>{activeFilter=activeFilter===card.dataset.filter&&activeFilter!=="total"?"total":card.dataset.filter;render()});
-  const openFilter=activeFilter==="open_matched"||activeFilter==="open_unmatched";
+  const openFilter=activeFilter==="open";
   const statusFilter=!openFilter&&activeFilter!=="total";
   const visibleApps=statusFilter?apps.filter(a=>a.status===activeFilter):apps;
-  const visibleOpen=activeFilter==="open_matched"?open.filter(j=>j.has_matching):activeFilter==="open_unmatched"?open.filter(j=>!j.has_matching):open;
   $("applicationsPanel").hidden=openFilter;
   $("openJobsPanel").hidden=statusFilter;
   $("applicationsTitle").textContent=statusFilter?labels[activeFilter]||"Gefilterte Bewerbungen":"Aktuelle Bewerbungen";
-  $("openJobsTitle").textContent=openFilter?(activeFilter==="open_matched"?"Offene Jobs mit Matching":"Offene Jobs ohne Matching"):"Offene Jobs";
+  $("openJobsTitle").textContent="Offene Jobs";
   $("applications").innerHTML=visibleApps.length?visibleApps.map(a=>{const when=a.status==="applied"?a.applied_at:a.status_changed_at;const channel=a.status==="applied"?a.application_channel:a.response_channel;return `<a class="item" href="/jobs/${a.job_id}"><strong>${esc(a.job.title)}</strong><span>${esc(a.job.company||"Firma unbekannt")} · ${esc(date(when))}${channel?` · ${esc(channels[channel]||channel)}`:""}</span><i class="status">${esc(labels[a.status]||a.status)}</i></a>`}).join(""):`<p class="empty">Keine passenden Bewerbungen.</p>`;
-  $("openJobs").innerHTML=visibleOpen.length?visibleOpen.map(j=>`<a class="item" href="/jobs/${j.id}"><strong>${esc(j.title)}</strong><span>${esc(j.company||"Firma unbekannt")}</span></a>`).join(""):`<p class="empty">Keine passenden offenen Jobs.</p>`;
+  $("openJobs").innerHTML=open.length?open.map(j=>`<a class="item" href="/jobs/${j.id}"><strong>${esc(j.title)}</strong><span>${esc(j.company||"Firma unbekannt")}</span></a>`).join(""):`<p class="empty">Keine passenden offenen Jobs.</p>`;
 }
-async function init(){try{const profiles=await req("/profiles");$("profile").innerHTML=profiles.map(p=>`<option value="${p.id}">${esc(p.display_name)}</option>`).join("");$("profile").onchange=()=>{activeFilter="total";render()};await render()}catch(e){$("applications").innerHTML=`<p class="empty">${esc(e.message)}</p>`}}init();
+async function loadDashboard(){
+  const profileId=$("profile").value;if(!profileId)return;
+  [dashboardJobs,dashboardApps]=await Promise.all([req(`/matching/jobs?profile_id=${encodeURIComponent(profileId)}`),req(`/applications?profile_id=${encodeURIComponent(profileId)}`)]);
+  render();
+}
+async function init(){try{const profiles=await req("/profiles");$("profile").innerHTML=profiles.map(p=>`<option value="${p.id}">${esc(p.display_name)}</option>`).join("");$("profile").onchange=()=>{activeFilter="total";loadDashboard()};$("search").oninput=render;await loadDashboard()}catch(e){$("applications").innerHTML=`<p class="empty">${esc(e.message)}</p>`}}init();
 </script>
 </body>
 </html>

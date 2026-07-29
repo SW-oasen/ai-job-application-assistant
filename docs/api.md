@@ -119,7 +119,16 @@ Content-Type: multipart/form-data
 Das Backend prüft MIME-Typ, PDF-Signatur und Dateigröße und berechnet einen
 SHA-256-Hash. Textbasierte PDFs werden lokal verarbeitet. Nur wenn deren Text
 die Qualitätsprüfung nicht besteht, wird MinerU mit `parse_method=ocr`
-aufgerufen.
+aufgerufen. Bei einem eindeutig beschädigten Text-Layer, beispielsweise
+überlappenden Glyphenfolgen, rendert das Backend jede Seite zuerst als Bild
+und sendet das daraus erzeugte PDF an MinerU. Andere unzureichende PDFs werden
+unverändert übergeben.
+
+Das Seitenbildformat und der Farbraum werden über
+`PDF_RASTER_IMAGE_FORMAT` (`png` oder `jpeg`) und
+`PDF_RASTER_COLORSPACE` (`grayscale` oder `rgb`) konfiguriert. Standard sind
+verlustfreies Graustufen-PNG und 200 DPI. `PDF_RASTER_JPEG_QUALITY` wird nur
+bei JPEG verwendet.
 
 ```powershell
 curl.exe -X POST http://localhost:8080/imports/pdf `

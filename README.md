@@ -58,6 +58,8 @@ Redis- und MinerU-Dienste im gemeinsamen Docker-Netzwerk.
    docker compose up -d --build
    ```
 
+   docker compose up -d --build application-assistant-backend
+
    Backend restarten:
    ```powershell
    docker compose up -d --force-recreate application-assistant-backend
@@ -107,9 +109,11 @@ vorliegt. CV-Importe überschreiben das kanonische Profil niemals automatisch.
 
 ## Jobimport und Metadaten
 
-PDFs werden zunächst nativ gelesen. Unzureichender Text, beschädigte Glyphen
-oder problematische Layouts lösen den MinerU-Fallback aus. Der gemeinsame
-Regelparser extrahiert unter anderem:
+PDFs werden zunächst nativ gelesen. Unzureichender Text oder problematische
+Layouts lösen den MinerU-Fallback aus. Bei eindeutig beschädigten Text-Layern
+werden die einzelnen Seiten vorher als Bilder gerendert, damit fehlerhafte
+Glyphen nicht in die OCR gelangen. Der gemeinsame Regelparser extrahiert unter
+anderem:
 
 - Titel, Firma und Arbeitsort
 - Arbeitsmodell und Beschäftigungsart

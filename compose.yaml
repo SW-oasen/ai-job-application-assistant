@@ -12,7 +12,7 @@ services:
       DATABASE_URL: "${DATABASE_URL:-}"
       APPLICATION_DOCUMENTS_PATH: /app/data/application-documents
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
     volumes:
       - application-documents:/app/data/application-documents
     networks:

@@ -5,6 +5,7 @@ from app.services.matching_service import (
     _evaluate,
     _first_metadata_match,
     _nationality_evidence_input,
+    _terms,
 )
 
 
@@ -206,3 +207,50 @@ def test_professional_evidence_for_one_explicit_alternative_is_strong() -> None:
 
     assert result.match_level == "strong_match"
     assert result.evidence[0].experience_context == "professional"
+
+
+def test_german_prediction_requirement_matches_english_forecasting_skill() -> None:
+    requirement = "Entwurf genauer und skalierbarer Vorhersagealgorithmen"
+    keywords = ["Entwurf genauer Vorhersagealgorithmen", "skalierbar"]
+    result = _evaluate(
+        "requirement-1",
+        requirement,
+        _terms(requirement, keywords),
+        [evidence("other", ["Forecasting", "Vorhersagemodelle"])],
+        category="technical_skill",
+        keyword_terms=_terms("", keywords),
+    )
+
+    assert result.match_level == "partial_match"
+    assert result.evidence[0].label == "AWS example"
+
+
+def test_german_raw_data_requirement_matches_data_cleaning_and_eda() -> None:
+    requirement = (
+        "Analyse von Rohdaten und Bewertung der Qualit\u00e4t sowie Bereinigung "
+        "und Strukturierung f\u00fcr die nachgeschaltete Verarbeitung"
+    )
+    keywords = [
+        "Analyse von Rohdaten",
+        "Bewertung der Qualit\u00e4t, Bereinigung und Strukturierung",
+    ]
+    result = _evaluate(
+        "requirement-1",
+        requirement,
+        _terms(requirement, keywords),
+        [
+            evidence(
+                "other",
+                ["Data Cleaning", "Datenbereinigung", "Datenqualit\u00e4t"],
+            ),
+            evidence(
+                "other",
+                ["Exploratory Data Analysis", "Rohdatenanalyse"],
+            ),
+        ],
+        category="technical_skill",
+        keyword_terms=_terms("", keywords),
+    )
+
+    assert result.match_level == "partial_match"
+    assert len(result.evidence) == 2

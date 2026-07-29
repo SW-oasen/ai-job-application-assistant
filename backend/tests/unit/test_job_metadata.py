@@ -184,6 +184,22 @@ Am Weidendamm 1
     assert metadata["company"] == "Getränke Hoffmann Gruppe KG"
 
 
+def test_extracts_legal_company_from_indeed_description_prose() -> None:
+    metadata = extract_job_metadata(
+        """
+Einleitung
+Die Munich Innovation Labs GmbH – A Rohde & Schwarz
+Company entwickelt innovative Software- und KI-Lösungen.
+""",
+        source_filename=(
+            "Junior_Software_Engineer_m_f_d_AI_and_Data_Systems"
+            "_-_Berlin_-_Indeed.com.pdf"
+        ),
+    )
+
+    assert metadata["company"] == "Munich Innovation Labs GmbH"
+
+
 def test_uses_instaffo_main_heading_and_company_details() -> None:
     content = """
 ![](images/7a1084c5cdaa0b802d3da1738c9ae959b.jpg)

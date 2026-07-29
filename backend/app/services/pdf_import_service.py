@@ -8,7 +8,13 @@ from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.database.repositories.jobs import persist_imported_job
 from app.importers.mineru_client import MinerUClient
-from app.importers.pdf_importer import extract_pdf_text, pdf_text_is_sufficient
+from app.importers.pdf_importer import (
+    extract_pdf_text,
+    normalize_native_pdf_text,
+    pdf_text_has_broken_glyphs,
+    pdf_text_is_sufficient,
+    rasterize_pdf,
+)
 from app.schemas.imports import PdfImportResponse
 from app.services.semantic_metadata_service import enrich_job_metadata
 
@@ -51,6 +57,7 @@ async def import_pdf(
         text,
         minimum_length=settings.pdf_import_min_text_length,
     ):
+        text = normalize_native_pdf_text(text)
         response = PdfImportResponse(
             success=True,
             filename=filename,
@@ -62,12 +69,34 @@ async def import_pdf(
         )
         return await _persist_response(response, replace_existing=replace_existing)
 
+    mineru_content = content
+    mineru_filename = filename
+    warnings = ["native_pdf_text_insufficient", "mineru_fallback_used"]
+    if pdf_text_has_broken_glyphs(text):
+        mineru_content = rasterize_pdf(
+            content,
+            image_format=settings.pdf_raster_image_format,
+            colorspace=settings.pdf_raster_colorspace,
+            dpi=settings.pdf_raster_dpi,
+            jpeg_quality=settings.pdf_raster_jpeg_quality,
+            max_pages=settings.pdf_raster_max_pages,
+        )
+        mineru_filename = f"{PurePath(filename).stem}_rasterized.pdf"
+        warnings = [
+            "native_pdf_broken_text_layer",
+            "pdf_rasterized_for_ocr",
+            "mineru_fallback_used",
+        ]
+
     mineru = MinerUClient(
         base_url=str(settings.mineru_base_url),
         timeout_seconds=settings.mineru_timeout_seconds,
         backend=settings.mineru_backend,
     )
-    result = await mineru.parse_pdf(content=content, filename=filename)
+    result = await mineru.parse_pdf(
+        content=mineru_content,
+        filename=mineru_filename,
+    )
     response = PdfImportResponse(
         success=True,
         filename=filename,
@@ -76,7 +105,7 @@ async def import_pdf(
         text_length=len(" ".join(result.markdown.split())),
         content_hash=content_hash,
         mineru_task_id=result.task_id,
-        warnings=["native_pdf_text_insufficient", "mineru_fallback_used"],
+        warnings=warnings,
     )
     return await _persist_response(response, replace_existing=replace_existing)
 

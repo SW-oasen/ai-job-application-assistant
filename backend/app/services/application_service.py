@@ -128,6 +128,17 @@ async def _rebuild_application_state(session, application: Application) -> None:
         if event.event_type in {"created", "status_change"} and event.status
     ]
     if not state_events:
+        application.status = "draft"
+        application.status_changed_at = application.created_at
+        application.applied_at = None
+        application.application_channel = None
+        application.application_portal_name = None
+        application.response_channel = None
+        application.response_portal_name = None
+        application.notes = next(
+            (event.note for event in reversed(events) if event.note),
+            None,
+        )
         return
     latest = state_events[-1]
     application.status = latest.status
@@ -335,6 +346,26 @@ async def update_application_event(
         await _rebuild_application_state(session, application)
         await session.commit()
     return await get_application(application_id)
+
+
+async def delete_application_event(application_id, event_id) -> None:
+    async with _session_factory()() as session:
+        application = await session.get(Application, application_id)
+        if application is None:
+            raise ApplicationError(
+                "Application not found.", code="application_not_found", status_code=404
+            )
+        event = await session.get(ApplicationEvent, event_id)
+        if event is None or event.application_id != application.id:
+            raise ApplicationError(
+                "Application event not found.",
+                code="application_event_not_found",
+                status_code=404,
+            )
+        await session.delete(event)
+        await session.flush()
+        await _rebuild_application_state(session, application)
+        await session.commit()
 
 
 async def get_application(application_id) -> dict:

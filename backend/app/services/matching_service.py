@@ -48,6 +48,30 @@ STOPWORDS = {
     "professional", "proficiency", "proven", "significant", "skills", "strong",
     "such", "track", "environments", "field", "roles", "programming", "languages",
 }
+
+# Small, auditable cross-language concept groups for terminology that commonly
+# appears as German compounds in job ads and as English skill names in profiles.
+# These tags complement lexical matching; they do not infer a skill without a
+# corresponding profile term.
+TERM_CONCEPTS = {
+    "predictive_modeling": {
+        "forecasting", "prediction", "predictive", "vorhersage", "vorhersagen",
+        "vorhersagealgorithmus", "vorhersagealgorithmen", "vorhersagemodell",
+        "vorhersagemodelle", "pr\u00e4diktiv", "pr\u00e4diktive", "pr\u00e4diktiver",
+        "prognose", "prognosen", "prognosemodell", "prognosemodelle",
+    },
+    "raw_data_analysis": {
+        "eda", "exploratory", "rohdaten", "rohdatenanalyse",
+        "rohdatenaufbereitung",
+    },
+    "data_cleaning": {
+        "cleaning", "cleansing", "bereinigung", "datenbereinigung",
+        "rohdatenaufbereitung",
+    },
+    "data_quality": {
+        "quality", "qualit\u00e4t", "datenqualit\u00e4t",
+    },
+}
 @dataclass
 class StoredEvidence:
     item: EvidenceInput
@@ -262,7 +286,15 @@ def _terms(text: str, keywords: list[str]) -> set[str]:
     values = WORD_PATTERN.findall(text.lower())
     for keyword in keywords:
         values.extend(WORD_PATTERN.findall(keyword.lower().replace("_", " ")))
-    return {value.strip().lower() for value in values if value.strip().lower() not in STOPWORDS}
+    terms = {
+        value.strip().lower()
+        for value in values
+        if value.strip().lower() not in STOPWORDS
+    }
+    for concept, aliases in TERM_CONCEPTS.items():
+        if terms & aliases:
+            terms.add(f"concept:{concept}")
+    return terms
 
 
 def _alternative_anchor_terms(requirement: str) -> set[str]:

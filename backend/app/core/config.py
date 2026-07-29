@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     playwright_timeout_seconds: float = 45
     pdf_import_max_bytes: int = 20_000_000
     pdf_import_min_text_length: int = 500
+    pdf_raster_image_format: Literal["png", "jpeg"] = "png"
+    pdf_raster_colorspace: Literal["grayscale", "rgb"] = "grayscale"
+    pdf_raster_dpi: int = 200
+    pdf_raster_jpeg_quality: int = 85
+    pdf_raster_max_pages: int = 50
     html_import_max_bytes: int = 30_000_000
     application_documents_path: Path = Path("/app/data/application-documents")
     application_document_max_bytes: int = 20_000_000

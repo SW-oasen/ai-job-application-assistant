@@ -94,3 +94,22 @@ def test_update_application_event_uses_service(client, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["application"]["id"] == str(application_id)
+
+
+def test_delete_application_event_uses_service(client, monkeypatch) -> None:
+    application_id, event_id = uuid4(), uuid4()
+
+    async def fake_delete(received_application_id, received_event_id):
+        assert received_application_id == application_id
+        assert received_event_id == event_id
+
+    monkeypatch.setattr(
+        "app.api.routes.applications.delete_application_event",
+        fake_delete,
+    )
+    response = client.delete(
+        f"/applications/{application_id}/events/{event_id}"
+    )
+
+    assert response.status_code == 204
+    assert response.content == b""

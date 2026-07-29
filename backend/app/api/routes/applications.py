@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.schemas.applications import (
     ApplicationCreate,
@@ -11,6 +11,7 @@ from app.schemas.applications import (
 from app.services.application_service import (
     add_application_event,
     create_application,
+    delete_application_event,
     get_application,
     get_application_for_job,
     list_applications,
@@ -64,3 +65,12 @@ async def update_application_event_entry(
     payload: ApplicationEventUpdate,
 ) -> dict:
     return await update_application_event(application_id, event_id, payload)
+
+
+@router.delete("/{application_id}/events/{event_id}", status_code=204)
+async def delete_application_event_entry(
+    application_id: UUID,
+    event_id: UUID,
+) -> Response:
+    await delete_application_event(application_id, event_id)
+    return Response(status_code=204)
