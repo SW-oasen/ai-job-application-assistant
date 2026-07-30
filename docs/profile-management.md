@@ -207,7 +207,8 @@ API. Dadurch wird der Dify-App-Schlüssel niemals an den Browser ausgeliefert.
 
 Voraussetzungen:
 
-1. `import_cv_pdf.yml` in Dify importieren, testen und veröffentlichen.
+1. `workflow/dify/00-import_cv_pdf.yml` in Dify importieren, testen und
+   veröffentlichen.
 2. Auf der API-Zugangsseite dieser Dify-App einen App-API-Schlüssel erzeugen.
 3. Den Schlüssel ausschließlich in der lokalen, ignorierten `.env` setzen:
 

@@ -1,6 +1,6 @@
 ---
 
-# Anhang A – MinerU lokal mit Docker konfigurieren
+# MinerU lokal mit Docker konfigurieren
 
 ## A.1 Zweck
 

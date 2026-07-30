@@ -2,150 +2,110 @@
 
 Basisadresse auf dem Host: `http://localhost:8080`
 
-Basisadresse aus Dify: `http://application-assistant-backend:8080`
+Basisadresse aus Dify:
+`http://application-assistant-backend:8080`
 
-## Bewerbungsverwaltung
-
-- `GET /applications?profile_id={profile_id}` listet Bewerbungen.
-- `POST /applications` legt eine Bewerbung mit Status, Datum und
-  Kommunikationsweg an.
-- `GET /applications/by-job/{job_id}?profile_id={profile_id}` liefert die
-  Bewerbung und ihren Ereignisverlauf.
-- `PATCH /applications/{application_id}` aktualisiert Status, Datum,
-  Kommunikationsweg, Notiz oder nächste Aktion.
-- `POST /applications/{application_id}/events` ergänzt ein Kommunikations-
-  oder Verlaufsereignis.
+In der Entwicklungsumgebung steht die interaktive OpenAPI-Dokumentation unter
+`http://localhost:8080/docs` bereit.
 
 ## Health
 
-```http
-GET /health
-```
+- `GET /health`
 
-## Matching
+## Bewerbungen und Verlauf
 
-`GET /matching/context?job_id=<uuid>&profile_id=<uuid>` liefert den
-gespeicherten, normalisierten Jobtext sowie die aus dem ausgewählten Profil
-abgeleitete Evidenz. Referenzen und Kontaktdaten werden dabei nicht als
-Matching-Evidenz ausgegeben.
+- `GET /applications?profile_id={profile_id}`
+- `POST /applications`
+- `GET /applications/by-job/{job_id}?profile_id={profile_id}`
+- `GET /applications/{application_id}`
+- `PATCH /applications/{application_id}`
+- `POST /applications/{application_id}/events`
+- `PATCH /applications/{application_id}/events/{event_id}`
+- `DELETE /applications/{application_id}/events/{event_id}`
 
-## Bewerbungsdokumente
+Nach Bearbeiten oder Löschen eines Ereignisses wird der Bewerbungszustand aus
+dem verbleibenden Verlauf neu aufgebaut.
 
-`POST /applications/document-context`
+## Archivierte Bewerbungsdateien
 
-Erwartet `job_id`, `profile_id` und `language` (`de` oder `en`). Der Endpunkt
-legt bei Bedarf eine Entwurfsbewerbung an und liefert den gespeicherten Job,
-das profilbezogene Matching und kanonische Profilnachweise. Kontaktdaten und
-Referenzen werden nicht an den Generierungsworkflow ausgegeben.
+- `POST /applications/{application_id}/files`
+- `GET /applications/{application_id}/files`
+- `GET /applications/{application_id}/files/{file_id}/content`
+- `DELETE /applications/{application_id}/files/{file_id}`
 
-`POST /applications/{application_id}/documents`
+Akzeptiert werden PDF-Dateien innerhalb des konfigurierten Größenlimits. Die
+Dateien liegen im Docker-Volume; PostgreSQL speichert Metadaten und Zuordnung.
 
-Speichert einen erzeugten Dokumententwurf. Erlaubte Dokumenttypen sind
-`profile_summary`, `cv_suggestions`, `project_selection`, `cover_letter`,
-`application_questions` und `interview_preparation`. Die Versionsnummer wird
-pro Bewerbung, Dokumenttyp und Sprache automatisch erhöht; vorhandene
-Versionen werden nicht überschrieben.
+## Generierte Dokumententwürfe
 
-`GET /applications/{application_id}/documents`
+- `POST /applications/document-context`
+- `POST /applications/{application_id}/documents`
+- `GET /applications/{application_id}/documents`
 
-Listet alle gespeicherten Dokumentversionen der Bewerbung auf.
+Der Kontextendpunkt liefert Job, profilspezifisches Matching und kanonische
+Profilnachweise. Kontaktdaten und Referenzen werden nicht an den
+Generierungsworkflow ausgegeben.
 
-`POST /matching/evaluate` akzeptiert zusätzlich zu `job_id`, `requirements`
-und optionaler externer `evidence` eine `profile_id`. Ist sie gesetzt, lädt das
-Backend Skills, Berufserfahrung, Ausbildung und Zertifikate direkt aus der
-kanonischen Profilverwaltung.
+## Jobimport
 
-Die lesbare lokale Auswertung ist unter
-`http://localhost:8080/matching/admin` erreichbar. Sie verwendet:
+- `POST /imports/url`
+- `POST /imports/pdf`
+- `POST /imports/html`
+- `POST /imports/jobs/{job_id}/reimport`
 
-- `GET /matching/jobs` für die Jobauswahl,
-- `GET /matching/results?job_id=<uuid>&profile_id=<uuid>` für bereits
-  persistierte, profilspezifische Ergebnisse.
+URL-Importe akzeptieren nur öffentliche HTTP(S)-Ziele. Eingebettete
+Zugangsdaten sowie lokale, private und reservierte Adressen werden blockiert.
+Redirects und Browser-Subrequests werden erneut validiert.
 
-## URL importieren
+PDFs werden zunächst nativ gelesen. Bei unzureichender Qualität wird MinerU
+verwendet; bei einem eindeutig beschädigten Text-Layer werden die Seiten
+zuvor gerastert. HTML/SingleFile wird lokal bereinigt und lädt keine externen
+Ressourcen nach.
 
-```http
-POST /imports/url
-Content-Type: application/json
+## Matching und Jobs
 
-{
-  "url": "https://example.com/job/123",
-  "force_browser": false
-}
-```
+- `GET /matching/jobs?profile_id={profile_id}`
+- `GET /matching/jobs/{job_id}`
+- `PATCH /matching/jobs/{job_id}/metadata`
+- `DELETE /matching/jobs/{job_id}`
+- `GET /matching/results?job_id={job_id}&profile_id={profile_id}`
+- `GET /matching/context?job_id={job_id}&profile_id={profile_id}`
+- `POST /matching/evaluate`
+- `POST /matching/run`
 
-Die Antwort trennt das unveränderte `raw_html` vom bereinigten `markdown`.
-`quality_sufficient` zeigt an, ob die konfigurierten Qualitätsregeln erfüllt
-sind. `browser_fallback_recommended` wird bei zu kurzem Inhalt, fehlendem Titel
-oder Anzeichen einer Login-/Bot-Schutzseite gesetzt.
+Der Matching-Kontext enthält den normalisierten Jobtext und kanonische
+Profilevidenz. Referenzen und Kontaktdaten werden ausgeschlossen.
 
-Bei `force_browser=true` wird Chromium direkt verwendet. Ohne dieses Flag
-startet das Backend zunächst den schlankeren HTTP-Import und wechselt
-automatisch zu Chromium, wenn der Inhalt die Qualitätsprüfung nicht besteht
-oder dynamisch geladen werden muss.
+## Profile
 
-Sicherheitsgrenzen:
+- `GET /profiles`
+- `POST /profiles`
+- `GET /profiles/{profile_id}`
+- `PATCH /profiles/{profile_id}`
+- `GET /profiles/taxonomy/skills`
 
-- nur `http` und `https`
-- keine eingebetteten Zugangsdaten
-- lokale, private und reservierte Zieladressen sind blockiert
-- jedes Redirect-Ziel wird erneut validiert
-- konfigurierbares Timeout, Redirect- und Downloadlimit
-- ausschließlich HTML und Klartext
-- Browser-Subrequests werden ebenfalls auf öffentliche HTTP(S)-Ziele begrenzt
+Ressourcen unter einem Profil:
 
-Beispiel:
+- `skills`
+- `experiences`
+- `education`
+- `certificates`
+- `references`
 
-```powershell
-$body = @{
-  url = "https://example.com/job/123"
-  force_browser = $false
-} | ConvertTo-Json
+Für diese Ressourcen stehen Listen-, Anlege- und Änderungsendpunkte bereit.
+Einträge werden über
+`DELETE /profiles/{profile_id}/{resource_type}/{item_id}` deaktiviert.
+Revisionen liefert
+`GET /profiles/{profile_id}/revisions/{entity_type}/{entity_id}`.
 
-Invoke-RestMethod `
-  -Method Post `
-  -Uri http://localhost:8080/imports/url `
-  -ContentType application/json `
-  -Body $body
-```
+## CV-Vorschläge
 
-## PDF importieren
+- `GET /profiles/{profile_id}/cv-imports`
+- `POST /profiles/{profile_id}/cv-imports`
+- `POST /profiles/{profile_id}/cv-imports/structured`
+- `POST /profiles/{profile_id}/cv-imports/pdf`
+- `POST /profiles/{profile_id}/cv-suggestions/{suggestion_id}/apply`
+- `POST /profiles/{profile_id}/cv-suggestions/{suggestion_id}/reject`
 
-```http
-POST /imports/pdf
-Content-Type: multipart/form-data
-```
-
-Das Backend prüft MIME-Typ, PDF-Signatur und Dateigröße und berechnet einen
-SHA-256-Hash. Textbasierte PDFs werden lokal verarbeitet. Nur wenn deren Text
-die Qualitätsprüfung nicht besteht, wird MinerU mit `parse_method=ocr`
-aufgerufen. Bei einem eindeutig beschädigten Text-Layer, beispielsweise
-überlappenden Glyphenfolgen, rendert das Backend jede Seite zuerst als Bild
-und sendet das daraus erzeugte PDF an MinerU. Andere unzureichende PDFs werden
-unverändert übergeben.
-
-Das Seitenbildformat und der Farbraum werden über
-`PDF_RASTER_IMAGE_FORMAT` (`png` oder `jpeg`) und
-`PDF_RASTER_COLORSPACE` (`grayscale` oder `rgb`) konfiguriert. Standard sind
-verlustfreies Graustufen-PNG und 200 DPI. `PDF_RASTER_JPEG_QUALITY` wird nur
-bei JPEG verwendet.
-
-```powershell
-curl.exe -X POST http://localhost:8080/imports/pdf `
-  -F "file=@C:\path\to\job.pdf;type=application/pdf"
-```
-
-Die Antwort nennt `extraction_method` (`native_pdf` oder `mineru`) und bei
-MinerU-Verarbeitung zusätzlich die Task-ID, sofern der Dienst sie liefert.
-
-## HTML/SingleFile importieren
-
-```http
-POST /imports/html
-Content-Type: multipart/form-data
-```
-
-Akzeptiert gespeicherte `.html`- und `.htm`-Dateien, einschließlich
-Firefox-SingleFile. HTML wird direkt lokal bereinigt und in Markdown
-umgewandelt. Skripte, Frames und Formulare werden nicht ausgeführt; externe
-Ressourcen werden nicht nachgeladen. MinerU wird für HTML nicht verwendet.
+CV-Importe verändern das kanonische Profil nicht automatisch. Vorschläge
+müssen geprüft, übernommen oder verworfen werden.

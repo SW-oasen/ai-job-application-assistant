@@ -1,37 +1,57 @@
-# Architektur
+# Architektur und technischer Kontext
 
-## Verantwortlichkeiten
+Dieses Dokument beschreibt Systemgrenzen, Laufzeit, Datenhaltung und zentrale
+Verarbeitungsregeln. Einstieg und Bedienung stehen in der
+[README](../README.md).
 
-Der Application Assistant ist die stabile Kernanwendung. Dify und MinerU sind
-austauschbare externe Dienste mit klaren HTTP-Schnittstellen.
+## Systemgrenzen
+
+Der Application Assistant ist die Kernanwendung. Dify, MinerU, PostgreSQL und
+Redis sind getrennte Dienste und werden ausschließlich über konfigurierbare
+Schnittstellen angesprochen.
 
 ```text
-Dify (Orchestrierung und LLM)
+Browser
   |
-  | HTTP über Docker-DNS
   v
-Application Assistant Backend
-  |-- Import und Validierung
-  |-- Geschäftslogik
-  |-- Persistenz
-  |
-  |-- PostgreSQL
-  |-- Redis
-  `-- MinerU (OCR-Fallback)
+Application Assistant (FastAPI)
+  |-- PostgreSQL: kanonische Daten und Ergebnisse
+  |-- Redis: konfigurierter Infrastrukturanschluss
+  |-- Dify API: CV-Extraktion, Job-Metadaten und Matching
+  `-- MinerU: OCR- und Layout-Fallback für PDFs
 ```
 
-Das Backend muss keine Dify- oder MinerU-Quelltexte importieren und keine
-absoluten Pfade zu deren Repositories kennen. Service-Adressen kommen
-ausschließlich aus Umgebungsvariablen.
+Das Backend importiert keinen Quellcode der externen Dienste und verwendet
+keine festen Container-IP-Adressen.
 
-## Lokale Netzwerkverbindung
+## Repository
 
-Der Backend-Container tritt dem externen Netzwerk bei, in dem Dify und MinerU
-laufen. Im derzeitigen lokalen Setup ist dies `docker_default`.
+| Pfad | Zweck |
+|---|---|
+| `backend/app` | FastAPI-Anwendung, Geschäftslogik und Weboberflächen |
+| `backend/alembic` | Datenbankmigrationen |
+| `backend/tests` | API-, Integrations- und Unit-Tests |
+| `docs` | technische, fachliche und interne Dokumentation |
+| `workflow/dify` | importierbare Dify-Workflow-DSLs |
+| `scripts` | lokale Betriebs- und Readiness-Hilfen |
+| `compose.yaml` | Containerdefinition der Kernanwendung |
+| `.env.example` | Konfigurationsvorlage ohne Geheimnisse |
 
-Interne Adressen:
+Lokale Workflow-Sicherungen unter `workflow/backup` sind ignoriert und nicht
+Bestandteil des öffentlichen Repositorys.
 
-| Dienst | Standardadresse |
+## Laufzeit und Netzwerk
+
+- Python 3.11 oder neuer
+- FastAPI und Uvicorn
+- PostgreSQL über SQLAlchemy und Psycopg
+- Alembic-Migrationen
+- Playwright/Chromium als Browser-Fallback
+- Docker-Netzwerk standardmäßig `docker_default`
+
+Interne Standardadressen:
+
+| Dienst | Adresse |
 |---|---|
 | Application Assistant | `http://application-assistant-backend:8080` |
 | Dify API | `http://api:5001` |
@@ -39,70 +59,126 @@ Interne Adressen:
 | PostgreSQL | `db_postgres:5432` |
 | Redis | `redis:6379` |
 
-Diese Werte sind konfigurierbare Defaults, keine fest verdrahteten
-Container-IP-Adressen.
+Der Host-Port ist in `compose.yaml` an `127.0.0.1` gebunden. Die
+Weboberflächen sind deshalb nur auf dem Docker-Host unter
+`http://localhost:8080` erreichbar. Die Anwendung besitzt keine Anmeldung und
+darf nicht öffentlich bereitgestellt werden.
 
-### Dify-SSRF-Proxy
-
-Dify leitet HTTP-Request-Nodes durch seinen SSRF-Proxy. Damit dieser gezielt
-das interne Backend erreichen kann, enthält die lokale Dify-`.env`:
+Dify erreicht das Backend innerhalb des gemeinsamen Docker-Netzwerks. Sein
+SSRF-Proxy darf gezielt den internen Namen freigeben:
 
 ```env
 SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=application-assistant-backend
 ```
 
-Nach einer Änderung muss ausschließlich der Proxy neu erstellt werden:
+Eine pauschale Freigabe privater Netzbereiche ist nicht erforderlich.
+
+## Konfiguration
+
+Lokale Einstellungen liegen in der ignorierten `.env`:
 
 ```powershell
-cd D:\Projects\AI\Dify\dify-main\docker
-docker compose up -d --force-recreate ssrf_proxy
+Copy-Item .env.example .env
 ```
 
-Die Freigabe darf nicht auf das gesamte private Netzwerk erweitert werden.
+Wichtige Variablen:
 
-## Persistenz und Migrationen
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `APP_ENV` | `development` | deaktiviert in `production` Swagger und ReDoc |
+| `APP_PORT` | `8080` | Port auf dem Docker-Host |
+| `APP_LOG_LEVEL` | `INFO` | Log-Level |
+| `DATABASE_URL` | leer | Datenbankverbindung der Kernanwendung |
+| `REDIS_URL` | leer | Redis-Verbindung |
+| `DIFY_BASE_URL` | `http://api:5001` | interne Dify-API |
+| `DIFY_CV_WORKFLOW_API_KEY` | leer | CV-Workflow |
+| `DIFY_MATCHING_WORKFLOW_API_KEY` | leer | Matching-Workflow |
+| `DIFY_METADATA_WORKFLOW_API_KEY` | leer | Metadaten-Fallback |
+| `MINERU_BASE_URL` | `http://mineru-api:8000` | MinerU-API |
+| `APPLICATION_DOCUMENTS_PATH` | `/app/data/application-documents` | archivierte PDFs |
 
-Die Kernanwendung verwendet die eigene PostgreSQL-Datenbank
-`application_assistant` auf der vorhandenen Instanz. Dify-Tabellen und
-Dify-Datenbanken werden nicht verändert.
+Passwörter und API-Schlüssel gehören ausschließlich in `.env`, niemals in
+Git, Workflow-DSLs oder Browser-Code.
 
-Die Verbindung wird ausschließlich über `DATABASE_URL` bereitgestellt. Das
-lokale Geheimnis gehört in die ignorierte Datei `.env`; `.env.example` bleibt
-die Vorlage ohne echtes Passwort. Migrationen werden aus dem Backend-Image
-ausgeführt:
+## Datenhaltung
+
+Die Anwendung verwendet eine eigene PostgreSQL-Datenbank. Dify-Datenbanken und
+-Tabellen werden nicht verändert. Ausstehende Migrationen laufen beim
+Containerstart automatisch; manuell:
 
 ```powershell
 docker compose run --rm application-assistant-backend alembic upgrade head
 ```
 
-Die initiale Migration erzeugt Unternehmen, Stellen, Anforderungen,
-Bewerbungen, generierte Dokumentversionen und Requirement-Matches. URL- und
-PDF-Importe speichern Stellen anhand eines SHA-256-Content-Hashes. Ein erneut
-importierter Inhalt liefert dieselbe `job_id` und `duplicate: true`.
+Kanonisch gespeichert werden unter anderem:
 
-Migration `20260723_0002` ergänzt strukturierte Profilquellen und einzelne
-Evidenzbausteine. Das Matching speichert zu jeder Anforderung Match-Level,
-Quellenbelege, Erklärung, Handlungsempfehlung und Confidence. Professionelle
-Erfahrung und übertragbare Projekt-, Trainings- oder Bildungserfahrung bleiben
-dabei ausdrücklich getrennt.
+- Profile, Skills, Berufserfahrung, Ausbildung und Zertifikate
+- Stellen, Anforderungen und strukturierte Metadaten
+- profilspezifische Matchings und Evidenzzuordnungen
+- Bewerbungen und Verlaufsereignisse
+- Metadaten archivierter Bewerbungsunterlagen
 
-Migration `20260723_0003` ergänzt die kanonische Profilverwaltung. Skills,
-Berufserfahrungen, Ausbildungen, Zertifikate und Referenzen bleiben editierbar,
-besitzen DE/EN-Lokalisierungen und erzeugen bei jeder Änderung einen
-unveränderlichen Revisionssnapshot.
+Archivierte PDFs liegen im Docker-Volume `application-documents`, nicht als
+Binärdaten in PostgreSQL. Datenbank und Volume müssen gemeinsam gesichert
+werden.
 
-Migration `20260728_0014` ergänzt Metadaten für tatsächlich versendete
-Bewerbungsunterlagen. Die PDF-Dateien selbst liegen nicht in PostgreSQL,
-sondern zentral unter `APPLICATION_DOCUMENTS_PATH`. In der Datenbank werden
-nur der relative Storage-Key, Dokumentart, Originalname, Größe, SHA-256 und
-Zeitpunkte gespeichert. Im Docker-Setup persistiert dafür das benannte Volume
-`application-documents`; es muss gemeinsam mit der Datenbank gesichert werden.
+## Importpipeline
+
+```text
+URL / PDF / HTML
+  |
+  +-- native Extraktion
+  |     `-- PDF bei Qualitätsmangel -> MinerU
+  |
+  +-- gemeinsamer Regelparser
+  |     `-- Titel, Firma, Ort, Arbeitsmodell, Beschäftigungsart,
+  |         Befristung und Quellportal
+  |
+  +-- Plausibilitäts- und Vollständigkeitsprüfung
+  |     `-- bei Bedarf semantischer Dify-Fallback
+  |
+  `-- validierte Persistenz mit Warnungen und Fundstellen
+```
+
+URL-Importe akzeptieren nur öffentliche HTTP(S)-Ziele. Private, lokale und
+reservierte Adressen sowie eingebettete Zugangsdaten werden blockiert.
+Redirects und Browser-Subrequests werden erneut geprüft.
+
+PDFs werden zunächst nativ gelesen. Unzureichende oder beschädigte Text-Layer
+lösen MinerU aus; bei eindeutig defekten Glyphen werden Seiten zuvor
+gerastert. HTML/SingleFile wird lokal bereinigt und lädt keine externen
+Ressourcen nach.
+
+## Profil und Matching
+
+CV-Importe erzeugen prüfbare Vorschläge und überschreiben das kanonische
+Profil nicht automatisch. Änderungen an Profilentitäten erzeugen
+Revisionssnapshots.
+
+Matching verwendet belegte Skills, Berufserfahrung, Ausbildung und
+Zertifikate. Berufliche, projektbezogene, schulische und Trainingskontexte
+bleiben unterscheidbar. Referenzen und Kontaktdaten werden nicht als
+Matching-Evidenz an Dify übergeben.
+
+Portfolio-Projekte und persönliche Ziele sind geplante Erweiterungen. Der
+aktuelle Stand und die Evaluationsstrategie stehen in der
+[Roadmap](roadmap.md) und in [Evaluation](evaluation.md).
+
+## Bewerbungsverlauf und Dokumente
+
+Eine Bewerbung gehört zu genau einem Job und Profil. Statuswechsel und
+Kommunikation werden als Ereignisse gespeichert. Ereignisse können bearbeitet
+oder gelöscht werden; danach wird der Bewerbungszustand aus den verbleibenden
+Ereignissen neu aufgebaut.
+
+Quellportal und tatsächlicher Bewerbungsweg sind getrennte Angaben. Bei einem
+Jobportal kann dessen Name, beispielsweise LinkedIn oder Indeed, erfasst
+werden.
 
 ## Upgrade-Grenzen
 
-- Dify-Upgrades verändern die Kernanwendung nicht, solange die verwendeten
-  Workflow- und HTTP-Verträge kompatibel bleiben.
-- MinerU-Upgrades verändern die Kernanwendung nicht, solange dessen Client-
-  Adapter die verwendete API-Version unterstützt.
+- Datenbankschemaänderungen erfolgen ausschließlich über Alembic.
 - Workflow-DSLs werden versioniert exportiert und manuell in Dify importiert.
-- Datenbankschemaänderungen erfolgen ausschließlich über Alembic-Migrationen.
+- Dify- und MinerU-Upgrades bleiben außerhalb der Kernanwendung, solange ihre
+  HTTP-Verträge kompatibel sind.
+- Neue Workflow-Versionen ersetzen keine veröffentlichte Dify-App automatisch.

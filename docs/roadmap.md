@@ -2,7 +2,7 @@
 
 Knappes Arbeitsprotokoll für die Weiterentwicklung. Nutzerhinweise stehen in
 der [README](../README.md), technische Grundlagen im
-[Projektkontext](../project_context.md).
+[Architekturdokument](architecture.md).
 
 ## Aktuell
 

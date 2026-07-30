@@ -1,4 +1,9 @@
-# Application Assistant – Entwicklungsplan und MinerU-Konfiguration
+# Historischer Entwicklungsplan
+
+> Dieses Dokument zeigt den ursprünglichen Planungsstand und wird nicht mehr
+> fortgeschrieben. Der aktuelle Arbeitsplan steht in der
+> [Roadmap](roadmap.md); der implementierte Funktionsumfang in der
+> [README](../README.md).
 
 Stand: 27.07.2026  
 Zielgruppe: Codex / Entwickler  

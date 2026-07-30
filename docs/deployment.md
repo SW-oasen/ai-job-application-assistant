@@ -1,4 +1,4 @@
-# Start- und Deployment-Readiness
+# Betrieb und Readiness
 
 Ein offener Port oder ein einzelner HTTP-Status beweist noch nicht, dass Dify
 vollständig gestartet ist. Insbesondere die Weboberfläche kann bereits
