@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -61,3 +62,13 @@ class HtmlImportResponse(BaseModel):
     warnings: list[str]
     job_id: str | None = None
     duplicate: bool = False
+
+
+class JobReimportResponse(BaseModel):
+    success: bool = True
+    job_id: UUID
+    source_type: Literal["url", "pdf", "html"]
+    retrieval_method: str
+    language: Literal["de", "en"] | None = None
+    warnings: list[str]
+    reimported: bool = True

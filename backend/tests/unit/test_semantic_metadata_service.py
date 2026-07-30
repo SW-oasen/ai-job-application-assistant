@@ -11,7 +11,12 @@ def test_semantic_fallback_is_triggered_for_missing_required_fields() -> None:
         {"title": None, "company": None, "location": "Berlin"}
     )
     assert not semantic_metadata_service.metadata_needs_semantic_fallback(
-        {"title": "Data Engineer", "company": "Example GmbH", "location": "Berlin"}
+        {
+            "title": "Data Engineer",
+            "company": "Example GmbH",
+            "location": "Berlin",
+            "language": "en",
+        }
     )
 
 
@@ -36,7 +41,9 @@ async def test_semantic_fallback_uses_full_text_and_accepts_evidenced_values(
                             '"company":{"value":"flaschenpost","confidence":0.9,'
                             '"evidence":"wir sind flaschenpost"},'
                             '"location":{"value":"Berlin","confidence":0.99,'
-                            '"evidence":"Arbeitsort Berlin"}}'
+                            '"evidence":"Arbeitsort Berlin"},'
+                            '"language":{"value":"de","confidence":0.99,'
+                            '"evidence":"wir sind flaschenpost"}}'
                         )
                     },
                 }
@@ -81,6 +88,7 @@ async def test_semantic_fallback_uses_full_text_and_accepts_evidenced_values(
     assert result.metadata["title"] == "Machine Learning Engineer"
     assert result.metadata["company"] == "flaschenpost"
     assert result.metadata["location"] == "Berlin"
+    assert result.metadata["language"] == "de"
     assert result.warnings == ["semantic_metadata_fallback_used"]
 
 
@@ -146,3 +154,20 @@ def test_semantic_evidence_accepts_pdf_line_breaks() -> None:
     )
 
     assert merged["title"] == "Junior Pricing Analyst - Data & Operations"
+
+
+def test_semantic_language_only_accepts_supported_codes() -> None:
+    content = "Nous recherchons une personne"
+    merged, _ = semantic_metadata_service._accepted_metadata(
+        {"language": None},
+        {
+            "language": {
+                "value": "fr",
+                "confidence": 1,
+                "evidence": content,
+            }
+        },
+        content=content,
+    )
+
+    assert merged["language"] is None

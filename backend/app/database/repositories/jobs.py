@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
@@ -18,6 +19,59 @@ class PersistedImport:
     reimported: bool = False
 
 
+@dataclass(frozen=True)
+class StoredJobSource:
+    job_id: UUID
+    source_type: str
+    source_url: str | None
+    source_filename: str | None
+    title: str | None
+    raw_content: str | None
+    normalized_content: str
+    content_hash: str
+    retrieval_method: str
+    language: str | None
+    import_warnings: list[str]
+
+
+async def get_stored_job_source(job_id: UUID) -> StoredJobSource:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise ApplicationError(
+            "The job database is not configured.",
+            code="database_unavailable",
+            status_code=503,
+        )
+    try:
+        async with session_factory() as session:
+            job = await session.get(Job, job_id)
+            if job is None:
+                raise ApplicationError(
+                    "The requested job was not found.",
+                    code="job_not_found",
+                    status_code=404,
+                )
+            return StoredJobSource(
+                job_id=job.id,
+                source_type=job.source_type,
+                source_url=job.source_url,
+                source_filename=job.source_filename,
+                title=job.title,
+                raw_content=job.raw_content,
+                normalized_content=job.normalized_content,
+                content_hash=job.content_hash,
+                retrieval_method=job.retrieval_method,
+                language=job.language,
+                import_warnings=job.import_warnings or [],
+            )
+    except SQLAlchemyError as exception:
+        raise ApplicationError(
+            "The job source could not be loaded.",
+            code="database_unavailable",
+            status_code=503,
+        ) from exception
+
+
 async def persist_imported_job(
     *,
     source_type: str,
@@ -31,6 +85,7 @@ async def persist_imported_job(
     warnings: list[str],
     extracted_json: dict[str, Any] | None = None,
     replace_existing: bool = False,
+    replace_job_id: UUID | None = None,
     metadata_override: dict[str, str | None] | None = None,
 ) -> PersistedImport:
     session_factory = get_session_factory()
@@ -67,8 +122,12 @@ async def persist_imported_job(
             duplicate_conditions = [Job.content_hash == content_hash]
             if source_url:
                 duplicate_conditions.append(Job.source_url == source_url)
-            existing = await session.scalar(
-                select(Job).where(or_(*duplicate_conditions)).limit(1)
+            existing = (
+                await session.get(Job, replace_job_id)
+                if replace_job_id is not None
+                else await session.scalar(
+                    select(Job).where(or_(*duplicate_conditions)).limit(1)
+                )
             )
             if existing:
                 if (
@@ -100,7 +159,9 @@ async def persist_imported_job(
                     existing.work_model = metadata["work_model"]
                     existing.employment_type = metadata["employment_type"]
                     existing.contract_term = metadata["contract_term"]
+                    existing.language = metadata["language"]
                     existing.status = "analyzing"
+                    existing.imported_at = func.now()
                     await session.commit()
                     return PersistedImport(
                         job_id=str(existing.id),
@@ -129,6 +190,7 @@ async def persist_imported_job(
                     work_model=metadata["work_model"],
                     employment_type=metadata["employment_type"],
                     contract_term=metadata["contract_term"],
+                    language=metadata["language"],
                 )
                 .returning(Job.id)
             )

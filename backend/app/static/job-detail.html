@@ -33,6 +33,12 @@
       <div class="meta" id="meta"></div>
       <p class="source" id="source"></p>
       <div class="warning" id="warnings"></div>
+      <p>
+        <button class="button secondary" id="reimportJob" type="button">
+          Job erneut importieren
+        </button>
+        <span id="reimportStatus" role="status" aria-live="polite"></span>
+      </p>
       <details class="inline-editor" id="metadataEditor">
         <summary>Job-Metadaten bearbeiten</summary>
         <form id="metadataForm">
@@ -224,6 +230,7 @@
           ["Arbeitsmodell",data.work_model||"nicht angegeben"],
           ["Beschäftigungsart",data.employment_type||"nicht angegeben"],
           ["Befristung",data.contract_term||"nicht angegeben"],
+          ["Sprache",data.language==="de"?"Deutsch":data.language==="en"?"Englisch":"nicht angegeben"],
           ["Quellportal",data.source_portal||"nicht angegeben"],
           ["Veröffentlicht",data.published_text||(data.published_at?formatDate(data.published_at):"nicht angegeben")],
           ["Importiert",formatDate(data.imported_at)]
@@ -294,6 +301,24 @@
         });
         location.reload();
       }catch(error){alert(error.message)}finally{button.disabled=false}
+    };
+    document.getElementById("reimportJob").onclick=async()=>{
+      const sourceType=currentJob?.source_type;
+      const explanation=sourceType==="url"
+        ?"Die gespeicherte Quell-URL wird erneut abgerufen."
+        :"Der in der Datenbank gespeicherte Anzeigeninhalt wird erneut ausgewertet.";
+      if(!confirm(`${explanation}\n\nErkannte Metadaten und vorhandene Matching-Ergebnisse werden ersetzt. Fortfahren?`))return;
+      const button=document.getElementById("reimportJob"),status=document.getElementById("reimportStatus");
+      button.disabled=true;
+      status.textContent=" Reimport läuft …";
+      try{
+        await request(`/imports/jobs/${encodeURIComponent(jobId)}/reimport`,{method:"POST"});
+        status.textContent=" Reimport abgeschlossen.";
+        location.reload();
+      }catch(error){
+        status.textContent="";
+        alert(error.message);
+      }finally{button.disabled=false}
     };
     document.getElementById("documentForm").onsubmit=async event=>{
       event.preventDefault();

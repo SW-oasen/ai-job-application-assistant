@@ -1,10 +1,11 @@
 import hashlib
+from uuid import UUID
 
 from app.core.config import get_settings
 from app.core.errors import ApplicationError
+from app.database.repositories.jobs import persist_imported_job
 from app.importers.http_importer import HttpImporter
 from app.importers.playwright_importer import PlaywrightImporter
-from app.database.repositories.jobs import persist_imported_job
 from app.parsers.html_to_markdown import html_to_document
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import UrlImportRequest, UrlImportResponse
@@ -21,7 +22,11 @@ NON_FALLBACK_ERROR_CODES = {
 }
 
 
-async def import_url(payload: UrlImportRequest) -> UrlImportResponse:
+async def import_url(
+    payload: UrlImportRequest,
+    *,
+    replace_job_id: UUID | None = None,
+) -> UrlImportResponse:
     settings = get_settings()
     if payload.force_browser and not settings.playwright_enabled:
         raise ApplicationError(
@@ -38,7 +43,7 @@ async def import_url(payload: UrlImportRequest) -> UrlImportResponse:
     )
     if payload.force_browser:
         response = await _import_with_browser(payload.url, fallback_used=False)
-        return await _persist_response(response)
+        return await _persist_response(response, replace_job_id=replace_job_id)
 
     try:
         imported = await importer.fetch(payload.url)
@@ -46,7 +51,7 @@ async def import_url(payload: UrlImportRequest) -> UrlImportResponse:
         if not settings.playwright_enabled or exception.code in NON_FALLBACK_ERROR_CODES:
             raise
         response = await _import_with_browser(payload.url, fallback_used=True)
-        return await _persist_response(response)
+        return await _persist_response(response, replace_job_id=replace_job_id)
 
     response = _build_response(
         source_url=imported.final_url,
@@ -54,9 +59,9 @@ async def import_url(payload: UrlImportRequest) -> UrlImportResponse:
         retrieval_method="http",
     )
     if response.quality_sufficient or not settings.playwright_enabled:
-        return await _persist_response(response)
+        return await _persist_response(response, replace_job_id=replace_job_id)
     response = await _import_with_browser(payload.url, fallback_used=True)
-    return await _persist_response(response)
+    return await _persist_response(response, replace_job_id=replace_job_id)
 
 
 async def _import_with_browser(url: str, *, fallback_used: bool) -> UrlImportResponse:
@@ -106,7 +111,11 @@ def _build_response(
     )
 
 
-async def _persist_response(response: UrlImportResponse) -> UrlImportResponse:
+async def _persist_response(
+    response: UrlImportResponse,
+    *,
+    replace_job_id: UUID | None = None,
+) -> UrlImportResponse:
     if not response.quality_sufficient:
         response.job_id = None
         response.duplicate = False
@@ -135,6 +144,8 @@ async def _persist_response(response: UrlImportResponse) -> UrlImportResponse:
             if semantic.details
             else None
         ),
+        replace_existing=replace_job_id is not None,
+        replace_job_id=replace_job_id,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate

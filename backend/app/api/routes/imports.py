@@ -1,13 +1,17 @@
+from uuid import UUID
+
 from fastapi import APIRouter, File, Form, UploadFile
 
 from app.core.errors import ApplicationError
 from app.schemas.imports import (
     HtmlImportResponse,
+    JobReimportResponse,
     PdfImportResponse,
     UrlImportRequest,
     UrlImportResponse,
 )
 from app.services.html_import_service import import_html
+from app.services.job_reimport_service import reimport_job
 from app.services.pdf_import_service import import_pdf
 from app.services.url_import_service import import_url
 
@@ -19,6 +23,11 @@ CONTROLLED_URL_IMPORT_ERRORS = {
     "source_http_error",
     "source_unavailable",
 }
+
+
+@router.post("/jobs/{job_id}/reimport", response_model=JobReimportResponse)
+async def reimport_stored_job(job_id: UUID) -> JobReimportResponse:
+    return await reimport_job(job_id)
 
 
 @router.post("/url", response_model=UrlImportResponse)

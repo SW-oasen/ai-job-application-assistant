@@ -1,5 +1,9 @@
 from app.core.errors import ApplicationError
-from app.schemas.imports import PdfImportResponse, UrlImportResponse
+from app.schemas.imports import (
+    JobReimportResponse,
+    PdfImportResponse,
+    UrlImportResponse,
+)
 
 
 def test_import_url_returns_normalized_response(client, monkeypatch) -> None:
@@ -99,6 +103,27 @@ def test_pdf_import_forwards_replace_existing(client, monkeypatch) -> None:
     assert response.status_code == 200
     assert captured["replace_existing"] is True
     assert response.json()["reimported"] is True
+
+
+def test_reimports_stored_job_without_upload(client, monkeypatch) -> None:
+    job_id = "91e5c97c-9102-422d-be19-9c14c82ea81d"
+
+    async def fake_reimport(received_job_id):
+        assert str(received_job_id) == job_id
+        return JobReimportResponse(
+            job_id=received_job_id,
+            source_type="pdf",
+            retrieval_method="native_pdf",
+            language="de",
+            warnings=[],
+        )
+
+    monkeypatch.setattr("app.api.routes.imports.reimport_job", fake_reimport)
+    response = client.post(f"/imports/jobs/{job_id}/reimport")
+
+    assert response.status_code == 200
+    assert response.json()["reimported"] is True
+    assert response.json()["language"] == "de"
 
 
 def test_html_import_accepts_single_file_document(client) -> None:

@@ -1,5 +1,19 @@
 import re
 
+LANGUAGE_MARKERS = {
+    "de": {
+        "aber", "als", "auch", "auf", "aus", "bei", "bewerbung", "das", "der", "die",
+        "eine", "einem", "einen", "einer", "für", "ihre", "ihren", "ist", "mit",
+        "oder", "sind", "stelle", "und", "unser", "unsere", "von", "wir", "werden",
+        "zu",
+    },
+    "en": {
+        "and", "application", "are", "as", "at", "be", "for", "from", "in", "is",
+        "job", "of", "on", "or", "our", "position", "the", "their", "to", "we",
+        "will", "with", "you", "your",
+    },
+}
+
 COMPANY_PATTERNS = (
     re.compile(
         r"(?im)^\s*(?:>\s*)?"
@@ -27,6 +41,22 @@ def first_metadata_match(
         if match:
             return match.group(1).strip()
     return None
+
+
+def detect_job_language(content: str) -> str | None:
+    """Detect German or English from the advertisement text."""
+    words = re.findall(r"[^\W\d_]+", content.casefold(), flags=re.UNICODE)
+    scores = {
+        language: sum(word in markers for word in words)
+        for language, markers in LANGUAGE_MARKERS.items()
+    }
+    if any(character in content.casefold() for character in ("ä", "ö", "ü", "ß")):
+        scores["de"] += 2
+    best = max(scores, key=scores.get)
+    other = "en" if best == "de" else "de"
+    if scores[best] < 3 or scores[best] < scores[other] * 1.5:
+        return None
+    return best
 
 
 def _clean_line(line: str) -> str:
@@ -334,4 +364,5 @@ def extract_job_metadata(
             source_filename=source_filename,
             source_url=source_url,
         ),
+        "language": detect_job_language(content),
     }

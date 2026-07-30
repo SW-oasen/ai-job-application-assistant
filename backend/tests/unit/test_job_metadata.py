@@ -25,7 +25,38 @@ We offer employees the opportunity to work flexibly and remotely.
         "contract_term": None,
         "source_portal": None,
         "work_model": "Remote möglich",
+        "language": "en",
     }
+
+
+def test_detects_english_job_description_language() -> None:
+    metadata = extract_job_metadata(
+        """
+# Data Engineer
+
+We are looking for a data engineer to join our team. You will build reliable
+data products and work with our analysts. Your application should include a CV.
+"""
+    )
+
+    assert metadata["language"] == "en"
+
+
+def test_detects_german_job_description_language() -> None:
+    metadata = extract_job_metadata(
+        """
+# Data Engineer
+
+Wir suchen einen Data Engineer für unser Team. Du wirst zuverlässige
+Datenprodukte entwickeln und mit unseren Analysten arbeiten.
+"""
+    )
+
+    assert metadata["language"] == "de"
+
+
+def test_leaves_ambiguous_job_description_language_empty() -> None:
+    assert extract_job_metadata("Data Engineer\nBerlin")["language"] is None
 
 
 def test_extracts_company_below_title_before_information_short_name() -> None:

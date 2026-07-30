@@ -8,7 +8,7 @@ import httpx
 from app.core.config import get_settings
 from app.parsers.job_metadata import extract_job_metadata
 
-REQUIRED_FIELDS = ("title", "company", "location")
+REQUIRED_FIELDS = ("title", "company", "location", "language")
 SUPPORTED_FIELDS = (
     "title",
     "company",
@@ -16,6 +16,7 @@ SUPPORTED_FIELDS = (
     "work_model",
     "employment_type",
     "contract_term",
+    "language",
 )
 AUTO_ACCEPT_CONFIDENCE = 0.85
 
@@ -69,12 +70,17 @@ def _accepted_metadata(
         evidence = item.get("evidence")
         if not isinstance(value, str) or not value.strip():
             continue
+        value = value.strip()
+        if field == "language":
+            value = value.casefold()
+            if value not in {"de", "en"}:
+                continue
         try:
             confidence = float(confidence)
         except (TypeError, ValueError):
             confidence = 0
         details[field] = {
-            "value": value.strip(),
+            "value": value,
             "confidence": max(0.0, min(confidence, 1.0)),
             "evidence": evidence if isinstance(evidence, str) else None,
         }
@@ -102,7 +108,7 @@ def _accepted_metadata(
             and evidence_is_verifiable
             and not evidence_is_benefit
         ):
-            merged[field] = value.strip()
+            merged[field] = value
     return merged, details
 
 

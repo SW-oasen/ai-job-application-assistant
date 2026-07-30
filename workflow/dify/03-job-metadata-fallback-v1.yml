@@ -142,6 +142,8 @@ workflow:
             Benefits, Work-Life-Balance oder Arbeitgeberangeboten abgeleitet werden.
             Wenn ein Wert nicht belegt ist, verwende einen leeren String, confidence
             0 und einen leeren evidence-String.
+            language bezeichnet die Sprache des eigentlichen Anzeigentextes, nicht
+            die Sprache des Jobportals. Verwende ausschließlich "de" oder "en".
         - id: metadata-user
           role: user
           text: |
@@ -165,7 +167,8 @@ workflow:
               work_model: {$ref: '#/$defs/field'}
               employment_type: {$ref: '#/$defs/field'}
               contract_term: {$ref: '#/$defs/field'}
-            required: [title, company, location, work_model, employment_type, contract_term]
+              language: {$ref: '#/$defs/field'}
+            required: [title, company, location, work_model, employment_type, contract_term, language]
             type: object
             $defs:
               field:
