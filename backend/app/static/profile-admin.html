@@ -212,6 +212,8 @@
     dialog::backdrop { background: rgba(16, 25, 21, .42); }
     .dialog-body { padding: 24px; }
     .dialog-body h3 { margin: 0 0 18px; }
+    #profileDialog { margin-top: 24px; width: auto; }
+    #profileDialog[hidden] { display: none; }
     .revision { padding: 12px 0; border-bottom: 1px solid var(--line); }
     .revision:last-child { border: 0; }
     .revision code { color: var(--accent); }
@@ -258,15 +260,13 @@
       <a class="home-link" href="/">Dashboard</a>
       <a class="home-link" href="/jobs">Jobs und Bewerbungen</a>
       <a class="home-link active" aria-current="page" href="/manage">Verwaltung</a>
-      <span class="link-separator" aria-hidden="true"></span>
-      <button class="text-action" id="editProfile">Profil bearbeiten</button>
-      <button class="text-action" id="newProfile">Neues Profil</button>
     </div>
   </header>
 
   <div class="layout">
     <nav id="navigation">
-      <button data-resource="skills" class="active">Skills</button>
+      <button data-resource="profile" class="active">Profil</button>
+      <button data-resource="skills">Skills</button>
       <button data-resource="experiences">Berufserfahrung</button>
       <button data-resource="projects">Portfolio-Projekte</button>
       <button data-resource="education">Ausbildung</button>
@@ -282,13 +282,14 @@
         </div>
         <div class="right-actions">
           <button class="button ghost" id="importPortfolio" hidden>Portfolio importieren</button>
+          <button class="button ghost" id="newProfileEntry" hidden>Neues Profil</button>
           <button class="button" id="newEntry">Eintrag hinzufügen</button>
         </div>
       </div>
       <div id="noProfile" class="empty" hidden>
         <h3>Noch kein Profil vorhanden</h3>
         <p>Lege zuerst dein kanonisches Profil an. Danach kannst du die einzelnen Bereiche pflegen.</p>
-        <button class="button" onclick="openProfileDialog(false)">Profil anlegen</button>
+        <button class="button" id="emptyNewProfile">Profil anlegen</button>
       </div>
       <div id="workspace" class="workspace" hidden>
         <section class="panel list" id="entryList"></section>
@@ -297,11 +298,8 @@
           <section class="editor" id="editor"></section>
         </details>
       </div>
-    </main>
-  </div>
-
-  <dialog id="profileDialog">
-    <form method="dialog" class="dialog-body" id="profileForm">
+      <section id="profileDialog" class="panel" hidden>
+    <form class="dialog-body" id="profileForm">
       <h3 id="profileDialogTitle">Profil anlegen</h3>
       <div class="grid">
         <div class="field full">
@@ -398,7 +396,9 @@
         <button class="button" id="saveProfile" value="default">Speichern</button>
       </div>
     </form>
-  </dialog>
+      </section>
+    </main>
+  </div>
 
   <dialog id="revisionDialog">
     <div class="dialog-body">
@@ -482,6 +482,10 @@
     const API = "/profiles";
     const STATUS_OPTIONS = [["draft","Entwurf"],["approved","Freigegeben"],["inactive","Inaktiv"]];
     const CONFIG = {
+      profile: {
+        title: "Profil",
+        description: "Stammdaten, Ziele und Kontaktangaben des ausgewählten Profils."
+      },
       skills: {
         title: "Skills",
         description: "Manuell gepflegte Fähigkeiten. Ein Skill ist erst mit verknüpfter Evidenz ein belastbarer Nachweis.",
@@ -563,6 +567,7 @@
           ["organization","Organisation","text"],
           ["email","E-Mail","email"],
           ["phone","Telefon","tel"],
+          ["linkedin_url","LinkedIn-Profil","url"],
           ["preferred_language","Bevorzugte Sprache","language"],
           ["usage_consent","Nutzungsfreigabe erteilt","checkbox"]
         ]
@@ -574,7 +579,7 @@
       }
     };
 
-    let profiles = [], profile = null, resource = "skills", entries = [], selected = null;
+    let profiles = [], profile = null, resource = "profile", entries = [], selected = null;
     let cvSelected = new Set();
     let skillTaxonomy = {categories: [], levels: []};
     const $ = id => document.getElementById(id);
@@ -610,12 +615,25 @@
       const target = preferredId || profile?.id || profiles[0]?.id;
       if (target && profiles.some(item => item.id === target)) select.value = target;
       profile = profiles.find(item => item.id === select.value) || null;
-      $("noProfile").hidden = !!profile;
-      $("workspace").hidden = !profile;
       $("newEntry").disabled = !profile;
-      $("editProfile").disabled = !profile;
+      renderMainView();
+      if (resource === "profile") return;
       if (profile) await loadEntries();
       else renderEditor();
+    }
+
+    function renderMainView() {
+      const hasProfile = !!profile;
+      if (resource === "profile") {
+        $("noProfile").hidden = true;
+        $("workspace").hidden = true;
+        $("profileDialog").hidden = false;
+        fillProfileForm(hasProfile);
+      } else {
+        $("profileDialog").hidden = true;
+        $("noProfile").hidden = hasProfile;
+        $("workspace").hidden = !hasProfile;
+      }
     }
 
     async function loadEntries(preferredId=null) {
@@ -949,7 +967,7 @@
       } catch (error) { toast(error.message, true); }
     }
 
-    function openProfileDialog(edit) {
+    function fillProfileForm(edit) {
       const setSelected = (id, values) => {
         const selected = new Set(values || []);
         for (const option of $(id).options) option.selected = selected.has(option.value);
@@ -975,7 +993,6 @@
       $("profileStatus").disabled = !edit;
       $("profileReason").value = "";
       $("profileDialog").dataset.edit = edit ? "true" : "false";
-      $("profileDialog").showModal();
     }
 
     function openCvPdfDialog() {
@@ -1012,12 +1029,13 @@
         const saved = await request(edit ? `${API}/${profile.id}` : API, {
           method: edit ? "PATCH" : "POST", body: JSON.stringify(body)
         });
-        $("profileDialog").close();
         toast(edit ? "Profil aktualisiert." : "Profil angelegt.");
         await loadProfiles(saved.id);
       } catch (error) { toast(error.message, true); }
     });
-    $("cancelProfile").onclick = () => $("profileDialog").close();
+    $("cancelProfile").onclick = () => fillProfileForm(!!profile);
+    $("emptyNewProfile").onclick = () => activateResource("profile");
+    $("newProfileEntry").onclick = () => fillProfileForm(false);
     $("cancelPortfolioImport").onclick = () => $("portfolioImportDialog").close();
     $("portfolioImportForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -1100,12 +1118,11 @@
     }
     function escapeAttr(value) { return escapeHtml(value); }
 
-    $("newProfile").onclick = () => openProfileDialog(false);
-    $("editProfile").onclick = () => openProfileDialog(true);
     $("profileSelect").onchange = async event => {
       profile = profiles.find(item => item.id === event.target.value) || null;
       cvSelected.clear();
-      await loadEntries();
+      renderMainView();
+      if (resource !== "profile") await loadEntries();
     };
     $("newEntry").onclick = () => {
       if (resource === "cv-imports") {
@@ -1120,22 +1137,28 @@
       $("portfolioProjects").value = "";
       $("portfolioImportDialog").showModal();
     };
-    document.querySelectorAll("#navigation button").forEach(button => button.onclick = async () => {
-      document.querySelectorAll("#navigation button").forEach(item => item.classList.remove("active"));
-      button.classList.add("active");
-      resource = button.dataset.resource;
+    async function activateResource(res) {
+      resource = res;
+      document.querySelectorAll("#navigation button").forEach(item => item.classList.toggle("active", item.dataset.resource === res));
       cvSelected.clear();
-      $("sectionTitle").textContent = CONFIG[resource].title;
-      $("sectionDescription").textContent = CONFIG[resource].description;
-      $("importPortfolio").hidden = resource !== "projects";
-      $("newEntry").textContent = resource === "cv-imports"
+      $("sectionTitle").textContent = CONFIG[res].title;
+      $("sectionDescription").textContent = CONFIG[res].description;
+      $("importPortfolio").hidden = res !== "projects";
+      $("newEntry").hidden = res === "profile";
+      $("newProfileEntry").hidden = res !== "profile";
+      $("newEntry").textContent = res === "cv-imports"
         ? "CV-PDF importieren" : "Eintrag hinzuf\u00fcgen";
-      if (profile) await loadEntries();
-    });
+      renderMainView();
+      if (profile && res !== "profile") await loadEntries();
+    }
+    document.querySelectorAll("#navigation button").forEach(button => button.onclick = () => activateResource(button.dataset.resource));
 
     async function initialize() {
       skillTaxonomy = await request(`${API}/taxonomy/skills`);
-      $("sectionDescription").textContent = CONFIG.skills.description;
+      $("sectionTitle").textContent = CONFIG.profile.title;
+      $("sectionDescription").textContent = CONFIG.profile.description;
+      $("newEntry").hidden = true;
+      $("newProfileEntry").hidden = false;
       await loadProfiles();
     }
     initialize().catch(error => toast(error.message, true));

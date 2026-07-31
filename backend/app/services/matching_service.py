@@ -44,6 +44,13 @@ from app.schemas.matching import (
 from app.services.application_file_service import remove_stored_files
 
 WORD_PATTERN = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9+#.]{2,}")
+MIN_YEARS_PATTERN = re.compile(
+    r"(?:min_years:|mindestens\s+|at\s+least\s+|minimum\s+)?"
+    r"(\d+(?:[.,]\d+)?)\s*(?:\+|plus)?\s*"
+    r"(?:jahr(?:e|en)?|years?)\s*(?:of\s+)?"
+    r"(?:berufs?\s*|profession(?:al)?\s+)?(?:erfahrung|experience)",
+    re.IGNORECASE,
+)
 STOPWORDS = {
     "and", "the", "with", "for", "from", "und", "der", "die", "das", "mit",
     "für", "von", "eine", "experience", "erfahrung", "kenntnisse",
@@ -79,6 +86,91 @@ TERM_CONCEPTS = {
 class StoredEvidence:
     item: EvidenceInput
     evidence_id: str
+
+
+def _minimum_years(requirement: str, normalized_value: str | None = None) -> float | None:
+    value = normalized_value or ""
+    match = MIN_YEARS_PATTERN.search(value) or MIN_YEARS_PATTERN.search(requirement)
+    if match is None:
+        return None
+    return float(match.group(1).replace(",", "."))
+
+
+def _skill_years(stored: StoredEvidence) -> float | None:
+    try:
+        data = json.loads(stored.item.source_content)
+    except (TypeError, json.JSONDecodeError):
+        data = {}
+    years = data.get("years_experience") if isinstance(data, dict) else None
+    if years is None:
+        match = re.search(r"\bJahre:\s*(\d+(?:[.,]\d+)?)", stored.item.evidence_text)
+        years = match.group(1).replace(",", ".") if match else None
+    if years is None:
+        return None
+    try:
+        return float(years)
+    except (TypeError, ValueError):
+        return None
+
+
+def _evaluate_seniority(
+    requirement_id: str,
+    requirement: str,
+    minimum_years: float,
+    evidence: list[StoredEvidence],
+) -> RequirementMatchResponse:
+    skill_evidence = [
+        (stored, years)
+        for stored in evidence
+        if (years := _skill_years(stored)) is not None
+    ]
+    if not skill_evidence:
+        return RequirementMatchResponse(
+            requirement_id=requirement_id,
+            requirement=requirement,
+            match_level="unknown",
+            evidence=[],
+            explanation="Für die Skills des Profils sind keine Erfahrungsjahre dokumentiert.",
+            recommended_action="Erfahrungsjahre bei den relevanten Skills ergänzen und manuell prüfen.",
+            confidence=0.3,
+        )
+    highest_years = max(years for _, years in skill_evidence)
+    cited = [
+        MatchEvidence(
+            evidence_id=stored.evidence_id,
+            source_name=stored.item.source_name,
+            label=stored.item.label,
+            evidence_text=stored.item.evidence_text,
+            experience_context=stored.item.experience_context,
+        )
+        for stored, years in skill_evidence
+        if years == highest_years
+    ]
+    if highest_years >= minimum_years:
+        return RequirementMatchResponse(
+            requirement_id=requirement_id,
+            requirement=requirement,
+            match_level="strong_match",
+            evidence=cited,
+            explanation=(
+                f"Das Profil weist {highest_years:g} Jahre Skill-Erfahrung nach "
+                f"und erfüllt damit die Mindestanforderung von {minimum_years:g} Jahren."
+            ),
+            recommended_action="Die nachgewiesenen Erfahrungsjahre sachlich angeben.",
+            confidence=0.95,
+        )
+    return RequirementMatchResponse(
+        requirement_id=requirement_id,
+        requirement=requirement,
+        match_level="gap",
+        evidence=cited,
+        explanation=(
+            f"Das Profil weist höchstens {highest_years:g} Jahre Skill-Erfahrung nach; "
+            f"gefordert sind mindestens {minimum_years:g} Jahre."
+        ),
+        recommended_action="Die fehlenden Erfahrungsjahre nicht behaupten; Anforderung manuell prüfen.",
+        confidence=0.95,
+    )
 
 
 def _first_metadata_match(content: str, patterns: tuple[re.Pattern, ...]) -> str | None:
@@ -352,8 +444,17 @@ def _evaluate(
     *,
     category: str = "",
     keyword_terms: set[str] | None = None,
+    normalized_value: str | None = None,
 ) -> RequirementMatchResponse:
     keyword_terms = keyword_terms or set()
+    minimum_years = _minimum_years(requirement, normalized_value)
+    if minimum_years is not None:
+        return _evaluate_seniority(
+            requirement_id,
+            requirement,
+            minimum_years,
+            evidence,
+        )
     is_soft_skill = category.strip().lower() == "soft_skill" or bool(
         SOFT_SKILL_PATTERN.search(f"{category} {requirement}")
     )
@@ -577,6 +678,7 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                     category=item.category,
                     priority=item.priority,
                     keywords=item.keywords or [],
+                    normalized_value=item.normalized_value,
                 )
                 for item in stored_requirements
             ]
@@ -661,6 +763,7 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                 stored_evidence,
                 category=item.category,
                 keyword_terms=_terms("", item.keywords),
+                normalized_value=item.normalized_value,
             )
             session.add(
                 RequirementMatch(

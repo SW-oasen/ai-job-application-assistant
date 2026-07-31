@@ -56,6 +56,8 @@ def test_job_detail_page(client) -> None:
     assert "Matching neu berechnen" in response.text
     assert 'request("/matching/run"' in response.text
     assert 'class="requirement-detail"' in response.text
+    assert "Array.isArray(match.evidence)" in response.text
+    assert "esc(item.evidence_text||\"\")" in response.text
     assert 'textContent=data.company||"Firma unbekannt"' in response.text
     assert "Erkannte Stellendetails" in response.text
     assert "<summary>Importierter Referenztext</summary>" in response.text

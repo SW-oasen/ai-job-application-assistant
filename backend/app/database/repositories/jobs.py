@@ -272,6 +272,7 @@ def _add_job_structure(
                 job_id=job_id,
                 category=item.get("category") or "other",
                 requirement_text=item["requirement"],
+                normalized_value=item.get("normalized_value"),
                 priority=item.get("priority") or "should",
                 evidence=item.get("evidence"),
                 confidence=item.get("confidence"),

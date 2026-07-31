@@ -36,6 +36,7 @@ class RequirementInput(BaseModel):
     category: str = Field(default="other", min_length=1, max_length=100)
     priority: Literal["must", "should", "nice_to_have"] = "should"
     keywords: list[str] = Field(default_factory=list, max_length=50)
+    normalized_value: str | None = Field(default=None, max_length=500)
 
 
 class EvidenceInput(BaseModel):

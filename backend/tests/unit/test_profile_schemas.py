@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.profile import PortfolioProjectCreate, SkillCreate, WorkExperienceCreate
+from app.schemas.profile import (
+    PortfolioProjectCreate,
+    ReferenceCreate,
+    SkillCreate,
+    WorkExperienceCreate,
+)
 
 
 def test_skill_accepts_distinct_german_and_english_localizations() -> None:
@@ -45,3 +50,18 @@ def test_portfolio_project_accepts_evidence_fields() -> None:
     )
 
     assert project.technologies == ["Python", "FastAPI"]
+
+
+def test_reference_accepts_linkedin_profile_url_only() -> None:
+    reference = ReferenceCreate(
+        full_name="Maria Mustermann",
+        linkedin_url="https://www.linkedin.com/in/maria-mustermann",
+    )
+
+    assert str(reference.linkedin_url) == "https://www.linkedin.com/in/maria-mustermann"
+
+    with pytest.raises(ValidationError):
+        ReferenceCreate(
+            full_name="Maria Mustermann",
+            linkedin_url="https://example.com/maria-mustermann",
+        )

@@ -9,7 +9,14 @@ def test_profile_admin_page_is_available(client) -> None:
     assert '<details class="panel editor-shell" id="editorDetails">' in response.text
     assert "CV-PDF über Dify importieren" in response.text
     assert 'id="openCvPdfImport">CV-PDF importieren' in response.text
+    assert 'id="profileDialog" class="panel" hidden' in response.text
     assert 'type="button" id="cancelProfile">Abbrechen' in response.text
+    assert 'id="profileForm"' in response.text
+    assert 'id="emptyNewProfile"' in response.text
+    assert 'data-resource="profile" class="active">Profil</button>' in response.text
+    assert 'id="newProfileEntry"' in response.text
+    assert 'id="editProfile"' not in response.text
+    assert 'id="newProfile">Neues Profil' not in response.text
     assert 'aria-label="Profil-ID"' not in response.text
     assert "ID kopieren" not in response.text
     assert "Konfliktauflösung" in response.text

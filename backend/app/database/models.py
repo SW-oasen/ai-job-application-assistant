@@ -505,6 +505,7 @@ class ProfileReference(TimestampMixin, Base):
     organization: Mapped[str | None] = mapped_column(String(500))
     email: Mapped[str | None] = mapped_column(String(500))
     phone: Mapped[str | None] = mapped_column(String(100))
+    linkedin_url: Mapped[str | None] = mapped_column(String(2048))
     preferred_language: Mapped[str | None] = mapped_column(String(5))
     usage_consent: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(30), default="draft")

@@ -10,13 +10,17 @@ http://localhost:8080/profiles/admin
 
 Zum ersten Test:
 
-1. Mit `Neues Profil` ein Profil anlegen.
-2. Links einen der fünf Bereiche auswählen.
+1. Im linken Navigationsbereich den Tab `Profil` öffnen und mit `Neues Profil`
+   ein Profil anlegen.
+2. Links einen der weiteren Bereiche auswählen.
 3. Mit `Eintrag hinzufügen` einen Datensatz erfassen.
 4. Deutsche und englische Texte getrennt pflegen.
 5. Den Eintrag zunächst als `Entwurf` speichern und nach Prüfung auf
    `Freigegeben` setzen.
 6. Über `Revisionen` den unveränderlichen Änderungsverlauf prüfen.
+
+Die Stammdatenpflege erfolgt über den Tab `Profil` in derselben Hauptsektion
+wie die übrigen Bereiche, nicht über ein separates Dialogfenster.
 
 Leere Sprachfassungen sind erlaubt und können später ergänzt werden.
 Referenzdaten sollten nur mit dokumentierter Nutzungseinwilligung freigegeben
@@ -122,6 +126,10 @@ Der Änderungsverlauf eines Eintrags ist verfügbar unter:
 ```text
 GET /profiles/{profile_id}/revisions/{entity_type}/{entity_id}
 ```
+
+Referenzen können neben Name, Rolle, Organisation, Telefon und E-Mail auch
+einen LinkedIn-Link erfassen. Zulässig sind ausschließlich Links auf
+`linkedin.com` beziehungsweise `lnkd.in`; andere Domains werden abgelehnt.
 
 Referenz-Kontaktdaten sind sensible Daten. Eine Weitergabe an Dify oder ein LLM
 darf später nur bei `usage_consent: true` und für einen ausdrücklich

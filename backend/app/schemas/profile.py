@@ -2,7 +2,7 @@ from datetime import date
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from app.domain.skill_taxonomy import SkillCategory, SkillLevel
 
@@ -230,9 +230,17 @@ class ReferenceCreate(ResourceBase):
     organization: str | None = Field(default=None, max_length=500)
     email: str | None = Field(default=None, max_length=500)
     phone: str | None = Field(default=None, max_length=100)
+    linkedin_url: HttpUrl | None = None
     preferred_language: Language | None = None
     usage_consent: bool = False
     status: ContentStatus = "draft"
+
+    @field_validator("linkedin_url")
+    @classmethod
+    def validate_linkedin_url(cls, value: HttpUrl | None) -> HttpUrl | None:
+        if value is not None and value.host not in {"linkedin.com", "www.linkedin.com", "lnkd.in"}:
+            raise ValueError("LinkedIn URL must use linkedin.com or lnkd.in")
+        return value
 
 
 class ReferenceUpdate(ResourceBase):
@@ -240,10 +248,18 @@ class ReferenceUpdate(ResourceBase):
     organization: str | None = Field(default=None, max_length=500)
     email: str | None = Field(default=None, max_length=500)
     phone: str | None = Field(default=None, max_length=100)
+    linkedin_url: HttpUrl | None = None
     preferred_language: Language | None = None
     usage_consent: bool | None = None
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
+
+    @field_validator("linkedin_url")
+    @classmethod
+    def validate_linkedin_url(cls, value: HttpUrl | None) -> HttpUrl | None:
+        if value is not None and value.host not in {"linkedin.com", "www.linkedin.com", "lnkd.in"}:
+            raise ValueError("LinkedIn URL must use linkedin.com or lnkd.in")
+        return value
 
 
 class RevisionResponse(BaseModel):

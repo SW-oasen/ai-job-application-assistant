@@ -28,6 +28,40 @@ MUST_MARKERS = re.compile(
     r"\b(muss|zwingend|erforderlich|required|must|mindestens)\b",
     re.IGNORECASE,
 )
+SENIORITY_PATTERN = re.compile(
+    r"(?P<qualifier>mindestens|min\.|at\s+least|minimum|mehr\s+als|mehr\s+als|over)?\s*"
+    r"(?P<years>\d+(?:[.,]\d+)?|ein|eine|einem|einen|zwei|drei|vier|fünf|fuenf|"
+    r"sechs|sieben|acht|neun|zehn|one|two|three|four|five|six|seven|eight|nine|ten)\s*"
+    r"(?:jahr(?:e|en)?|years?)\s*(?:of\s+)?"
+    r"(?:berufs?\s*|profession(?:al)?\s+)?(?:erfahrung|experience)",
+    re.IGNORECASE,
+)
+NUMBER_WORDS = {
+    "ein": 1.0,
+    "eine": 1.0,
+    "einem": 1.0,
+    "einen": 1.0,
+    "zwei": 2.0,
+    "drei": 3.0,
+    "vier": 4.0,
+    "fünf": 5.0,
+    "fuenf": 5.0,
+    "sechs": 6.0,
+    "sieben": 7.0,
+    "acht": 8.0,
+    "neun": 9.0,
+    "zehn": 10.0,
+    "one": 1.0,
+    "two": 2.0,
+    "three": 3.0,
+    "four": 4.0,
+    "five": 5.0,
+    "six": 6.0,
+    "seven": 7.0,
+    "eight": 8.0,
+    "nine": 9.0,
+    "ten": 10.0,
+}
 WORD_PATTERN = re.compile(r"[A-Za-zÄÖÜäöüß0-9+#.-]{3,}")
 STOP_WORDS = {
     "aber",
@@ -83,6 +117,26 @@ def _priority(value: str, heading: str) -> str:
     return "should"
 
 
+def _seniority_requirement(value: str, heading: str) -> dict | None:
+    match = SENIORITY_PATTERN.search(value)
+    if match is None:
+        return None
+    raw_years = match.group("years").casefold()
+    years = NUMBER_WORDS.get(raw_years)
+    if years is None:
+        years = float(raw_years.replace(",", "."))
+    years_text = f"{years:g}"
+    return {
+        "requirement": f"Mindestens {years_text} Jahre Berufserfahrung",
+        "category": "experience",
+        "priority": _priority(value, heading),
+        "keywords": ["Berufserfahrung", "years_experience"],
+        "normalized_value": f"min_years:{years:g}",
+        "confidence": 0.95,
+        "evidence": value,
+    }
+
+
 def extract_job_structure(content: str) -> ExtractedJobStructure:
     activities: list[dict] = []
     requirements: list[dict] = []
@@ -122,6 +176,29 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
                 }
             )
         else:
+            seniority = _seniority_requirement(text, heading)
+            if seniority is not None:
+                requirements.append(seniority)
+                residual = SENIORITY_PATTERN.sub("", text, count=1)
+                residual = re.sub(
+                    r"^\s*(?:with|of|in|and|oder|mit|sowie|für)\s+",
+                    "",
+                    residual,
+                    flags=re.IGNORECASE,
+                )
+                residual = _clean_item(residual)
+                if len(residual) >= 3:
+                    requirements.append(
+                        {
+                            "requirement": residual,
+                            "category": "other",
+                            "priority": _priority(text, heading),
+                            "keywords": _keywords(residual),
+                            "confidence": 0.8,
+                            "evidence": text,
+                        }
+                    )
+                continue
             requirements.append(
                 {
                     "requirement": text,

@@ -327,7 +327,7 @@
             <div class="requirement-body">
               <div class="requirement-meta"><span class="tag">${esc(humanize(match.priority))}</span><span class="tag">${esc(humanize(match.category))}</span></div>
               ${match.explanation?`<p><strong>Bewertung:</strong> ${esc(match.explanation)}</p>`:""}
-              ${match.evidence?`<p><strong>Evidenz:</strong> ${esc(match.evidence)}</p>`:""}
+              ${Array.isArray(match.evidence)&&match.evidence.length?`<div><strong>Evidenz:</strong>${match.evidence.map(item=>`<p>${esc(item.label||item.source_name||"Profilnachweis")}${item.experience_context?` (${esc(humanize(item.experience_context))})`:""}: ${esc(item.evidence_text||"")}</p>`).join("")}</div>`:""}
               ${match.gap?`<p><strong>Lücke:</strong> ${esc(match.gap)}</p>`:""}
               ${match.recommended_action?`<p><strong>Empfehlung:</strong> ${esc(match.recommended_action)}</p>`:""}
             </div>

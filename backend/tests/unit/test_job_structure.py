@@ -28,9 +28,11 @@ def test_extracts_activities_and_requirements_from_markdown_sections() -> None:
     ]
     assert [item["priority"] for item in result.requirements] == [
         "must",
+        "must",
         "nice_to_have",
     ]
-    assert "Python" in result.requirements[0]["keywords"]
+    assert result.requirements[0]["normalized_value"] == "min_years:3"
+    assert "Python" in result.requirements[1]["keywords"]
     assert all("Flexible Arbeitszeiten" not in str(item) for item in result.requirements)
 
 
@@ -45,3 +47,17 @@ def test_ignores_lists_outside_recognized_sections() -> None:
 
     assert result.activities == []
     assert result.requirements == []
+
+
+def test_extracts_seniority_as_separate_requirement() -> None:
+    result = extract_job_structure(
+        """
+## Das bringst du mit
+- Mindestens drei Jahre Erfahrung mit Python
+"""
+    )
+
+    assert result.requirements[0]["requirement"] == "Mindestens 3 Jahre Berufserfahrung"
+    assert result.requirements[0]["category"] == "experience"
+    assert result.requirements[0]["normalized_value"] == "min_years:3"
+    assert result.requirements[1]["requirement"] == "Python"

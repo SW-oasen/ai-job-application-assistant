@@ -6,11 +6,16 @@ Die Kernanwendung läuft unabhängig von Dify und MinerU: Dify übernimmt
 ausgewählte LLM-Workflows, MinerU dient als OCR- und Layout-Fallback für
 schwierige PDFs.
 
+## Warum dieses Projekt entstanden ist
+
+Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen bewerbe. Sie wird täglich im realen Bewerbungsprozess eingesetzt und kontinuierlich anhand praktischer Erfahrungen erweitert. Neue Funktionen entstehen aus konkreten Anforderungen während der Nutzung – beispielsweise die Browser-Bridge für den direkten Import von Stellenanzeigen oder die Verwaltung des Bewerbungsverlaufs inklusive Archivierung der tatsächlich versendeten Unterlagen.
+
 ## Funktionsumfang
 
 - kanonische deutsch- und englischsprachige Profilverwaltung
 - kontrollierter CV-Import mit Konflikt- und Duplikatprüfung
 - Jobimport per URL, PDF oder HTML/SingleFile
+- Ein-Klick-Jobimport über ein Browser-Lesezeichen für komplexe Jobportale wie Indeed
 - PDF-Reimport unter Beibehaltung von Job-ID und Bewerbungsdaten
 - editierbare Job-Metadaten und persistente Jobliste
 - regelbasierte und optional semantische Metadatenextraktion mit Fundstellen
@@ -41,6 +46,7 @@ Dokumente gehören nicht in das Repository.
 |---|---|
 | Bewerbungsdashboard | `http://localhost:8080/` |
 | Zentralverwaltung und Jobimport | `http://localhost:8080/manage` |
+| Browser-Bridge für Ein-Klick-Jobimport | `http://localhost:8080/browser-import` |
 | Jobübersicht | `http://localhost:8080/jobs` |
 | Profilverwaltung und CV-Import | `http://localhost:8080/profiles/admin` |
 | Matching | `http://localhost:8080/matching/admin` |
@@ -85,16 +91,21 @@ ausgeführt.
 
 ## Bedienungsablauf
 
-1. Profil anlegen oder auswählen.
+1. Profil über den Tab `Profil` in der Profilverwaltung anlegen oder
+   auswählen.
 2. Profildaten manuell pflegen oder eine CV-PDF als prüfbare Vorschläge
    importieren.
 3. Vorschläge und mögliche Konflikte bewusst prüfen.
 4. Stellenanzeige per URL, PDF oder HTML importieren.
-5. Erkannte Metadaten kontrollieren und gegebenenfalls bearbeiten.
-6. Matching für das gewünschte Profil ausführen.
-7. Bewerbungsstatus, Kommunikationsweg und Verlauf pflegen.
-8. Tatsächlich versendete Unterlagen am Bewerbungsdatensatz archivieren.
-9. Offene Stellen und Bewerbungen im Dashboard filtern oder durchsuchen.
+5. Alternativ das Browser-Lesezeichen unter `/browser-import` einrichten und
+   eine geöffnete Stellenanzeige mit einem Klick an die lokale Anwendung senden.
+   Auch komplexe Seiten wie Indeed werden dabei automatisch in strukturierte
+   Jobdaten umgewandelt.
+6. Erkannte Metadaten kontrollieren und gegebenenfalls bearbeiten.
+7. Matching für das gewünschte Profil ausführen.
+8. Bewerbungsstatus, Kommunikationsweg und Verlauf pflegen.
+9. Tatsächlich versendete Unterlagen am Bewerbungsdatensatz archivieren.
+10. Offene Stellen und Bewerbungen im Dashboard filtern oder durchsuchen.
 
 Ein Import wird nur gespeichert, wenn ausreichend verwertbarer Inhalt
 vorliegt. CV-Importe überschreiben das kanonische Profil niemals automatisch.

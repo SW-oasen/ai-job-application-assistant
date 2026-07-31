@@ -111,6 +111,73 @@ def test_qualification_fit_without_requirements_is_unknown() -> None:
     assert result["level"] == "unknown"
 
 
+def test_seniority_requirement_matches_skill_years() -> None:
+    result = _evaluate(
+        "seniority-1",
+        "Mindestens 3 Jahre Berufserfahrung",
+        set(),
+        [
+            StoredEvidence(
+                evidence_id="skill-1",
+                item=EvidenceInput(
+                    source_name="profile:skill:1",
+                    source_type="manual",
+                    source_content='{"canonical_name":"Python","years_experience":4}',
+                    label="Python",
+                    evidence_text="Skill: Python; Jahre: 4",
+                    experience_context="other",
+                    keywords=["Python"],
+                ),
+            )
+        ],
+        category="experience",
+        normalized_value="min_years:3",
+    )
+
+    assert result.match_level == "strong_match"
+    assert "4 Jahre" in result.explanation
+
+
+def test_seniority_requirement_reports_gap_for_insufficient_skill_years() -> None:
+    result = _evaluate(
+        "seniority-2",
+        "Mindestens 5 Jahre Berufserfahrung",
+        set(),
+        [
+            StoredEvidence(
+                evidence_id="skill-2",
+                item=EvidenceInput(
+                    source_name="profile:skill:2",
+                    source_type="manual",
+                    source_content='{"canonical_name":"Python","years_experience":2}',
+                    label="Python",
+                    evidence_text="Skill: Python; Jahre: 2",
+                    experience_context="other",
+                    keywords=["Python"],
+                ),
+            )
+        ],
+        category="experience",
+        normalized_value="min_years:5",
+    )
+
+    assert result.match_level == "gap"
+    assert "2 Jahre" in result.explanation
+
+
+def test_seniority_requirement_is_detected_in_english_legacy_text() -> None:
+    result = _evaluate(
+        "seniority-3",
+        "5+ years of professional experience",
+        set(),
+        [],
+        category="experience",
+    )
+
+    assert result.match_level == "unknown"
+    assert "Erfahrungsjahre" in result.recommended_action
+
+
 def test_matching_recommendation_encourages_two_strong_fits_without_must_gaps() -> None:
     recommendation = _matching_recommendation(
         {
