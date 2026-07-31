@@ -64,6 +64,13 @@ class HtmlImportResponse(BaseModel):
     duplicate: bool = False
 
 
+class BrowserCaptureRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_url: str = Field(min_length=1, max_length=2048)
+    html: str = Field(min_length=20)
+
+
 class JobReimportResponse(BaseModel):
     success: bool = True
     job_id: UUID

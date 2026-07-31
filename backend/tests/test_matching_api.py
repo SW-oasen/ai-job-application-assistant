@@ -63,8 +63,9 @@ def test_matching_admin_page_is_readable(client) -> None:
 def test_matching_jobs_uses_service(client, monkeypatch) -> None:
     job_id = uuid4()
 
-    async def fake_jobs(profile_id=None):
+    async def fake_jobs(profile_id=None, *, include_archived=False):
         assert profile_id is None
+        assert include_archived is False
         return [{"id": str(job_id), "title": "AI Engineer"}]
 
     monkeypatch.setattr("app.api.routes.matching.list_matching_jobs", fake_jobs)
@@ -72,6 +73,43 @@ def test_matching_jobs_uses_service(client, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json() == [{"id": str(job_id), "title": "AI Engineer"}]
+
+
+def test_matching_jobs_can_include_archive(client, monkeypatch) -> None:
+    async def fake_jobs(profile_id=None, *, include_archived=False):
+        assert profile_id is None
+        assert include_archived is True
+        return []
+
+    monkeypatch.setattr("app.api.routes.matching.list_matching_jobs", fake_jobs)
+    response = client.get("/matching/jobs?include_archived=true")
+
+    assert response.status_code == 200
+
+
+def test_archive_and_restore_job_use_services(client, monkeypatch) -> None:
+    job_id = uuid4()
+
+    async def fake_archive(received_job_id, reason):
+        assert received_job_id == job_id
+        assert reason == "Geringer Ziel-Fit"
+        return {"id": str(job_id), "archive_reason": reason}
+
+    async def fake_restore(received_job_id):
+        assert received_job_id == job_id
+        return {"id": str(job_id), "archived_at": None}
+
+    monkeypatch.setattr("app.api.routes.matching.archive_matching_job", fake_archive)
+    monkeypatch.setattr("app.api.routes.matching.restore_matching_job", fake_restore)
+    archived = client.post(
+        f"/matching/jobs/{job_id}/archive",
+        json={"reason": "Geringer Ziel-Fit"},
+    )
+    restored = client.post(f"/matching/jobs/{job_id}/restore")
+
+    assert archived.status_code == 200
+    assert archived.json()["archive_reason"] == "Geringer Ziel-Fit"
+    assert restored.status_code == 200
 
 
 def test_matching_job_detail_uses_service(client, monkeypatch) -> None:

@@ -62,6 +62,7 @@ def detect_job_language(content: str) -> str | None:
 def _clean_line(line: str) -> str:
     value = re.sub(r"^\s*>\s?", "", line).strip()
     value = re.sub(r"^\s*[-*]\s+", "", value)
+    value = re.sub(r"^:\s*", "", value)
     value = re.sub(r"^(?:!\[[^\]]*\]\([^)]+\)\s*)+", "", value).strip()
     markdown_link = re.fullmatch(r"\[([^\]]+)\]\([^)]+\)", value)
     return markdown_link.group(1).strip() if markdown_link else value
@@ -209,8 +210,37 @@ def _compact_header_metadata(content: str) -> dict[str, str | None]:
     return {"title": None, "company": None, "location": None, "work_model": None}
 
 
+def _split_employment_contract(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    employment_parts: list[str] = []
+    contract_parts: list[str] = []
+    for part in re.split(r"\s*[,;|]\s*", value):
+        if re.search(
+            r"\b(?:unbefristet|befristet|permanent|fixed[- ]term|temporary)\b",
+            part,
+            re.IGNORECASE,
+        ):
+            contract_parts.append(part.strip())
+        elif part.strip():
+            employment_parts.append(part.strip())
+    return (
+        ", ".join(employment_parts) or None,
+        ", ".join(contract_parts) or None,
+    )
+
+
 def _company_below_main_title(content: str) -> str | None:
     lines = content.splitlines()
+    non_company_values = {
+        "apply",
+        "apply now",
+        "bewerben",
+        "jetzt bewerben",
+        "kontakt",
+        "contact",
+        "info",
+    }
     for index, line in enumerate(lines):
         if not re.match(r"^\s*(?:>\s*)?#\s+\S", line):
             continue
@@ -220,6 +250,8 @@ def _company_below_main_title(content: str) -> str | None:
                 continue
             if value.startswith("#") or value == "&nbsp;":
                 break
+            if _normalized_heading(value) in non_company_values:
+                continue
             if len(value) <= 200 and not re.match(r"^(https?://|www\.)", value):
                 return value
         break
@@ -344,6 +376,16 @@ def extract_job_metadata(
                 ),
             ),
         )
+    employment_type, inferred_contract_term = _split_employment_contract(
+        employment_type
+    )
+    contract_term = _inline_value(
+        content,
+        {"befristung", "vertragsdauer", "contract term", "contract duration"},
+    ) or _section_value(
+        content,
+        {"befristung", "vertragsdauer", "contract term", "contract duration"},
+    )
     return {
         "title": _clean_title(
             instaffo.get("title") or compact["title"] or plain_title
@@ -352,13 +394,7 @@ def extract_job_metadata(
         "published_text": first_metadata_match(content, PUBLISHED_TEXT_PATTERNS),
         "location": location,
         "employment_type": employment_type,
-        "contract_term": _inline_value(
-            content,
-            {"befristung", "vertragsdauer", "contract term", "contract duration"},
-        ) or _section_value(
-            content,
-            {"befristung", "vertragsdauer", "contract term", "contract duration"},
-        ),
+        "contract_term": contract_term or inferred_contract_term,
         "work_model": work_model or compact["work_model"],
         "source_portal": _source_portal(
             source_filename=source_filename,

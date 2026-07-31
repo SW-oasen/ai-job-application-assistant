@@ -5,6 +5,7 @@ from app.database.repositories.jobs import (
     get_stored_job_source,
     persist_imported_job,
 )
+from app.parsers.job_structure import extract_job_structure
 from app.schemas.imports import JobReimportResponse, UrlImportRequest
 from app.services.semantic_metadata_service import enrich_job_metadata
 from app.services.url_import_service import import_url
@@ -56,6 +57,7 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         source_filename=source.source_filename,
         source_url=source.source_url,
     )
+    structure = extract_job_structure(source.normalized_content)
     warnings = [
         warning
         for warning in source.import_warnings
@@ -75,11 +77,13 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         retrieval_method=source.retrieval_method,
         warnings=warnings,
         metadata_override=semantic.metadata,
-        extracted_json=(
-            {"semantic_metadata": semantic.details}
-            if semantic.details
-            else None
-        ),
+        extracted_json={
+            "semantic_metadata": semantic.details,
+            "activities": structure.activities,
+            "requirements": structure.requirements,
+        },
+        activities=structure.activities,
+        requirements=structure.requirements,
         replace_existing=True,
         replace_job_id=job_id,
     )

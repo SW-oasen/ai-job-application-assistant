@@ -7,7 +7,7 @@ versionierten Workflow-DSLs des Application Assistant.
 |---|---|
 | `00-import_cv_pdf.yml` | CV-PDF extrahieren und prüfbare Profilvorschläge speichern |
 | `01-import-job-url-v3.yml` | öffentliche Stellen-URL importieren und validieren |
-| `02-matching-v3.yml` | Jobanforderungen extrahieren und evidenzbasiert bewerten |
+| `02-matching-v4.yml` | Jobanforderungen aus dem gespeicherten Job übernehmen oder extrahieren und evidenzbasiert bewerten |
 | `03-job-metadata-fallback-v1.yml` | fehlende oder unplausible Metadaten ergänzen |
 
 Lokale Sicherungen älterer Workflows unter `workflow/backup` sind ignoriert
@@ -75,15 +75,16 @@ kein Matching aus.
 
 ## Matching
 
-`02-matching-v3.yml` erwartet:
+`02-matching-v4.yml` erwartet:
 
 - `job_id`
 - `profile_id`
 
-Der Workflow lädt den gespeicherten Jobtext aus dem Backend, extrahiert
-strukturierte Anforderungen und übergibt sie an `/matching/evaluate`. Das
-Backend erzeugt Evidenz aus kanonischen Skills, Berufserfahrung, Ausbildung
-und Zertifikaten.
+Der Workflow lädt den gespeicherten Job aus dem Backend. Wenn dort bereits
+strukturierte Anforderungen vorliegen, werden sie bevorzugt verwendet;
+andernfalls extrahiert der Workflow sie aus dem Jobtext und übergibt sie an
+`/matching/evaluate`. Das Backend erzeugt Evidenz aus kanonischen Skills,
+Berufserfahrung, Ausbildung und Zertifikaten.
 
 Referenzen und Kontaktdaten werden nicht als Matching-Evidenz ausgegeben.
 Berufliche, schulische, projektbezogene und Trainingskontexte bleiben

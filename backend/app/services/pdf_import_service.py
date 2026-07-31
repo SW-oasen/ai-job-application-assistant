@@ -15,6 +15,7 @@ from app.importers.pdf_importer import (
     pdf_text_is_sufficient,
     rasterize_pdf,
 )
+from app.parsers.job_structure import extract_job_structure
 from app.schemas.imports import PdfImportResponse
 from app.services.semantic_metadata_service import enrich_job_metadata
 
@@ -119,6 +120,7 @@ async def _persist_response(
         response.markdown,
         source_filename=response.filename,
     )
+    structure = extract_job_structure(response.markdown)
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -134,11 +136,13 @@ async def _persist_response(
         warnings=response.warnings,
         replace_existing=replace_existing,
         metadata_override=semantic.metadata,
-        extracted_json=(
-            {"semantic_metadata": semantic.details}
-            if semantic.details
-            else None
-        ),
+        extracted_json={
+            "semantic_metadata": semantic.details,
+            "activities": structure.activities,
+            "requirements": structure.requirements,
+        },
+        activities=structure.activities,
+        requirements=structure.requirements,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate

@@ -29,6 +29,18 @@ We offer employees the opportunity to work flexibly and remotely.
     }
 
 
+def test_splits_definition_list_employment_type_and_contract_term() -> None:
+    metadata = extract_job_metadata(
+        """
+Beschäftigungsart
+:   Vollzeit, unbefristet
+"""
+    )
+
+    assert metadata["employment_type"] == "Vollzeit"
+    assert metadata["contract_term"] == "unbefristet"
+
+
 def test_detects_english_job_description_language() -> None:
     metadata = extract_job_metadata(
         """
@@ -225,6 +237,29 @@ Company entwickelt innovative Software- und KI-Lösungen.
         source_filename=(
             "Junior_Software_Engineer_m_f_d_AI_and_Data_Systems"
             "_-_Berlin_-_Indeed.com.pdf"
+        ),
+    )
+
+    assert metadata["company"] == "Munich Innovation Labs GmbH"
+
+
+def test_skips_apply_cta_and_extracts_company_from_career_page_prose() -> None:
+    metadata = extract_job_metadata(
+        """
+# Junior Projektmanager (m/f/d) AI and Data Systems
+
+[Jetzt bewerben](https://job.rohde-schwarz.com/apply)
+
+Kontakt
+
+### Einleitung
+
+Die Munich Innovation Labs GmbH – A Rohde & Schwarz Company entwickelt
+innovative Software- und KI-Lösungen.
+""",
+        source_url=(
+            "https://www.rohde-schwarz.com/de/karriere/stellenangebote/"
+            "junior-projektmanager.html"
         ),
     )
 

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Stelle importieren</title>
+  <style>
+    :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa}body{margin:0;padding:28px}.panel{max-width:520px;margin:auto;background:#fff;border:1px solid #dce3eb;border-radius:13px;padding:23px}h1{font-size:22px;margin-top:0}.status{line-height:1.5}.error{color:#b42318}.success{color:#087443}.button{display:inline-block;margin-top:10px;padding:9px 13px;border-radius:8px;background:#155eef;color:#fff;text-decoration:none;font-weight:700}
+  </style>
+</head>
+<body><main class="panel"><h1>Stelle importieren</h1><p class="status" id="status">Warte auf die geöffnete Stellenanzeige …</p><div id="result"></div></main>
+<script>
+  const status=document.getElementById("status"),result=document.getElementById("result");
+  let handled=false;
+  function allowedCapture(event){
+    try{
+      const source=new URL(event.data?.source_url),sender=new URL(event.origin);
+      return ["http:","https:"].includes(source.protocol)&&source.origin===sender.origin&&!["localhost","127.0.0.1","::1"].includes(source.hostname);
+    }catch{return false}
+  }
+  window.addEventListener("message",async event=>{
+    if(handled||event.data?.type!=="application-assistant-capture"||!allowedCapture(event))return;
+    handled=true;
+    status.textContent="Stellenanzeige wird verarbeitet …";
+    try{
+      const response=await fetch("/imports/browser-capture",{method:"POST",headers:{"Content-Type":"application/json","X-Browser-Capture":"receiver-v1"},body:JSON.stringify({source_url:event.data.source_url,html:event.data.html})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error?.message||`HTTP ${response.status}`);
+      if(!data.success||!data.job_id)throw new Error(`Inhalt nicht ausreichend: ${(data.warnings||[]).join(", ")||"keine verwertbare Stellenanzeige"}`);
+      status.className="status success";
+      status.textContent=data.duplicate?"Diese Stelle war bereits gespeichert.":"Stelle erfolgreich importiert.";
+      result.innerHTML=`<a class="button" href="/jobs/${encodeURIComponent(data.job_id)}">Jobdetails öffnen</a>`;
+    }catch(error){
+      status.className="status error";
+      status.textContent=`Import fehlgeschlagen: ${error.message}`;
+      handled=false;
+    }
+  });
+  if(window.opener)window.opener.postMessage({type:"application-assistant-ready"},"*");
+  else{status.className="status error";status.textContent="Dieses Fenster muss über das Lesezeichen „Stelle importieren“ geöffnet werden."}
+</script>
+</body>
+</html>

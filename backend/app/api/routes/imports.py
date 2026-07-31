@@ -1,16 +1,20 @@
+import ipaddress
+from pathlib import PurePath
+from urllib.parse import urlparse
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Header, UploadFile
 
 from app.core.errors import ApplicationError
 from app.schemas.imports import (
+    BrowserCaptureRequest,
     HtmlImportResponse,
     JobReimportResponse,
     PdfImportResponse,
     UrlImportRequest,
     UrlImportResponse,
 )
-from app.services.html_import_service import import_html
+from app.services.html_import_service import import_html, import_html_content
 from app.services.job_reimport_service import reimport_job
 from app.services.pdf_import_service import import_pdf
 from app.services.url_import_service import import_url
@@ -23,6 +27,24 @@ CONTROLLED_URL_IMPORT_ERRORS = {
     "source_http_error",
     "source_unavailable",
 }
+
+
+def _is_public_browser_source(source_url: str) -> bool:
+    parsed = urlparse(source_url)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not host
+        or parsed.username
+        or parsed.password
+        or host == "localhost"
+        or host.endswith((".localhost", ".local", ".internal"))
+    ):
+        return False
+    try:
+        return ipaddress.ip_address(host).is_global
+    except ValueError:
+        return True
 
 
 @router.post("/jobs/{job_id}/reimport", response_model=JobReimportResponse)
@@ -76,3 +98,30 @@ async def import_job_pdf(
 @router.post("/html", response_model=HtmlImportResponse)
 async def import_job_html(file: UploadFile = File(...)) -> HtmlImportResponse:
     return await import_html(file)
+
+
+@router.post("/browser-capture", response_model=HtmlImportResponse)
+async def import_browser_capture(
+    payload: BrowserCaptureRequest,
+    x_browser_capture: str | None = Header(default=None),
+) -> HtmlImportResponse:
+    if x_browser_capture != "receiver-v1":
+        raise ApplicationError(
+            "Browser capture must be submitted by the local receiver page.",
+            code="browser_capture_forbidden",
+            status_code=403,
+        )
+    parsed = urlparse(payload.source_url)
+    if not _is_public_browser_source(payload.source_url):
+        raise ApplicationError(
+            "This website is not enabled for browser capture.",
+            code="browser_capture_source_forbidden",
+            status_code=422,
+        )
+    filename = PurePath(parsed.path).name or f"{parsed.hostname}-job"
+    return await import_html_content(
+        payload.html,
+        filename=f"{filename}.html",
+        source_url=payload.source_url,
+        retrieval_method="browser_capture",
+    )

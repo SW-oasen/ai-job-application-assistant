@@ -5,6 +5,7 @@ from fastapi import APIRouter, Response
 from fastapi.responses import FileResponse
 
 from app.schemas.matching import (
+    JobArchiveRequest,
     JobMetadataUpdate,
     MatchingContextResponse,
     MatchingRequest,
@@ -13,6 +14,7 @@ from app.schemas.matching import (
 )
 from app.services.dify_matching_service import run_matching_workflow
 from app.services.matching_service import (
+    archive_matching_job,
     delete_matching_job,
     evaluate_matching,
     get_matching_context,
@@ -20,6 +22,7 @@ from app.services.matching_service import (
     get_stored_matching,
     get_target_fit,
     list_matching_jobs,
+    restore_matching_job,
     update_job_metadata,
 )
 
@@ -33,8 +36,11 @@ async def matching_admin() -> FileResponse:
 
 
 @router.get("/jobs")
-async def matching_jobs(profile_id: UUID | None = None) -> list[dict]:
-    return await list_matching_jobs(profile_id)
+async def matching_jobs(
+    profile_id: UUID | None = None,
+    include_archived: bool = False,
+) -> list[dict]:
+    return await list_matching_jobs(profile_id, include_archived=include_archived)
 
 
 @router.get("/jobs/{job_id}")
@@ -45,6 +51,16 @@ async def matching_job(job_id: UUID) -> dict:
 @router.patch("/jobs/{job_id}/metadata")
 async def edit_job_metadata(job_id: UUID, payload: JobMetadataUpdate) -> dict:
     return await update_job_metadata(job_id, payload)
+
+
+@router.post("/jobs/{job_id}/archive")
+async def archive_job(job_id: UUID, payload: JobArchiveRequest) -> dict:
+    return await archive_matching_job(job_id, payload.reason)
+
+
+@router.post("/jobs/{job_id}/restore")
+async def restore_job(job_id: UUID) -> dict:
+    return await restore_matching_job(job_id)
 
 
 @router.delete("/jobs/{job_id}", status_code=204)

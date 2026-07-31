@@ -23,6 +23,12 @@ class JobMetadataUpdate(BaseModel):
     deadline: date | None = None
 
 
+class JobArchiveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
 class RequirementInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

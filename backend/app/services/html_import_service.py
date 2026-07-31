@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.database.repositories.jobs import persist_imported_job
 from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_structure import extract_job_structure
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import HtmlImportResponse
 from app.services.semantic_metadata_service import enrich_job_metadata
@@ -40,7 +41,30 @@ async def import_html(file: UploadFile) -> HtmlImportResponse:
             details={"max_bytes": settings.html_import_max_bytes},
         )
 
-    html = _decode_html(content)
+    return await import_html_content(
+        _decode_html(content),
+        filename=filename,
+        content_hash=hashlib.sha256(content).hexdigest(),
+    )
+
+
+async def import_html_content(
+    html: str,
+    *,
+    filename: str,
+    source_url: str | None = None,
+    content_hash: str | None = None,
+    retrieval_method: str = "native_html",
+) -> HtmlImportResponse:
+    settings = get_settings()
+    encoded = html.encode("utf-8")
+    if len(encoded) > settings.html_import_max_bytes:
+        raise ApplicationError(
+            "The HTML document exceeds the maximum allowed size.",
+            code="file_too_large",
+            status_code=413,
+            details={"max_bytes": settings.html_import_max_bytes},
+        )
     if "<html" not in html[:10_000].lower() and "<!doctype html" not in html[:10_000].lower():
         raise ApplicationError(
             "The uploaded file is not recognizable HTML.",
@@ -60,7 +84,7 @@ async def import_html(file: UploadFile) -> HtmlImportResponse:
         title=document.title,
         markdown=document.markdown,
         text_length=quality.text_length,
-        content_hash=hashlib.sha256(content).hexdigest(),
+        content_hash=content_hash or hashlib.sha256(encoded).hexdigest(),
         warnings=quality.warnings,
     )
     if not quality.sufficient:
@@ -68,27 +92,31 @@ async def import_html(file: UploadFile) -> HtmlImportResponse:
 
     semantic = await enrich_job_metadata(
         document.markdown,
+        source_url=source_url,
         source_filename=filename,
     )
+    structure = extract_job_structure(document.markdown)
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
     persisted = await persist_imported_job(
         source_type="html",
-        source_url=None,
+        source_url=source_url,
         source_filename=filename,
         title=document.title,
         raw_content=html,
         normalized_content=document.markdown,
         content_hash=response.content_hash,
-        retrieval_method="native_html",
+        retrieval_method=retrieval_method,
         warnings=response.warnings,
         metadata_override=semantic.metadata,
-        extracted_json=(
-            {"semantic_metadata": semantic.details}
-            if semantic.details
-            else None
-        ),
+        extracted_json={
+            "semantic_metadata": semantic.details,
+            "activities": structure.activities,
+            "requirements": structure.requirements,
+        },
+        activities=structure.activities,
+        requirements=structure.requirements,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate

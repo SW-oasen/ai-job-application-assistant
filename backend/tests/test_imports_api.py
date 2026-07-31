@@ -1,5 +1,6 @@
 from app.core.errors import ApplicationError
 from app.schemas.imports import (
+    HtmlImportResponse,
     JobReimportResponse,
     PdfImportResponse,
     UrlImportResponse,
@@ -153,3 +154,79 @@ def test_html_import_rejects_non_html(client) -> None:
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_html"
+
+
+def test_browser_capture_imports_rendered_public_job_page(client, monkeypatch) -> None:
+    captured = {}
+
+    async def fake_import(html, **kwargs):
+        captured["html"] = html
+        captured.update(kwargs)
+        return HtmlImportResponse(
+            success=True,
+            filename="viewjob.html",
+            title="Data Analyst",
+            markdown="Data Analyst",
+            text_length=12,
+            content_hash="a" * 64,
+            warnings=[],
+            job_id="91e5c97c-9102-422d-be19-9c14c82ea81d",
+        )
+
+    monkeypatch.setattr(
+        "app.api.routes.imports.import_html_content",
+        fake_import,
+    )
+    response = client.post(
+        "/imports/browser-capture",
+        headers={"X-Browser-Capture": "receiver-v1"},
+        json={
+            "source_url": "https://careers.example.com/jobs/data-analyst",
+            "html": "<!doctype html><html><body>Data Analyst</body></html>",
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["source_url"] == "https://careers.example.com/jobs/data-analyst"
+    assert captured["retrieval_method"] == "browser_capture"
+
+
+def test_browser_capture_rejects_missing_receiver_header(client) -> None:
+    response = client.post(
+        "/imports/browser-capture",
+        json={
+            "source_url": "https://de.indeed.com/viewjob?jk=abc",
+            "html": "<!doctype html><html><body>Data Analyst</body></html>",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "browser_capture_forbidden"
+
+
+def test_browser_capture_rejects_local_source(client) -> None:
+    response = client.post(
+        "/imports/browser-capture",
+        headers={"X-Browser-Capture": "receiver-v1"},
+        json={
+            "source_url": "http://127.0.0.1:9000/job",
+            "html": "<!doctype html><html><body>Data Analyst</body></html>",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "browser_capture_source_forbidden"
+
+
+def test_browser_capture_rejects_non_http_source(client) -> None:
+    response = client.post(
+        "/imports/browser-capture",
+        headers={"X-Browser-Capture": "receiver-v1"},
+        json={
+            "source_url": "file:///tmp/job.html",
+            "html": "<!doctype html><html><body>Data Analyst</body></html>",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "browser_capture_source_forbidden"

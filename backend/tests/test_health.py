@@ -22,14 +22,18 @@ def test_home_page(client) -> None:
 
     assert response.status_code == 200
     assert "Bewerbungsdashboard" in response.text
+    assert 'href="/manage">Verwaltung</a>' in response.text
+    assert 'href="/matching/admin"' not in response.text
 
 
 def test_manage_page(client) -> None:
     response = client.get("/manage")
 
     assert response.status_code == 200
-    assert "Zentralverwaltung" in response.text
+    assert "Verwaltung" in response.text
+    assert "Jobs und Bewerbungen" in response.text
     assert "Datei-Fallback" in response.text
+    assert 'href="/browser-import"' in response.text
     assert "sourceName" not in response.text
     assert "importiert" in response.text
 
@@ -39,6 +43,7 @@ def test_job_detail_page(client) -> None:
 
     assert response.status_code == 200
     assert "Jobdetails" in response.text
+    assert 'id="archiveJob"' in response.text
     assert "Matching" in response.text
     assert '<details class="inline-editor" id="applicationEditor">' in response.text
     assert "Verlauf und Unterlagen bearbeiten" in response.text
@@ -63,3 +68,21 @@ def test_jobs_page(client) -> None:
     assert "Jobs und Bewerbungen" in response.text
     assert "sourceName" not in response.text
     assert "importiert" in response.text
+
+
+def test_browser_import_setup_page(client) -> None:
+    response = client.get("/browser-import")
+
+    assert response.status_code == 200
+    assert "Browser-Import einrichten" in response.text
+    assert "javascript:" in response.text
+    assert "/browser-import/receive" in response.text
+    assert "beliebigen öffentlichen Jobportal" in response.text
+
+
+def test_browser_import_receiver_page(client) -> None:
+    response = client.get("/browser-import/receive")
+
+    assert response.status_code == 200
+    assert "application-assistant-ready" in response.text
+    assert 'fetch("/imports/browser-capture"' in response.text

@@ -40,7 +40,9 @@
     .brand h1 { margin: 0; font-size: 25px; line-height: 1.2; }
     .brand p { margin: 5px 0 0; color: #c9d4e4; font-size: 13px; }
     .profile-picker { display: flex; align-items: center; gap: 8px; }
-    .home-link { color:#fff; white-space:nowrap; text-underline-offset:3px; }
+    .home-link { color:#d8e2f0; white-space:nowrap; text-decoration:none; padding:7px 8px; border-radius:7px; }
+    .home-link:hover,.home-link.active { color:#fff; background:#ffffff18; }
+    .home-link.active { font-weight:750; }
     .link-separator { width: 1px; height: 18px; margin: 0 5px; background: #536176; }
     .text-action {
       border: 0;
@@ -254,7 +256,8 @@
     <div class="profile-picker">
       <select id="profileSelect" aria-label="Profil auswählen"></select>
       <a class="home-link" href="/">Dashboard</a>
-      <a class="home-link" href="/manage">Zentralverwaltung</a>
+      <a class="home-link" href="/jobs">Jobs und Bewerbungen</a>
+      <a class="home-link active" aria-current="page" href="/manage">Verwaltung</a>
       <span class="link-separator" aria-hidden="true"></span>
       <button class="text-action" id="editProfile">Profil bearbeiten</button>
       <button class="text-action" id="newProfile">Neues Profil</button>

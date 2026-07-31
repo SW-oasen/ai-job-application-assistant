@@ -65,6 +65,8 @@ class Job(Base):
     contract_term: Mapped[str | None] = mapped_column(String(200))
     language: Mapped[str | None] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(30), default="analyzing")
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archive_reason: Mapped[str | None] = mapped_column(String(500))
     published_at: Mapped[date | None] = mapped_column(Date)
     deadline: Mapped[date | None] = mapped_column(Date)
     imported_at: Mapped[datetime] = mapped_column(
@@ -81,6 +83,10 @@ class Job(Base):
 
     company: Mapped[Company | None] = relationship(back_populates="jobs")
     requirements: Mapped[list["JobRequirement"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    activities: Mapped[list["JobActivity"]] = relationship(
         back_populates="job",
         cascade="all, delete-orphan",
     )
@@ -108,6 +114,24 @@ class JobRequirement(Base):
         back_populates="job_requirement",
         cascade="all, delete-orphan",
     )
+
+
+class JobActivity(Base):
+    __tablename__ = "job_activities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        index=True,
+    )
+    activity_text: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(100), default="responsibility")
+    evidence: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    keywords: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+    job: Mapped[Job] = relationship(back_populates="activities")
 
 
 class Application(TimestampMixin, Base):

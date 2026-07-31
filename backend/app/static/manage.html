@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Application Assistant · Zentralverwaltung</title>
+  <title>Application Assistant · Verwaltung</title>
   <style>
     :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#155eef;--line:#dce3eb;--muted:#647084}
     *{box-sizing:border-box}body{margin:0}header{display:flex;justify-content:space-between;align-items:center;gap:20px;background:#132033;color:#fff;padding:28px max(22px,calc((100% - 1180px)/2))}
-    header h1{margin:0 0 5px;font-size:27px}header p{margin:0;color:#c9d4e4}.header-actions{display:flex;gap:16px;flex-wrap:wrap}.nav-link{color:#fff;text-underline-offset:3px}main{max-width:1180px;margin:auto;padding:26px 22px 60px}
-    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:22px}.step,.panel{background:#fff;border:1px solid var(--line);border-radius:13px}
+    header h1{margin:0 0 5px;font-size:27px}header p{margin:0;color:#c9d4e4}.header-actions{display:flex;gap:8px;flex-wrap:wrap}.nav-link{color:#d8e2f0;text-decoration:none;padding:8px 10px;border-radius:7px}.nav-link:hover,.nav-link.active{color:#fff;background:#ffffff18}.nav-link.active{font-weight:750}main{max-width:1180px;margin:auto;padding:26px 22px 60px}
+    .section-heading{margin:0 0 14px}.section-heading h2{margin:0 0 4px;font-size:20px}.section-heading p{margin:0;color:var(--muted);font-size:14px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;margin-bottom:26px}.step,.panel{background:#fff;border:1px solid var(--line);border-radius:13px}
     .step{min-height:116px;padding:17px;color:inherit;text-decoration:none}.step:not(.disabled):hover{border-color:#9bb9f5;box-shadow:0 4px 16px #20304a12}
     .step small{color:var(--blue);font-weight:750;text-transform:uppercase}.step h2{font-size:17px;margin:7px 0 5px}.step p,.panel>p{color:var(--muted);margin:0;line-height:1.45;font-size:13px}
     .step.disabled{background:#f0f2f5;color:#7a8492}.step.disabled small{color:#7a8492}.panel+.panel{margin-top:18px}
@@ -24,18 +24,21 @@
 </head>
 <body>
 <header>
-  <div><h1>Zentralverwaltung</h1><p>Profile pflegen, Stellen erfassen und belegbar abgleichen.</p></div>
-  <div class="header-actions"><a class="nav-link" href="/">Dashboard</a></div>
+  <div><h1>Verwaltung</h1><p>Profile, Stellen, Bewerbungen und Werkzeuge zentral verwalten.</p></div>
+  <nav class="header-actions" aria-label="Hauptnavigation"><a class="nav-link" href="/">Dashboard</a><a class="nav-link" href="/jobs">Jobs und Bewerbungen</a><a class="nav-link active" aria-current="page" href="/manage">Verwaltung</a></nav>
 </header>
 <main>
+  <div class="section-heading"><h2>Arbeitsbereiche</h2><p>Stammdaten, Stellen und unterstützende Werkzeuge verwalten.</p></div>
   <nav class="steps">
-    <a class="step" href="/profiles/admin"><small>Schritt 1</small><h2>Profilverwaltung</h2><p>Profil und Erfahrungen bearbeiten sowie CV importieren.</p></a>
-    <a class="step" href="#job-import"><small>Schritt 2</small><h2>Job importieren</h2><p>URL verwenden oder auf PDF ausweichen.</p></a>
-    <a class="step" href="/matching/admin"><small>Schritt 3</small><h2>Matching</h2><p>Anforderungen mit Profilnachweisen vergleichen.</p></a>
-    <div class="step disabled"><small>Schritt 4 · in Überarbeitung</small><h2>CV &amp; Anschreiben</h2><p>Wird nach den neuen Vorgaben neu gestaltet.</p></div>
+    <a class="step" href="/profiles/admin"><small>Stammdaten</small><h2>Profil und Portfolio</h2><p>Ziele, Erfahrungen, Skills, Ausbildung und Projekte pflegen.</p></a>
+    <a class="step" href="/jobs"><small>Arbeitsbestand</small><h2>Jobs und Bewerbungen</h2><p>Aktive und archivierte Stellen sowie Bewerbungsverläufe ansehen.</p></a>
+    <a class="step" href="#job-import"><small>Erfassung</small><h2>Stellen importieren</h2><p>Browser-Import, URL oder gespeicherte Datei verwenden.</p></a>
+    <a class="step" href="/matching/admin"><small>Werkzeug</small><h2>Matching vergleichen</h2><p>Gespeicherte Auswertungen stellen- und profilübergreifend prüfen.</p></a>
+    <div class="step disabled"><small>Demnächst</small><h2>Dokumentvorlagen</h2><p>Lebenslauf und Anschreiben zentral vorbereiten.</p></div>
   </nav>
   <section class="panel" id="job-import">
       <h2>Stellenanzeige importieren</h2><p>Ein Job wird nur bei ausreichendem, verwendbarem Inhalt gespeichert.</p>
+      <p><a class="button secondary" href="/browser-import">Firefox-Import einrichten</a></p>
       <div class="tabs"><button class="tab active" data-pane="url-pane">URL</button><button class="tab" data-pane="pdf-pane">Datei-Fallback</button></div>
       <div class="pane active" id="url-pane">
         <form id="url-form"><label for="job-url">URL der Stellenanzeige</label><input id="job-url" type="url" required placeholder="https://…">
@@ -50,8 +53,8 @@
       <div id="message" class="message" role="status"></div>
   </section>
   <section class="panel">
-    <h2>Jobliste</h2>
-    <p>Stellenanzeigen öffnen, mit einem Profil abgleichen oder vollständig löschen.</p>
+    <h2>Datenpflege</h2>
+    <p>Aktive Stellen öffnen oder fehlerhafte Importe und echte Duplikate vollständig löschen. Archivieren erfolgt auf der Jobdetailseite.</p>
     <div id="jobs" class="jobs"><div class="empty">Jobs werden geladen…</div></div>
   </section>
 </main>
@@ -61,7 +64,7 @@ function show(kind,text,id=""){const x=$("message");x.className=`message show ${
 async function req(url,opt={}){const r=await fetch(url,opt),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error?.message||`HTTP ${r.status}`);return d}
 const date=value=>value?new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).format(new Date(value)):"ohne Datum";
 async function deleteJob(id,title){if(!confirm(`Job „${title}“ wirklich löschen?\n\nMatching-Ergebnisse, Bewerbungsstatus und zugehörige Dokumente werden ebenfalls gelöscht.`))return;try{await req(`/matching/jobs/${encodeURIComponent(id)}`,{method:"DELETE"});show("success",`Job „${title}“ wurde gelöscht.`);await jobs()}catch(e){show("error",e.message)}}
-async function jobs(){try{const a=await req("/matching/jobs");$("jobs").innerHTML=a.length?a.map(j=>`<div class="job-row"><a class="job" href="/jobs/${encodeURIComponent(j.id)}"><strong>${esc(j.title||"Ohne Titel")}</strong><span>${esc(j.company||"Firma unbekannt")} · importiert ${esc(date(j.imported_at))}</span></a><div class="job-actions"><a class="button secondary" href="/matching/admin?job_id=${encodeURIComponent(j.id)}">Matching</a><button class="delete-job" type="button" data-job-id="${esc(j.id)}" data-job-title="${esc(j.title||"Ohne Titel")}">Löschen</button></div></div>`).join(""):'<div class="empty">Noch keine Jobs gespeichert.</div>';document.querySelectorAll(".delete-job").forEach(button=>button.onclick=()=>deleteJob(button.dataset.jobId,button.dataset.jobTitle))}catch(e){$("jobs").innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
+async function jobs(){try{const a=await req("/matching/jobs");$("jobs").innerHTML=a.length?a.map(j=>`<div class="job-row"><a class="job" href="/jobs/${encodeURIComponent(j.id)}"><strong>${esc(j.title||"Ohne Titel")}</strong><span>${esc(j.company||"Firma unbekannt")} · importiert ${esc(date(j.imported_at))}</span></a><div class="job-actions"><button class="delete-job" type="button" data-job-id="${esc(j.id)}" data-job-title="${esc(j.title||"Ohne Titel")}">Löschen</button></div></div>`).join(""):'<div class="empty">Noch keine Jobs gespeichert.</div>';document.querySelectorAll(".delete-job").forEach(button=>button.onclick=()=>deleteJob(button.dataset.jobId,button.dataset.jobTitle))}catch(e){$("jobs").innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab,.pane").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.pane).classList.add("active");$("message").className="message"});
 $("url-form").onsubmit=async e=>{e.preventDefault();const b=$("url-submit");b.disabled=true;show("warning","Import läuft…");try{const d=await req("/imports/url",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:$("job-url").value.trim(),force_browser:$("force-browser").checked})});if(!d.success)show("error",d.error?.message||"Import fehlgeschlagen.");else if(!d.job_id)show("warning","Inhalt gelesen, aber wegen unzureichender Qualität nicht gespeichert.");else{show("success",d.duplicate?"Job war bereits vorhanden.":"Job erfolgreich importiert.",d.job_id);jobs()}}catch(x){show("error",x.message)}finally{b.disabled=false}};
 $("job-pdf").onchange=()=>{$("replace-existing-option").style.display=/\.html?$/i.test($("job-pdf").files[0]?.name||"")?"none":"flex"};

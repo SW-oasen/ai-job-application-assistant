@@ -7,7 +7,7 @@
   <style>
     :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#155eef;--line:#dce3eb;--muted:#647084}
     *{box-sizing:border-box}body{margin:0}header{background:#132033;color:#fff;padding:24px max(22px,calc((100% - 1050px)/2));display:flex;justify-content:space-between;align-items:center;gap:18px}
-    header h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#c9d4e4}.actions{display:flex;gap:16px;flex-wrap:wrap}.nav-link{color:#fff;text-underline-offset:3px}
+    header h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#c9d4e4}.actions{display:flex;gap:8px;flex-wrap:wrap}.nav-link{color:#d8e2f0;text-decoration:none;padding:8px 10px;border-radius:7px}.nav-link:hover,.nav-link.active{color:#fff;background:#ffffff18}.nav-link.active{font-weight:750}
     .button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;text-decoration:none;display:inline-block;cursor:pointer}.button:hover{background:#0f4dcc}.button:focus-visible{outline:3px solid #91b4ff;outline-offset:2px}.button:disabled{cursor:not-allowed;opacity:.6}.button.secondary{background:#e9eef6;color:#27364a}.button.secondary:hover{background:#d9e2ef}.button.strong{background:#193a63;color:#fff}.button.strong:hover{background:#102a49}
     main{max-width:1050px;margin:auto;padding:26px 22px 60px}.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:22px;margin-bottom:18px}
     .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.meta div{padding:11px;border-radius:9px;background:#f6f8fb}.meta strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
@@ -23,11 +23,11 @@
 <body>
   <header>
     <div><h1 id="title">Jobdetails</h1><p id="subtitle">Stellenanzeige wird geladen …</p></div>
-    <div class="actions">
+    <nav class="actions" aria-label="Hauptnavigation">
       <a class="nav-link" href="/">Dashboard</a>
-      <a class="nav-link" href="/jobs">Jobübersicht</a>
-      <a class="nav-link" href="/manage#job-import">Job importieren</a>
-    </div>
+      <a class="nav-link active" aria-current="page" href="/jobs">Jobs und Bewerbungen</a>
+      <a class="nav-link" href="/manage">Verwaltung</a>
+    </nav>
   </header>
   <main>
     <section class="panel">
@@ -38,6 +38,7 @@
         <button class="button secondary" id="reimportJob" type="button">
           Job erneut importieren
         </button>
+        <button class="button secondary" id="archiveJob" type="button">Archivieren</button>
         <span id="reimportStatus" role="status" aria-live="polite"></span>
       </p>
       <details class="inline-editor" id="metadataEditor">
@@ -253,10 +254,19 @@
             </li>`).join("")}
           </ul>
         </section>`).join("");
+      const activities=(job.activities||[]).map(item=>`
+        <li>
+          <div>${esc(item.activity)}</div>
+          ${(item.keywords||[]).length?`<div class="requirement-meta">${item.keywords.map(keyword=>`<span class="tag">${esc(keyword)}</span>`).join("")}</div>`:""}
+        </li>`).join("");
       document.getElementById("structuredDetails").innerHTML=`
         <section class="structured-group">
           <h3>Rahmenbedingungen</h3>
           <div class="structured-fields">${fields.map(([label,value])=>`<div class="structured-field"><strong>${esc(label)}</strong>${esc(value)}</div>`).join("")}</div>
+        </section>
+        <section class="structured-group">
+          <h3>Tätigkeiten</h3>
+          ${activities?`<ul class="requirement-list">${activities}</ul>`:'<p class="warning">Noch keine strukturierten Tätigkeiten erkannt.</p>'}
         </section>
         <section class="structured-group">
           <h3>Anforderungen</h3>
@@ -400,6 +410,9 @@
           ? `<strong>Quelle:</strong> <a href="${esc(data.source_url)}" target="_blank" rel="noopener">${esc(sourceName(data))}</a>`
           : `<strong>Quelldatei:</strong> ${esc(sourceName(data))}`;
         document.getElementById("warnings").textContent=(data.import_warnings||[]).length?`Importhinweise: ${data.import_warnings.join(" · ")}`:"";
+        const archiveButton=document.getElementById("archiveJob");
+        archiveButton.textContent=data.archived_at?"Wiederherstellen":"Archivieren";
+        archiveButton.title=data.archive_reason?`Archivgrund: ${data.archive_reason}`:"";
         document.getElementById("metadataTitle").value=data.title||"";
         document.getElementById("metadataCompany").value=data.company||"";
         document.getElementById("metadataLocation").value=data.location||"";
@@ -487,6 +500,22 @@
         status.textContent="";
         alert(error.message);
       }finally{button.disabled=false}
+    };
+    document.getElementById("archiveJob").onclick=async()=>{
+      const archived=Boolean(currentJob?.archived_at),button=document.getElementById("archiveJob");
+      let reason=null;
+      if(!archived){
+        reason=prompt("Warum soll diese Stelle archiviert werden?", "Geringer Ziel- oder Qualifikations-Fit");
+        if(reason===null)return;
+      }else if(!confirm("Diese Stelle wieder in die aktiven Joblisten aufnehmen?"))return;
+      button.disabled=true;
+      try{
+        await request(`/matching/jobs/${encodeURIComponent(jobId)}/${archived?"restore":"archive"}`,{
+          method:"POST",
+          body:archived?undefined:JSON.stringify({reason:reason.trim()||null})
+        });
+        location.reload();
+      }catch(error){alert(error.message)}finally{button.disabled=false}
     };
     document.getElementById("documentForm").onsubmit=async event=>{
       event.preventDefault();

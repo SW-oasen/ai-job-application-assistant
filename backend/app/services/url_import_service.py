@@ -7,6 +7,7 @@ from app.database.repositories.jobs import persist_imported_job
 from app.importers.http_importer import HttpImporter
 from app.importers.playwright_importer import PlaywrightImporter
 from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_structure import extract_job_structure
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import UrlImportRequest, UrlImportResponse
 from app.services.semantic_metadata_service import enrich_job_metadata
@@ -125,6 +126,7 @@ async def _persist_response(
         response.markdown,
         source_url=response.source_url,
     )
+    structure = extract_job_structure(response.markdown)
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -139,11 +141,13 @@ async def _persist_response(
         retrieval_method=response.retrieval_method,
         warnings=response.warnings,
         metadata_override=semantic.metadata,
-        extracted_json=(
-            {"semantic_metadata": semantic.details}
-            if semantic.details
-            else None
-        ),
+        extracted_json={
+            "semantic_metadata": semantic.details,
+            "activities": structure.activities,
+            "requirements": structure.requirements,
+        },
+        activities=structure.activities,
+        requirements=structure.requirements,
         replace_existing=replace_job_id is not None,
         replace_job_id=replace_job_id,
     )

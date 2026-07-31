@@ -24,6 +24,7 @@ def test_target_fit_is_separate_and_uses_structured_preferences() -> None:
     )
     company = SimpleNamespace(industry=None)
     profile = SimpleNamespace(
+        career_goal="Machine Learning, Entwicklung von KI-Anwendungen",
         target_roles=["Data Scientist", "Machine Learning Engineer"],
         target_industries=[],
         target_locations=["Berlin"],
@@ -32,7 +33,10 @@ def test_target_fit_is_separate_and_uses_structured_preferences() -> None:
         deal_breakers=["Freiberuflich"],
     )
 
-    result = _evaluate_target_fit(job, company, profile)
+    activities = [
+        SimpleNamespace(activity_text="Entwicklung von Machine-Learning-Anwendungen")
+    ]
+    result = _evaluate_target_fit(job, company, profile, activities)
 
     assert result["level"] == "strong"
     assert result["score"] == 100
@@ -48,6 +52,7 @@ def test_target_fit_detects_structured_freelance_conflict() -> None:
         normalized_content="Freelance AI project",
     )
     profile = SimpleNamespace(
+        career_goal="KI-Anwendungsentwicklung",
         target_roles=["AI Engineer"],
         target_industries=[],
         target_locations=["Berlin"],

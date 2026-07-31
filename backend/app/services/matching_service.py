@@ -14,6 +14,7 @@ from app.database.models import (
     Company,
     EducationEntry,
     Job,
+    JobActivity,
     JobRequirement,
     PortfolioProject,
     Profile,
@@ -37,6 +38,7 @@ from app.schemas.matching import (
     MatchingContextResponse,
     MatchingRequest,
     MatchingResponse,
+    RequirementInput,
     RequirementMatchResponse,
 )
 from app.services.application_file_service import remove_stored_files
@@ -221,10 +223,15 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
             localized_content, titles = _localized_content(row)
             if model is Skill:
                 label = row.canonical_name
+                years = (
+                    row.years_experience
+                    if row.years_experience is not None
+                    else "nicht angegeben"
+                )
                 core_content = (
                     f"Skill: {row.canonical_name}; Kategorie: {row.category}; "
                     f"Niveau: {row.proficiency_level or 'nicht angegeben'}; "
-                    f"Jahre: {row.years_experience if row.years_experience is not None else 'nicht angegeben'}"
+                    f"Jahre: {years}"
                 )
                 keywords = [row.canonical_name, *row.aliases]
             elif model is WorkExperience:
@@ -503,7 +510,9 @@ def _evaluate(
             )
     elif has_professional or aggregate_score >= 0.35 or has_direct_keyword:
         level = "partial_match"
-        explanation = "The combined profile evidence supports part, but not all, of this requirement."
+        explanation = (
+            "The combined profile evidence supports part, but not all, of this requirement."
+        )
         action = "Describe the supported portion and avoid implying broader experience."
     else:
         level = "transferable"
@@ -550,6 +559,30 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
         job = await session.scalar(select(Job).where(Job.id == payload.job_id))
         if job is None:
             raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
+        stored_requirements = (
+            await session.scalars(
+                select(JobRequirement)
+                .where(JobRequirement.job_id == job.id)
+                .order_by(
+                    JobRequirement.category,
+                    JobRequirement.priority,
+                    JobRequirement.requirement_text,
+                )
+            )
+        ).all()
+        requirement_inputs = (
+            [
+                RequirementInput(
+                    requirement=item.requirement_text,
+                    category=item.category,
+                    priority=item.priority,
+                    keywords=item.keywords or [],
+                )
+                for item in stored_requirements
+            ]
+            if stored_requirements
+            else list(payload.requirements)
+        )
 
         stored_evidence: list[StoredEvidence] = []
         evidence_inputs = list(payload.evidence)
@@ -603,7 +636,7 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
         )
 
         results: list[RequirementMatchResponse] = []
-        for item in payload.requirements:
+        for item in requirement_inputs:
             requirement = await session.scalar(
                 select(JobRequirement).where(
                     JobRequirement.job_id == job.id,
@@ -660,7 +693,7 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
     return MatchingResponse(job_id=str(payload.job_id), matches=results, summary=summary)
 
 
-async def list_matching_jobs(profile_id=None) -> list[dict]:
+async def list_matching_jobs(profile_id=None, *, include_archived: bool = False) -> list[dict]:
     session_factory = get_session_factory()
     if session_factory is None:
         raise ApplicationError(
@@ -682,11 +715,14 @@ async def list_matching_jobs(profile_id=None) -> list[dict]:
                 RequirementMatch.profile_id == profile_id
             )
         matched_job_ids = set((await session.scalars(matched_statement)).all())
+        jobs_statement = select(Job, Company).outerjoin(
+            Company, Company.id == Job.company_id
+        )
+        if not include_archived:
+            jobs_statement = jobs_statement.where(Job.archived_at.is_(None))
         rows = (
             await session.execute(
-                select(Job, Company)
-                .outerjoin(Company, Company.id == Job.company_id)
-                .order_by(Job.imported_at.desc())
+                jobs_statement.order_by(Job.imported_at.desc())
             )
         ).all()
         return [
@@ -700,6 +736,8 @@ async def list_matching_jobs(profile_id=None) -> list[dict]:
                 "published_at": job.published_at,
                 "deadline": job.deadline,
                 "imported_at": job.imported_at,
+                "archived_at": job.archived_at,
+                "archive_reason": job.archive_reason,
                 "has_matching": job.id in matched_job_ids,
             }
             for job, company in rows
@@ -736,6 +774,13 @@ async def get_matching_job(job_id) -> dict:
                 )
             )
         ).all()
+        activities = (
+            await session.scalars(
+                select(JobActivity)
+                .where(JobActivity.job_id == job.id)
+                .order_by(JobActivity.position)
+            )
+        ).all()
         return {
             "id": str(job.id),
             "title": job.title or "Unbenannte Stelle",
@@ -745,6 +790,8 @@ async def get_matching_job(job_id) -> dict:
             "source_filename": job.source_filename,
             "language": job.language,
             "status": job.status,
+            "archived_at": job.archived_at,
+            "archive_reason": job.archive_reason,
             "published_at": job.published_at,
             "deadline": job.deadline,
             "imported_at": job.imported_at,
@@ -760,6 +807,16 @@ async def get_matching_job(job_id) -> dict:
                     "confidence": requirement.confidence,
                 }
                 for requirement in requirements
+            ],
+            "activities": [
+                {
+                    "id": str(activity.id),
+                    "activity": activity.activity_text,
+                    "category": activity.category,
+                    "keywords": activity.keywords or [],
+                    "confidence": activity.confidence,
+                }
+                for activity in activities
             ],
             "content": job.normalized_content,
             "content_html": render_safe_markdown(job.normalized_content),
@@ -826,6 +883,42 @@ async def delete_matching_job(job_id) -> None:
     remove_stored_files(list(storage_keys))
 
 
+async def archive_matching_job(job_id, reason: str | None = None) -> dict:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise ApplicationError(
+            "Job archiving requires a configured database.",
+            code="database_not_configured",
+            status_code=503,
+        )
+    async with session_factory() as session:
+        job = await session.get(Job, job_id)
+        if job is None:
+            raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
+        job.archived_at = func.now()
+        job.archive_reason = (reason or "").strip() or None
+        await session.commit()
+    return await get_matching_job(job_id)
+
+
+async def restore_matching_job(job_id) -> dict:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise ApplicationError(
+            "Job restoration requires a configured database.",
+            code="database_not_configured",
+            status_code=503,
+        )
+    async with session_factory() as session:
+        job = await session.get(Job, job_id)
+        if job is None:
+            raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
+        job.archived_at = None
+        job.archive_reason = None
+        await session.commit()
+    return await get_matching_job(job_id)
+
+
 def _normalized_target_text(value: object) -> str:
     return " ".join(
         re.findall(
@@ -855,6 +948,7 @@ def _preference_criterion(
     actual: str | None,
     weight: int,
 ) -> dict:
+    desired = [value for value in desired if value and value.strip()]
     if not desired:
         return {
             "key": key,
@@ -926,14 +1020,35 @@ def _canonical_employment_type(value: str | None) -> str | None:
     return normalized or None
 
 
-def _evaluate_target_fit(job: Job, company: Company | None, profile: Profile) -> dict:
+def _evaluate_target_fit(
+    job: Job,
+    company: Company | None,
+    profile: Profile,
+    activities: list[JobActivity] | None = None,
+) -> dict:
+    activity_text = " ".join(
+        item.activity_text for item in activities or [] if item.activity_text
+    )
+    career_goal = getattr(profile, "career_goal", "") or ""
+    activity_goals = [
+        value.strip()
+        for value in re.split(r"[,;\n]+", career_goal)
+        if value.strip()
+    ]
     criteria = [
         _preference_criterion(
             key="role",
             label="Zielrolle",
             desired=profile.target_roles or [],
             actual=job.title,
-            weight=40,
+            weight=25,
+        ),
+        _preference_criterion(
+            key="activities",
+            label="Tätigkeits-Fit",
+            desired=activity_goals,
+            actual=activity_text or None,
+            weight=30,
         ),
         _preference_criterion(
             key="industry",
@@ -947,21 +1062,21 @@ def _evaluate_target_fit(job: Job, company: Company | None, profile: Profile) ->
             label="Zielort",
             desired=profile.target_locations or [],
             actual=job.location,
-            weight=20,
+            weight=15,
         ),
         _preference_criterion(
             key="work_model",
             label="Arbeitsmodell",
             desired=profile.preferred_work_models or [],
             actual=_canonical_work_model(job.work_model),
-            weight=15,
+            weight=10,
         ),
         _preference_criterion(
             key="employment_type",
             label="Beschäftigungsart",
             desired=profile.preferred_employment_types or [],
             actual=_canonical_employment_type(job.employment_type),
-            weight=15,
+            weight=10,
         ),
     ]
     source_text = " ".join(
@@ -1064,7 +1179,14 @@ async def get_target_fit(job_id, profile_id) -> dict:
         profile = await session.get(Profile, profile_id)
         if profile is None:
             raise ApplicationError("Profile not found.", code="profile_not_found", status_code=404)
-        return _evaluate_target_fit(row[0], row[1], profile)
+        activities = (
+            await session.scalars(
+                select(JobActivity)
+                .where(JobActivity.job_id == job_id)
+                .order_by(JobActivity.position)
+            )
+        ).all()
+        return _evaluate_target_fit(row[0], row[1], profile, list(activities))
 
 
 def _qualification_fit(matches: list[dict]) -> dict:
@@ -1300,7 +1422,14 @@ async def get_stored_matching(job_id, profile_id) -> dict:
             level = match["match_level"]
             summary[level] = summary.get(level, 0) + 1
         qualification_fit = _qualification_fit(matches)
-        target_fit = _evaluate_target_fit(job, company, profile)
+        activities = (
+            await session.scalars(
+                select(JobActivity)
+                .where(JobActivity.job_id == job.id)
+                .order_by(JobActivity.position)
+            )
+        ).all()
+        target_fit = _evaluate_target_fit(job, company, profile, list(activities))
         return {
             "job": {
                 "id": str(job.id),

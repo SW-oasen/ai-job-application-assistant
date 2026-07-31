@@ -17,8 +17,10 @@
     h1 { margin:0; font-size:25px; line-height:1.2; }
     .subtitle,.hint { color:var(--muted); }
     .subtitle { margin:5px 0 0; color:#c9d4e4; font-size:13px; }
-    .header-actions { display:flex; gap:16px; flex-wrap:wrap; }
-    .nav-link { color:#fff; text-underline-offset:3px; }
+    .header-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .nav-link { color:#d8e2f0; text-decoration:none; padding:8px 10px; border-radius:7px; }
+    .nav-link:hover,.nav-link.active { color:#fff; background:#ffffff18; }
+    .nav-link.active { font-weight:750; }
     a { color:var(--accent); }
     .button { display:inline-block; border:0; border-radius:8px; padding:10px 15px; background:var(--accent); color:#fff; font-weight:700; text-decoration:none; cursor:pointer; }
     .button.ghost { background:var(--accent-soft); color:#27364a; }
@@ -93,8 +95,8 @@
     </div>
     <div class="header-actions">
       <a class="nav-link" href="/">Dashboard</a>
-      <a class="nav-link" href="/manage">Zentralverwaltung</a>
-      <a class="nav-link" href="/profiles/admin">Profilverwaltung</a>
+      <a class="nav-link" href="/jobs">Jobs und Bewerbungen</a>
+      <a class="nav-link active" aria-current="page" href="/manage">Verwaltung</a>
     </div>
   </header>
   <main>
