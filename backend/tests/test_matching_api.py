@@ -33,31 +33,10 @@ def test_matching_endpoint_validates_job_id(client) -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_matching_admin_page_is_readable(client) -> None:
+def test_matching_admin_page_removed(client) -> None:
     response = client.get("/matching/admin")
 
-    assert response.status_code == 200
-    assert "Matching-Auswertung" in response.text
-    assert "Auswertung laden" in response.text
-    assert "Starker Match" in response.text
-    assert "Portfolio-Projekt" in response.text
-    assert "Qualifikations-Fit" in response.text
-    assert 'id="targetFit"' in response.text
-    assert 'id="qualificationFit"' in response.text
-    assert 'id="recommendation"' in response.text
-    assert "Fazit" in response.text
-    assert "Muss ×" in response.text
-    assert '<details class="fit-section" id="targetFitDetails">' in response.text
-    assert '<details class="fit-section" id="qualificationFitDetails">' in response.text
-    assert "const jobLabel" in response.text
-    assert "sourceName" not in response.text
-    assert response.text.index('id="recommendation"') < response.text.index(
-        'id="targetFitDetails"'
-    )
-    qualification_start = response.text.index('id="qualificationFitDetails"')
-    qualification_end = response.text.index("</details>", qualification_start)
-    assert response.text.index('id="summary"', qualification_start) < qualification_end
-    assert response.text.index('id="results"', qualification_start) < qualification_end
+    assert response.status_code == 404
 
 
 def test_matching_jobs_uses_service(client, monkeypatch) -> None:

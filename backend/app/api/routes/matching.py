@@ -1,8 +1,6 @@
-from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Response
-from fastapi.responses import FileResponse
 
 from app.schemas.matching import (
     JobArchiveRequest,
@@ -27,12 +25,6 @@ from app.services.matching_service import (
 )
 
 router = APIRouter(prefix="/matching", tags=["matching"])
-ADMIN_PAGE = Path(__file__).resolve().parents[2] / "static" / "matching-admin.html"
-
-
-@router.get("/admin", include_in_schema=False)
-async def matching_admin() -> FileResponse:
-    return FileResponse(ADMIN_PAGE)
 
 
 @router.get("/jobs")

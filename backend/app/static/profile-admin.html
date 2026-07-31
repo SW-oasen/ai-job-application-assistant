@@ -28,22 +28,6 @@
     }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      padding: 24px max(22px, calc((100% - 1180px) / 2));
-      background: var(--header);
-      color: #fff;
-    }
-    .brand h1 { margin: 0; font-size: 25px; line-height: 1.2; }
-    .brand p { margin: 5px 0 0; color: #c9d4e4; font-size: 13px; }
-    .profile-picker { display: flex; align-items: center; gap: 8px; }
-    .home-link { color:#d8e2f0; white-space:nowrap; text-decoration:none; padding:7px 8px; border-radius:7px; }
-    .home-link:hover,.home-link.active { color:#fff; background:#ffffff18; }
-    .home-link.active { font-weight:750; }
-    .link-separator { width: 1px; height: 18px; margin: 0 5px; background: #536176; }
     .text-action {
       border: 0;
       padding: 0;
@@ -66,7 +50,6 @@
       outline: 3px solid rgba(21, 94, 239, .14);
       border-color: var(--accent);
     }
-    .profile-picker select { min-width: 260px; }
     .button {
       border: 1px solid var(--accent);
       border-radius: 8px;
@@ -103,6 +86,8 @@
     .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
     .section-head h2 { margin: 0; font-size: 25px; line-height: 1.2; }
     .section-head p { color: var(--muted); margin: 7px 0 0; }
+    .section-title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .section-title-row select { width: auto; min-width: 240px; }
     .empty {
       margin-top: 40px;
       border: 1px dashed #b8b8af;
@@ -236,10 +221,8 @@
     .toast.show { transform: none; opacity: 1; }
     .toast.error { background: var(--danger); }
     @media (max-width: 900px) {
-      .topbar { align-items: flex-start; flex-direction: column; }
-      .profile-picker { width: 100%; flex-wrap: wrap; }
-      .profile-picker select { flex: 1; min-width: 180px; }
-      .link-separator { display: none; }
+      .section-title-row { width: 100%; flex-wrap: wrap; }
+      .section-title-row select { flex: 1; min-width: 180px; }
       .layout { grid-template-columns: 1fr; }
       nav { display: flex; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
       nav button { width: auto; white-space: nowrap; margin: 0 4px 0 0; }
@@ -250,19 +233,6 @@
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <h1>Profilverwaltung</h1>
-      <p>Kanonische, zweisprachige Faktenbasis · Entwürfe werden nicht automatisch freigegeben</p>
-    </div>
-    <div class="profile-picker">
-      <select id="profileSelect" aria-label="Profil auswählen"></select>
-      <a class="home-link" href="/">Dashboard</a>
-      <a class="home-link" href="/jobs">Jobs und Bewerbungen</a>
-      <a class="home-link active" aria-current="page" href="/manage">Verwaltung</a>
-    </div>
-  </header>
-
   <div class="layout">
     <nav id="navigation">
       <button data-resource="profile" class="active">Profil</button>
@@ -277,7 +247,7 @@
     <main>
       <div class="section-head">
         <div>
-          <h2 id="sectionTitle">Skills</h2>
+          <div class="section-title-row"><h2 id="sectionTitle">Skills</h2><select id="profileSelect" aria-label="Profil auswählen"></select></div>
           <p id="sectionDescription"></p>
         </div>
         <div class="right-actions">

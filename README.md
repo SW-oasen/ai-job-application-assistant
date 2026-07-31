@@ -23,7 +23,7 @@ Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen
 - Bewerbungsstatus und bearbeitbarer Ereignisverlauf
 - Archivierung tatsächlich versendeter Bewerbungs-PDFs
 - getrennte Erfassung von Quellportal und Bewerbungsweg
-- Dashboard mit Statusfiltern und Stichwortsuche
+- Dashboard mit Statusfiltern und Stichwortsuche (nun auf der Hauptseite)
 
 Portfolio-Projekte, persönliche Karriereziele und ein davon getrennter
 Ziel-Fit sind geplante Erweiterungen. Der aktuelle Plan steht in der
@@ -44,12 +44,10 @@ Dokumente gehören nicht in das Repository.
 
 | Bereich | Adresse |
 |---|---|
-| Bewerbungsdashboard | `http://localhost:8080/` |
+| Jobs und Bewerbungen (Hauptseite) | `http://localhost:8080/` |
 | Zentralverwaltung und Jobimport | `http://localhost:8080/manage` |
 | Browser-Bridge für Ein-Klick-Jobimport | `http://localhost:8080/browser-import` |
-| Jobübersicht | `http://localhost:8080/jobs` |
 | Profilverwaltung und CV-Import | `http://localhost:8080/profiles/admin` |
-| Matching | `http://localhost:8080/matching/admin` |
 | API-Dokumentation in Entwicklung | `http://localhost:8080/docs` |
 | Dify | `http://localhost:8088/` |
 
@@ -105,7 +103,7 @@ ausgeführt.
 7. Matching für das gewünschte Profil ausführen.
 8. Bewerbungsstatus, Kommunikationsweg und Verlauf pflegen.
 9. Tatsächlich versendete Unterlagen am Bewerbungsdatensatz archivieren.
-10. Offene Stellen und Bewerbungen im Dashboard filtern oder durchsuchen.
+10. Offene Stellen und Bewerbungen auf der Hauptseite filtern oder durchsuchen.
 
 Ein Import wird nur gespeichert, wenn ausreichend verwertbarer Inhalt
 vorliegt. CV-Importe überschreiben das kanonische Profil niemals automatisch.

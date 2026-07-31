@@ -21,9 +21,10 @@ def test_home_page(client) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Bewerbungsdashboard" in response.text
+    assert "Bewerbungsassistent" in response.text
     assert 'href="/manage">Verwaltung</a>' in response.text
     assert 'href="/matching/admin"' not in response.text
+    assert 'href="/jobs">' not in response.text
 
 
 def test_manage_page(client) -> None:
@@ -61,15 +62,6 @@ def test_job_detail_page(client) -> None:
     assert 'textContent=data.company||"Firma unbekannt"' in response.text
     assert "Erkannte Stellendetails" in response.text
     assert "<summary>Importierter Referenztext</summary>" in response.text
-
-
-def test_jobs_page(client) -> None:
-    response = client.get("/jobs")
-
-    assert response.status_code == 200
-    assert "Jobs und Bewerbungen" in response.text
-    assert "sourceName" not in response.text
-    assert "importiert" in response.text
 
 
 def test_browser_import_setup_page(client) -> None:

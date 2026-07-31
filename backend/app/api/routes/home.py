@@ -6,7 +6,6 @@ from fastapi.responses import FileResponse
 router = APIRouter(tags=["home"])
 HOME_PAGE = Path(__file__).resolve().parents[2] / "static" / "home.html"
 MANAGE_PAGE = Path(__file__).resolve().parents[2] / "static" / "manage.html"
-JOBS_PAGE = Path(__file__).resolve().parents[2] / "static" / "jobs.html"
 JOB_PAGE = Path(__file__).resolve().parents[2] / "static" / "job-detail.html"
 BROWSER_IMPORT_PAGE = Path(__file__).resolve().parents[2] / "static" / "browser-import.html"
 BROWSER_RECEIVER_PAGE = (
@@ -22,11 +21,6 @@ async def home() -> FileResponse:
 @router.get("/manage", include_in_schema=False)
 async def manage() -> FileResponse:
     return FileResponse(MANAGE_PAGE)
-
-
-@router.get("/jobs", include_in_schema=False)
-async def jobs() -> FileResponse:
-    return FileResponse(JOBS_PAGE)
 
 
 @router.get("/jobs/{job_id}", include_in_schema=False)
