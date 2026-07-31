@@ -8,6 +8,37 @@ from app.domain.skill_taxonomy import SkillCategory, SkillLevel
 
 Language = Literal["de", "en"]
 ContentStatus = Literal["draft", "approved", "inactive"]
+WorkModel = Literal["remote", "hybrid", "onsite"]
+EmploymentType = Literal["permanent", "temporary", "freelance", "internship", "working_student"]
+
+PROFILE_LIST_FIELDS = (
+    "target_roles",
+    "target_industries",
+    "target_locations",
+    "preferred_work_models",
+    "preferred_employment_types",
+    "deal_breakers",
+)
+
+
+def _normalize_profile_lists(model):
+    for field_name in PROFILE_LIST_FIELDS:
+        values = getattr(model, field_name, None)
+        if values is None:
+            continue
+        cleaned = []
+        seen = set()
+        for value in values:
+            value = value.strip()
+            key = value.casefold()
+            if not value or key in seen:
+                continue
+            if len(value) > 500:
+                raise ValueError(f"{field_name} entries may not exceed 500 characters.")
+            seen.add(key)
+            cleaned.append(value)
+        setattr(model, field_name, cleaned)
+    return model
 
 
 class LocalizationInput(BaseModel):
@@ -31,8 +62,19 @@ class ProfileCreate(BaseModel):
     linkedin_url: str | None = Field(default=None, max_length=2048)
     github_url: str | None = Field(default=None, max_length=2048)
     portfolio_url: str | None = Field(default=None, max_length=2048)
+    career_goal: str | None = Field(default=None, max_length=10_000)
+    target_roles: list[str] = Field(default_factory=list, max_length=50)
+    target_industries: list[str] = Field(default_factory=list, max_length=50)
+    target_locations: list[str] = Field(default_factory=list, max_length=50)
+    preferred_work_models: list[WorkModel] = Field(default_factory=list, max_length=3)
+    preferred_employment_types: list[EmploymentType] = Field(default_factory=list, max_length=5)
+    deal_breakers: list[str] = Field(default_factory=list, max_length=50)
     default_language: Language = "de"
     change_reason: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def normalize_goal_lists(self):
+        return _normalize_profile_lists(self)
 
 
 class ProfileUpdate(BaseModel):
@@ -46,9 +88,20 @@ class ProfileUpdate(BaseModel):
     linkedin_url: str | None = Field(default=None, max_length=2048)
     github_url: str | None = Field(default=None, max_length=2048)
     portfolio_url: str | None = Field(default=None, max_length=2048)
+    career_goal: str | None = Field(default=None, max_length=10_000)
+    target_roles: list[str] | None = Field(default=None, max_length=50)
+    target_industries: list[str] | None = Field(default=None, max_length=50)
+    target_locations: list[str] | None = Field(default=None, max_length=50)
+    preferred_work_models: list[WorkModel] | None = Field(default=None, max_length=3)
+    preferred_employment_types: list[EmploymentType] | None = Field(default=None, max_length=5)
+    deal_breakers: list[str] | None = Field(default=None, max_length=50)
     default_language: Language | None = None
     status: Literal["active", "inactive"] | None = None
     change_reason: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def normalize_goal_lists(self):
+        return _normalize_profile_lists(self)
 
 
 class ResourceBase(BaseModel):
@@ -105,6 +158,31 @@ class WorkExperienceUpdate(ResourceBase):
     end_date: date | None = None
     location: str | None = Field(default=None, max_length=500)
     remote_model: str | None = Field(default=None, max_length=50)
+    status: ContentStatus | None = None
+    localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
+
+
+class PortfolioProjectCreate(ResourceBase):
+    canonical_name: str = Field(min_length=1, max_length=500)
+    project_type: str | None = Field(default=None, max_length=100)
+    role: str | None = Field(default=None, max_length=300)
+    start_date: date | None = None
+    end_date: date | None = None
+    source_url: str | None = Field(default=None, max_length=2048)
+    repository_url: str | None = Field(default=None, max_length=2048)
+    technologies: list[str] = Field(default_factory=list, max_length=100)
+    status: ContentStatus = "draft"
+
+
+class PortfolioProjectUpdate(ResourceBase):
+    canonical_name: str | None = Field(default=None, min_length=1, max_length=500)
+    project_type: str | None = Field(default=None, max_length=100)
+    role: str | None = Field(default=None, max_length=300)
+    start_date: date | None = None
+    end_date: date | None = None
+    source_url: str | None = Field(default=None, max_length=2048)
+    repository_url: str | None = Field(default=None, max_length=2048)
+    technologies: list[str] | None = Field(default=None, max_length=100)
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
 

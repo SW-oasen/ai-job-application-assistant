@@ -6,6 +6,7 @@ ResourceType = Literal[
     "profile",
     "skills",
     "experiences",
+    "projects",
     "education",
     "certificates",
     "references",
@@ -39,6 +40,22 @@ class StructuredCvImportCreate(BaseModel):
     content_hash: str | None = Field(default=None, min_length=64, max_length=64)
     source_language: Literal["de", "en"] = "de"
     structured_cv: dict[str, Any]
+
+
+class StructuredPortfolioImportCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_name: str = Field(min_length=1, max_length=500)
+    source_language: Literal["de", "en"] = "de"
+    projects: list[dict[str, Any]] = Field(min_length=1, max_length=200)
+
+
+class PortfolioSourceImportCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_name: str = Field(min_length=1, max_length=500)
+    source_content: str = Field(min_length=1, max_length=2_000_000)
+    export_name: Literal["PROJECTS"] = "PROJECTS"
 
 
 class CvSuggestionReview(BaseModel):

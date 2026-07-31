@@ -160,6 +160,7 @@ class ApplicationEvent(Base):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     channel: Mapped[str | None] = mapped_column(String(50))
     portal_name: Mapped[str | None] = mapped_column(String(100))
+    contact_person: Mapped[str | None] = mapped_column(String(300))
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -296,6 +297,13 @@ class Profile(TimestampMixin, Base):
     linkedin_url: Mapped[str | None] = mapped_column(String(2048))
     github_url: Mapped[str | None] = mapped_column(String(2048))
     portfolio_url: Mapped[str | None] = mapped_column(String(2048))
+    career_goal: Mapped[str | None] = mapped_column(Text)
+    target_roles: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    target_industries: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    target_locations: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    preferred_work_models: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    preferred_employment_types: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    deal_breakers: Mapped[list[str]] = mapped_column(JSONB, default=list)
     default_language: Mapped[str] = mapped_column(String(5), default="de")
     status: Mapped[str] = mapped_column(String(30), default="active")
     revision: Mapped[int] = mapped_column(Integer, default=1)
@@ -364,6 +372,45 @@ class WorkExperienceLocalization(LocalizedTextMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     work_experience_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("work_experiences.id", ondelete="CASCADE")
+    )
+
+
+class PortfolioProject(TimestampMixin, Base):
+    __tablename__ = "portfolio_projects"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "canonical_name", name="uq_profile_portfolio_project"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
+    canonical_name: Mapped[str] = mapped_column(String(500))
+    project_type: Mapped[str | None] = mapped_column(String(100))
+    role: Mapped[str | None] = mapped_column(String(300))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    repository_url: Mapped[str | None] = mapped_column(String(2048))
+    technologies: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(30), default="draft")
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    localizations: Mapped[list["PortfolioProjectLocalization"]] = relationship(
+        cascade="all, delete-orphan"
+    )
+
+
+class PortfolioProjectLocalization(LocalizedTextMixin, Base):
+    __tablename__ = "portfolio_project_localizations"
+    __table_args__ = (
+        UniqueConstraint(
+            "portfolio_project_id",
+            "language",
+            name="uq_portfolio_project_language",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    portfolio_project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("portfolio_projects.id", ondelete="CASCADE")
     )
 
 

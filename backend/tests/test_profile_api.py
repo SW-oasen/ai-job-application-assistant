@@ -14,7 +14,12 @@ def test_profile_admin_page_is_available(client) -> None:
     assert "ID kopieren" not in response.text
     assert "Konfliktauflösung" in response.text
     assert "Bestehenden Eintrag behalten" in response.text
-    assert "Portfolio-Projekt" not in response.text
+    assert 'id="careerGoal"' in response.text
+    assert 'id="targetRoles"' in response.text
+    assert 'id="preferredWorkModels"' in response.text
+    assert 'id="dealBreakers"' in response.text
+    assert "Portfolio-Projekte" in response.text
+    assert 'id="portfolioImportForm"' in response.text
 
 
 def test_list_profiles_uses_service(client, monkeypatch) -> None:
@@ -72,6 +77,60 @@ def test_create_skill_uses_validated_contract(client, monkeypatch) -> None:
     assert response.json()["resource_type"] == "skills"
 
 
+def test_structured_portfolio_import_uses_review_service(client, monkeypatch) -> None:
+    profile_id = uuid4()
+
+    async def fake_import(received_profile_id, payload):
+        return {
+            "profile_id": str(received_profile_id),
+            "source_filename": payload.source_name,
+            "projects": payload.projects,
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.profile.create_structured_portfolio_import",
+        fake_import,
+    )
+    response = client.post(
+        f"/profiles/{profile_id}/portfolio-imports/structured",
+        json={
+            "source_name": "GitHub Portfolio",
+            "source_language": "de",
+            "projects": [{"name": "Application Assistant"}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["source_filename"] == "GitHub Portfolio"
+    assert response.json()["projects"][0]["name"] == "Application Assistant"
+
+
+def test_portfolio_javascript_import_uses_source_parser(client, monkeypatch) -> None:
+    profile_id = uuid4()
+
+    async def fake_import(received_profile_id, payload):
+        return {
+            "profile_id": str(received_profile_id),
+            "source_filename": payload.source_name,
+            "export_name": payload.export_name,
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.profile.create_portfolio_source_import",
+        fake_import,
+    )
+    response = client.post(
+        f"/profiles/{profile_id}/portfolio-imports/source",
+        json={
+            "source_name": "projects.js",
+            "source_content": "const PROJECTS = [];",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["export_name"] == "PROJECTS"
+
+
 def test_delete_profile_resource_uses_service(client, monkeypatch) -> None:
     profile_id = uuid4()
     item_id = uuid4()
@@ -103,6 +162,42 @@ def test_profile_rejects_unsupported_language(client) -> None:
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_create_profile_accepts_structured_career_goals(client, monkeypatch) -> None:
+    received = {}
+
+    async def fake_create(payload):
+        received.update(payload.model_dump())
+        return {"id": str(uuid4()), **payload.model_dump(exclude={"change_reason"})}
+
+    monkeypatch.setattr("app.api.routes.profile.create_profile", fake_create)
+    response = client.post(
+        "/profiles",
+        json={
+            "display_name": "Data Profile",
+            "career_goal": "Datenprodukte mit messbarer Wirkung entwickeln.",
+            "target_roles": [" Data Scientist ", "data scientist", "ML Engineer"],
+            "target_industries": ["Energie"],
+            "target_locations": ["Berlin"],
+            "preferred_work_models": ["remote", "hybrid"],
+            "preferred_employment_types": ["permanent"],
+            "deal_breakers": ["Reine Vertriebsrolle"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert received["target_roles"] == ["Data Scientist", "ML Engineer"]
+    assert response.json()["preferred_work_models"] == ["remote", "hybrid"]
+
+
+def test_profile_rejects_unknown_work_model(client) -> None:
+    response = client.post(
+        "/profiles",
+        json={"display_name": "Test", "preferred_work_models": ["flexible"]},
+    )
+
+    assert response.status_code == 422
 
 
 def test_create_cv_import_uses_review_contract(client, monkeypatch) -> None:

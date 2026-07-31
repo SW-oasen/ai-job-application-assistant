@@ -18,6 +18,7 @@ from app.services.matching_service import (
     get_matching_context,
     get_matching_job,
     get_stored_matching,
+    get_target_fit,
     list_matching_jobs,
     update_job_metadata,
 )
@@ -55,6 +56,11 @@ async def delete_job(job_id: UUID) -> Response:
 @router.get("/results")
 async def matching_results(job_id: UUID, profile_id: UUID) -> dict:
     return await get_stored_matching(job_id, profile_id)
+
+
+@router.get("/target-fit")
+async def target_fit(job_id: UUID, profile_id: UUID) -> dict:
+    return await get_target_fit(job_id, profile_id)
 
 
 @router.get("/context", response_model=MatchingContextResponse)

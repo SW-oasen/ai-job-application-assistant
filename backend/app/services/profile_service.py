@@ -15,6 +15,8 @@ from app.database.models import (
     CertificateLocalization,
     EducationEntry,
     EducationLocalization,
+    PortfolioProject,
+    PortfolioProjectLocalization,
     Profile,
     ProfileEntityRevision,
     ProfileReference,
@@ -67,6 +69,24 @@ RESOURCES = {
                 "end_date",
                 "location",
                 "remote_model",
+                "status",
+            }
+        ),
+    ),
+    "projects": ResourceDefinition(
+        PortfolioProject,
+        PortfolioProjectLocalization,
+        "portfolio_project_id",
+        frozenset(
+            {
+                "canonical_name",
+                "project_type",
+                "role",
+                "start_date",
+                "end_date",
+                "source_url",
+                "repository_url",
+                "technologies",
                 "status",
             }
         ),

@@ -265,10 +265,11 @@
     <nav id="navigation">
       <button data-resource="skills" class="active">Skills</button>
       <button data-resource="experiences">Berufserfahrung</button>
+      <button data-resource="projects">Portfolio-Projekte</button>
       <button data-resource="education">Ausbildung</button>
       <button data-resource="certificates">Zertifikate</button>
       <button data-resource="references">Referenzen</button>
-      <button data-resource="cv-imports">CV-Vorschl&auml;ge</button>
+      <button data-resource="cv-imports">Import-Vorschl&auml;ge</button>
     </nav>
     <main>
       <div class="section-head">
@@ -276,7 +277,10 @@
           <h2 id="sectionTitle">Skills</h2>
           <p id="sectionDescription"></p>
         </div>
-        <button class="button" id="newEntry">Eintrag hinzufügen</button>
+        <div class="right-actions">
+          <button class="button ghost" id="importPortfolio" hidden>Portfolio importieren</button>
+          <button class="button" id="newEntry">Eintrag hinzufügen</button>
+        </div>
       </div>
       <div id="noProfile" class="empty" hidden>
         <h3>Noch kein Profil vorhanden</h3>
@@ -330,6 +334,49 @@
           <label for="portfolioUrl">Portfolio</label>
           <input id="portfolioUrl" type="url" maxlength="2048">
         </div>
+        <div class="field full">
+          <label for="careerGoal">Berufliches Ziel</label>
+          <textarea id="careerGoal" maxlength="10000" placeholder="Welche Art von Aufgabe und Wirkung suchst du?"></textarea>
+          <span class="hint">Beschreibt die übergeordnete Richtung. Konkrete Präferenzen werden darunter strukturiert erfasst.</span>
+        </div>
+        <div class="field full">
+          <label for="targetRoles">Zielrollen</label>
+          <textarea id="targetRoles" maxlength="5000" rows="4" placeholder="z. B. Data Scientist, Machine Learning Engineer"></textarea>
+          <span class="hint">Mehrere Angaben durch Kommas trennen.</span>
+        </div>
+        <div>
+          <label for="targetIndustries">Zielbranchen</label>
+          <input id="targetIndustries" maxlength="5000" placeholder="z. B. Energie, Industrie">
+        </div>
+        <div>
+          <label for="targetLocations">Zielorte</label>
+          <input id="targetLocations" maxlength="5000" placeholder="z. B. Berlin, Deutschland">
+        </div>
+        <div>
+          <label for="preferredWorkModels">Bevorzugte Arbeitsmodelle</label>
+          <select id="preferredWorkModels" multiple size="3">
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">Vor Ort</option>
+          </select>
+          <span class="hint">Mehrfachauswahl ist möglich.</span>
+        </div>
+        <div>
+          <label for="preferredEmploymentTypes">Bevorzugte Beschäftigungsarten</label>
+          <select id="preferredEmploymentTypes" multiple size="5">
+            <option value="permanent">Festanstellung</option>
+            <option value="temporary">Befristete Anstellung</option>
+            <option value="freelance">Freiberuflich</option>
+            <option value="internship">Praktikum</option>
+            <option value="working_student">Werkstudententätigkeit</option>
+          </select>
+          <span class="hint">Mehrfachauswahl ist möglich.</span>
+        </div>
+        <div class="field full">
+          <label for="dealBreakers">Ausschlusskriterien</label>
+          <textarea id="dealBreakers" maxlength="10000" placeholder="Ein Kriterium pro Zeile"></textarea>
+          <span class="hint">Nur echte Ausschlussgründe eintragen; Wünsche gehören in die Felder darüber.</span>
+        </div>
         <div>
           <label for="defaultLanguage">Standardsprache</label>
           <select id="defaultLanguage"><option value="de">Deutsch</option><option value="en">English</option></select>
@@ -379,6 +426,27 @@
       <div class="form-actions">
         <button class="button ghost" type="button" id="cancelCvImport">Abbrechen</button>
         <button class="button" value="default">Vorschl&auml;ge erzeugen</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="portfolioImportDialog">
+    <form method="dialog" class="dialog-body" id="portfolioImportForm">
+      <h3>Portfolio-Projekte importieren</h3>
+      <p class="hint">Projekte werden als prüfbare Vorschläge angelegt. Erst die Übernahme schreibt sie in das kanonische Profil.</p>
+      <div class="grid">
+        <div class="field">
+          <label for="portfolioSourceName">Quellenname</label>
+          <input id="portfolioSourceName" required maxlength="500" placeholder="z. B. GitHub-Export oder Portfolio 2026">
+        </div>
+        <div class="field full">
+          <label for="portfolioProjects">Inhalt von projects.js</label>
+          <textarea id="portfolioProjects" required style="min-height:380px" placeholder='Vollständigen Inhalt der Datei projects.js einfügen. Der Parser extrahiert const PROJECTS = [...].'></textarea>
+          <span class="hint">Verwende <code>projects.js</code>, nicht <code>projectDetails.js</code>. Importiert werden ID, Tags, Datum, Stack, Links sowie deutsche und englische Zusammenfassungen und Highlights.</span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="button ghost" type="button" id="cancelPortfolioImport">Abbrechen</button>
+        <button class="button" value="default">Vorschläge erzeugen</button>
       </div>
     </form>
   </dialog>
@@ -440,6 +508,22 @@
           ["remote_model","Arbeitsmodell","text"]
         ]
       },
+      projects: {
+        title: "Portfolio-Projekte",
+        description: "Prüfbare praktische Projekte. Sie fließen als Projekt-, nicht als Berufserfahrung in das Matching ein.",
+        name: item => item.canonical_name,
+        subtitle: item => (item.technologies || []).join(", ") || item.project_type || "",
+        fields: [
+          ["canonical_name","Kanonischer Projektname","text",true],
+          ["project_type","Projekttyp","text"],
+          ["role","Eigene Rolle","text"],
+          ["start_date","Start","date"],
+          ["end_date","Ende","date"],
+          ["source_url","Portfolio-/Projekt-URL","url"],
+          ["repository_url","Repository-URL","url"],
+          ["technologies","Technologien, kommagetrennt","csv"]
+        ]
+      },
       education: {
         title: "Ausbildung",
         description: "Institutionen und Abschlüsse mit getrennten deutschen und englischen Darstellungen.",
@@ -481,8 +565,8 @@
         ]
       },
       "cv-imports": {
-        title: "CV-Vorschl\u00e4ge",
-        description: "Von Dify extrahierte Fakten pr\u00fcfen. Erst \u00dcbernehmen schreibt in das kanonische Profil.",
+        title: "Import-Vorschl\u00e4ge",
+        description: "Aus CV oder Portfolio importierte Fakten pr\u00fcfen. Erst \u00dcbernehmen schreibt in das kanonische Profil.",
         fields: []
       }
     };
@@ -863,6 +947,10 @@
     }
 
     function openProfileDialog(edit) {
+      const setSelected = (id, values) => {
+        const selected = new Set(values || []);
+        for (const option of $(id).options) option.selected = selected.has(option.value);
+      };
       $("profileDialogTitle").textContent = edit ? "Profil bearbeiten" : "Profil anlegen";
       $("displayName").value = edit ? profile.display_name : "";
       $("fullName").value = edit ? profile.full_name || "" : "";
@@ -872,6 +960,13 @@
       $("linkedinUrl").value = edit ? profile.linkedin_url || "" : "";
       $("githubUrl").value = edit ? profile.github_url || "" : "";
       $("portfolioUrl").value = edit ? profile.portfolio_url || "" : "";
+      $("careerGoal").value = edit ? profile.career_goal || "" : "";
+      $("targetRoles").value = edit ? (profile.target_roles || []).join(", ") : "";
+      $("targetIndustries").value = edit ? (profile.target_industries || []).join(", ") : "";
+      $("targetLocations").value = edit ? (profile.target_locations || []).join(", ") : "";
+      setSelected("preferredWorkModels", edit ? profile.preferred_work_models : []);
+      setSelected("preferredEmploymentTypes", edit ? profile.preferred_employment_types : []);
+      $("dealBreakers").value = edit ? (profile.deal_breakers || []).join("\n") : "";
       $("defaultLanguage").value = edit ? profile.default_language : "de";
       $("profileStatus").value = edit ? profile.status : "active";
       $("profileStatus").disabled = !edit;
@@ -888,6 +983,8 @@
     $("profileForm").addEventListener("submit", async event => {
       event.preventDefault();
       const edit = $("profileDialog").dataset.edit === "true";
+      const csv = id => $(id).value.split(",").map(value => value.trim()).filter(Boolean);
+      const selectedValues = id => Array.from($(id).selectedOptions, option => option.value);
       const body = {
         display_name: $("displayName").value.trim(),
         full_name: $("fullName").value.trim() || null,
@@ -897,6 +994,13 @@
         linkedin_url: $("linkedinUrl").value.trim() || null,
         github_url: $("githubUrl").value.trim() || null,
         portfolio_url: $("portfolioUrl").value.trim() || null,
+        career_goal: $("careerGoal").value.trim() || null,
+        target_roles: csv("targetRoles"),
+        target_industries: csv("targetIndustries"),
+        target_locations: csv("targetLocations"),
+        preferred_work_models: selectedValues("preferredWorkModels"),
+        preferred_employment_types: selectedValues("preferredEmploymentTypes"),
+        deal_breakers: $("dealBreakers").value.split("\n").map(value => value.trim()).filter(Boolean),
         default_language: $("defaultLanguage").value,
         change_reason: $("profileReason").value || null
       };
@@ -911,6 +1015,31 @@
       } catch (error) { toast(error.message, true); }
     });
     $("cancelProfile").onclick = () => $("profileDialog").close();
+    $("cancelPortfolioImport").onclick = () => $("portfolioImportDialog").close();
+    $("portfolioImportForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        await request(`${API}/${profile.id}/portfolio-imports/source`, {
+          method: "POST",
+          body: JSON.stringify({
+            source_name: $("portfolioSourceName").value.trim(),
+            source_content: $("portfolioProjects").value,
+            export_name: "PROJECTS"
+          })
+        });
+        $("portfolioImportDialog").close();
+        toast("Portfolio-Projekte aus projects.js zur Prüfung importiert.");
+        resource = "cv-imports";
+        document.querySelectorAll("#navigation button").forEach(item =>
+          item.classList.toggle("active", item.dataset.resource === resource)
+        );
+        $("sectionTitle").textContent = CONFIG[resource].title;
+        $("sectionDescription").textContent = CONFIG[resource].description;
+        $("importPortfolio").hidden = true;
+        $("newEntry").textContent = "CV-PDF importieren";
+        await loadEntries();
+      } catch (error) { toast(error.message, true); }
+    });
     $("cvImportForm").addEventListener("submit", async event => {
       if (event.submitter?.value === "cancel") return;
       event.preventDefault();
@@ -983,6 +1112,11 @@
       selected = null; renderList(); renderEditor(true);
       $("editorDetails").open = true;
     };
+    $("importPortfolio").onclick = () => {
+      $("portfolioSourceName").value = "";
+      $("portfolioProjects").value = "";
+      $("portfolioImportDialog").showModal();
+    };
     document.querySelectorAll("#navigation button").forEach(button => button.onclick = async () => {
       document.querySelectorAll("#navigation button").forEach(item => item.classList.remove("active"));
       button.classList.add("active");
@@ -990,6 +1124,7 @@
       cvSelected.clear();
       $("sectionTitle").textContent = CONFIG[resource].title;
       $("sectionDescription").textContent = CONFIG[resource].description;
+      $("importPortfolio").hidden = resource !== "projects";
       $("newEntry").textContent = resource === "cv-imports"
         ? "CV-PDF importieren" : "Eintrag hinzuf\u00fcgen";
       if (profile) await loadEntries();

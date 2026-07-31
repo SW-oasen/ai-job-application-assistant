@@ -12,6 +12,40 @@ wird erst mit mehreren importierten Stellen schrittweise ergänzt.
 - echte Lücken nicht durch lose verwandte Skills verdeckt
 - Qualifikations-Fit und Ziel-Fit nachvollziehbar getrennt
 
+Der Ziel-Fit bewertet Rollen, Branchen, Orte, Arbeitsmodelle und
+Beschäftigungsarten ausschließlich gegen die strukturierten Profilpräferenzen.
+Freie Ausschlusskriterien werden nur bei eindeutig strukturierten Treffern
+automatisch als Konflikt gewertet; textlich ähnliche Fälle bleiben manuell zu
+prüfen.
+
+Der Qualifikations-Fit wird zusätzlich als gewichtete Gesamtprozentzahl
+ausgegeben:
+
+- Muss-Anforderung: Gewicht 3
+- Soll-Anforderung: Gewicht 2
+- optionale Anforderung: Gewicht 1
+- starker Match: 100 Prozent Erfüllung
+- teilweiser Match: 65 Prozent
+- übertragbare Erfahrung: 40 Prozent
+- Lücke oder unklare Anforderung: 0 Prozent
+
+Die Gesamtzahl ist die Summe der erreichten gewichteten Punkte geteilt durch
+die maximal möglichen Punkte. Sie ersetzt nicht die Einzelbewertungen und
+deren Evidenz.
+
+## Gemeinsames Fazit
+
+Aus Qualifikations-Fit, Ziel-Fit, unbelegten Muss-Anforderungen und
+strukturiert erkannten Ausschlusskriterien wird eine regelbasierte Empfehlung
+abgeleitet. Mögliche Ergebnisse sind `Bewerbung empfohlen`,
+`Bewerbung erwägen`, `Manuell abwägen` und `Nicht priorisieren`.
+
+Für diese Zusammenführung ist kein zusätzlicher KI-Workflow erforderlich.
+Die Regelentscheidung bleibt dadurch reproduzierbar und anhand der beiden
+Teilbewertungen nachvollziehbar. Ein späterer semantischer Workflow kann
+unklare Freitextkriterien erläutern, darf die strukturierte Entscheidung aber
+nicht stillschweigend überschreiben.
+
 ## Referenzstellen
 
 | Stelle | Extraktion geprüft | Matching geprüft | Notiz |
@@ -22,4 +56,3 @@ wird erst mit mehreren importierten Stellen schrittweise ergänzt.
 
 - Nach erneuter Extraktion werden mehr Anforderungen als zuvor angezeigt.
 - Mindestens mehrere weitere Stellen sind nötig, bevor Regeln angepasst werden.
-

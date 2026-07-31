@@ -15,6 +15,7 @@ from app.database.models import (
     EducationEntry,
     Job,
     JobRequirement,
+    PortfolioProject,
     Profile,
     ProfileEvidence,
     ProfileSource,
@@ -199,6 +200,7 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
     definitions = (
         (Skill, "skill", "other"),
         (WorkExperience, "experience", "professional"),
+        (PortfolioProject, "project", "project"),
         (EducationEntry, "education", "education"),
         (Certificate, "certificate", "training"),
     )
@@ -233,6 +235,14 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
                     f"{row.end_date.isoformat() if row.end_date else 'heute'}"
                 )
                 keywords = [row.company, *titles]
+            elif model is PortfolioProject:
+                label = titles[0] if titles else row.canonical_name
+                core_content = (
+                    f"Portfolio-Projekt {row.canonical_name}; "
+                    f"Rolle: {row.role or 'nicht angegeben'}; "
+                    f"Technologien: {', '.join(row.technologies)}"
+                )
+                keywords = [row.canonical_name, row.role, *row.technologies, *titles]
             elif model is EducationEntry:
                 label = f"{titles[0] if titles else 'Ausbildung'} · {row.institution}"
                 core_content = f"Ausbildung bei {row.institution}"
@@ -246,7 +256,15 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
             evidence.append(
                 EvidenceInput(
                     source_name=f"profile:{profile_id}:{label_prefix}:{row.id}",
-                    source_type="certificate" if model is Certificate else "manual",
+                    source_type=(
+                        "certificate"
+                        if model is Certificate
+                        else "github"
+                        if model is PortfolioProject and row.repository_url
+                        else "portfolio"
+                        if model is PortfolioProject
+                        else "manual"
+                    ),
                     source_content=source_content,
                     label=label,
                     evidence_text="\n".join(
@@ -707,6 +725,17 @@ async def get_matching_job(job_id) -> dict:
         if row is None:
             raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
         job, company = row
+        requirements = (
+            await session.scalars(
+                select(JobRequirement)
+                .where(JobRequirement.job_id == job.id)
+                .order_by(
+                    JobRequirement.category,
+                    JobRequirement.priority,
+                    JobRequirement.requirement_text,
+                )
+            )
+        ).all()
         return {
             "id": str(job.id),
             "title": job.title or "Unbenannte Stelle",
@@ -721,6 +750,17 @@ async def get_matching_job(job_id) -> dict:
             "imported_at": job.imported_at,
             "retrieval_method": job.retrieval_method,
             "import_warnings": job.import_warnings or [],
+            "requirements": [
+                {
+                    "id": str(requirement.id),
+                    "category": requirement.category,
+                    "requirement": requirement.requirement_text,
+                    "priority": requirement.priority,
+                    "keywords": requirement.keywords or [],
+                    "confidence": requirement.confidence,
+                }
+                for requirement in requirements
+            ],
             "content": job.normalized_content,
             "content_html": render_safe_markdown(job.normalized_content),
         }
@@ -786,6 +826,418 @@ async def delete_matching_job(job_id) -> None:
     remove_stored_files(list(storage_keys))
 
 
+def _normalized_target_text(value: object) -> str:
+    return " ".join(
+        re.findall(
+            r"[a-z0-9+#]+",
+            str(value or "").casefold()
+            .replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("ß", "ss"),
+        )
+    )
+
+
+def _target_overlap(desired: str, actual: str) -> float:
+    desired_terms = set(_normalized_target_text(desired).split())
+    actual_terms = set(_normalized_target_text(actual).split())
+    if not desired_terms or not actual_terms:
+        return 0.0
+    return len(desired_terms & actual_terms) / len(desired_terms)
+
+
+def _preference_criterion(
+    *,
+    key: str,
+    label: str,
+    desired: list[str],
+    actual: str | None,
+    weight: int,
+) -> dict:
+    if not desired:
+        return {
+            "key": key,
+            "label": label,
+            "status": "not_configured",
+            "desired": [],
+            "actual": actual,
+            "score": None,
+            "weight": weight,
+            "explanation": "Für dieses Kriterium ist keine Zielpräferenz hinterlegt.",
+        }
+    if not actual:
+        return {
+            "key": key,
+            "label": label,
+            "status": "unknown",
+            "desired": desired,
+            "actual": None,
+            "score": None,
+            "weight": weight,
+            "explanation": "Die Stellenanzeige enthält hierzu keine auswertbare Angabe.",
+        }
+    best = max(_target_overlap(value, actual) for value in desired)
+    if best >= 1:
+        status, score = "match", 1.0
+    elif best >= 0.5:
+        status, score = "partial", 0.6
+    else:
+        status, score = "mismatch", 0.0
+    return {
+        "key": key,
+        "label": label,
+        "status": status,
+        "desired": desired,
+        "actual": actual,
+        "score": score,
+        "weight": weight,
+        "explanation": {
+            "match": "Die Stellenangabe entspricht einer hinterlegten Zielpräferenz.",
+            "partial": "Die Stellenangabe überschneidet sich teilweise mit einer Zielpräferenz.",
+            "mismatch": "Die Stellenangabe entspricht keiner hinterlegten Zielpräferenz.",
+        }[status],
+    }
+
+
+def _canonical_work_model(value: str | None) -> str | None:
+    normalized = _normalized_target_text(value)
+    if any(term in normalized for term in ("remote", "homeoffice", "home office")):
+        return "remote"
+    if "hybrid" in normalized:
+        return "hybrid"
+    if any(term in normalized for term in ("onsite", "on site", "vor ort", "praesenz")):
+        return "onsite"
+    return normalized or None
+
+
+def _canonical_employment_type(value: str | None) -> str | None:
+    normalized = _normalized_target_text(value)
+    mappings = (
+        ("working_student", ("werkstudent", "working student")),
+        ("internship", ("praktikum", "internship", "intern")),
+        ("freelance", ("freelance", "freiberuf", "contractor")),
+        ("permanent", ("festanstellung", "unbefrist", "permanent", "full time", "vollzeit")),
+        ("temporary", ("befrist", "temporary", "fixed term")),
+    )
+    for canonical, markers in mappings:
+        if any(marker in normalized for marker in markers):
+            return canonical
+    return normalized or None
+
+
+def _evaluate_target_fit(job: Job, company: Company | None, profile: Profile) -> dict:
+    criteria = [
+        _preference_criterion(
+            key="role",
+            label="Zielrolle",
+            desired=profile.target_roles or [],
+            actual=job.title,
+            weight=40,
+        ),
+        _preference_criterion(
+            key="industry",
+            label="Zielbranche",
+            desired=profile.target_industries or [],
+            actual=company.industry if company else None,
+            weight=10,
+        ),
+        _preference_criterion(
+            key="location",
+            label="Zielort",
+            desired=profile.target_locations or [],
+            actual=job.location,
+            weight=20,
+        ),
+        _preference_criterion(
+            key="work_model",
+            label="Arbeitsmodell",
+            desired=profile.preferred_work_models or [],
+            actual=_canonical_work_model(job.work_model),
+            weight=15,
+        ),
+        _preference_criterion(
+            key="employment_type",
+            label="Beschäftigungsart",
+            desired=profile.preferred_employment_types or [],
+            actual=_canonical_employment_type(job.employment_type),
+            weight=15,
+        ),
+    ]
+    source_text = " ".join(
+        value
+        for value in (
+            job.title,
+            job.location,
+            job.work_model,
+            job.employment_type,
+            job.normalized_content,
+        )
+        if value
+    )
+    exclusions = []
+    hard_conflict = False
+    for value in profile.deal_breakers or []:
+        normalized = _normalized_target_text(value)
+        actual_employment = _canonical_employment_type(job.employment_type)
+        definite = (
+            ("freiberuf" in normalized or "freelance" in normalized)
+            and actual_employment == "freelance"
+        ) or (
+            ("student" in normalized or "werkstudent" in normalized)
+            and (
+                actual_employment == "working_student"
+                or "immatrikul" in _normalized_target_text(source_text)
+            )
+        )
+        overlap = _target_overlap(value, source_text)
+        status = "conflict" if definite else "review" if overlap >= 0.5 else "clear"
+        hard_conflict = hard_conflict or definite
+        exclusions.append(
+            {
+                "criterion": value,
+                "status": status,
+                "explanation": (
+                    "Das Ausschlusskriterium trifft anhand strukturierter Stellenangaben zu."
+                    if definite
+                    else "Die Stellenbeschreibung enthält ähnliche Begriffe; bitte manuell prüfen."
+                    if status == "review"
+                    else "Kein eindeutiger Hinweis auf dieses Ausschlusskriterium gefunden."
+                ),
+            }
+        )
+
+    scored = [item for item in criteria if item["score"] is not None]
+    total_weight = sum(item["weight"] for item in scored)
+    score = (
+        round(
+            sum(item["score"] * item["weight"] for item in scored)
+            / total_weight
+            * 100
+        )
+        if total_weight
+        else None
+    )
+    if hard_conflict:
+        level = "conflict"
+    elif score is None:
+        level = "unknown"
+    elif score >= 75:
+        level = "strong"
+    elif score >= 45:
+        level = "partial"
+    else:
+        level = "weak"
+    return {
+        "level": level,
+        "score": score,
+        "criteria": criteria,
+        "exclusions": exclusions,
+        "summary": {
+            "strong": "Die bekannten Stellenmerkmale passen gut zum Zielprofil.",
+            "partial": "Die Stelle passt teilweise zum Zielprofil.",
+            "weak": "Mehrere bekannte Stellenmerkmale weichen vom Zielprofil ab.",
+            "conflict": "Mindestens ein strukturiert erkennbares Ausschlusskriterium trifft zu.",
+            "unknown": "Für eine Ziel-Fit-Bewertung fehlen auswertbare Stellenmerkmale.",
+        }[level],
+    }
+
+
+async def get_target_fit(job_id, profile_id) -> dict:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise ApplicationError(
+            "Matching requires a configured database.",
+            code="database_not_configured",
+            status_code=503,
+        )
+    async with session_factory() as session:
+        row = (
+            await session.execute(
+                select(Job, Company)
+                .outerjoin(Company, Company.id == Job.company_id)
+                .where(Job.id == job_id)
+            )
+        ).one_or_none()
+        if row is None:
+            raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
+        profile = await session.get(Profile, profile_id)
+        if profile is None:
+            raise ApplicationError("Profile not found.", code="profile_not_found", status_code=404)
+        return _evaluate_target_fit(row[0], row[1], profile)
+
+
+def _qualification_fit(matches: list[dict]) -> dict:
+    priority_weights = {"must": 3, "should": 2, "nice_to_have": 1}
+    level_scores = {
+        "strong_match": 1.0,
+        "partial_match": 0.65,
+        "transferable": 0.4,
+        "gap": 0.0,
+        "unknown": 0.0,
+    }
+    weighted_requirements = []
+    achieved = 0.0
+    possible = 0
+    for match in matches:
+        priority = match.get("priority") or "should"
+        match_level = match.get("match_level") or "unknown"
+        weight = priority_weights.get(priority, 2)
+        fulfillment = level_scores.get(match_level, 0.0)
+        contribution = weight * fulfillment
+        achieved += contribution
+        possible += weight
+        weighted_requirements.append(
+            {
+                "requirement_id": match.get("requirement_id"),
+                "requirement": match.get("requirement"),
+                "priority": priority,
+                "priority_weight": weight,
+                "match_level": match_level,
+                "fulfillment_percent": round(fulfillment * 100),
+                "weighted_points": round(contribution, 2),
+                "possible_points": weight,
+            }
+        )
+    score = round(achieved / possible * 100) if possible else None
+    if score is None:
+        level = "unknown"
+    elif score >= 80:
+        level = "strong"
+    elif score >= 60:
+        level = "good"
+    elif score >= 40:
+        level = "partial"
+    else:
+        level = "weak"
+    return {
+        "score": score,
+        "level": level,
+        "achieved_points": round(achieved, 2),
+        "possible_points": possible,
+        "requirement_count": len(matches),
+        "weights": {
+            "priority": priority_weights,
+            "match_level_percent": {
+                key: round(value * 100) for key, value in level_scores.items()
+            },
+        },
+        "weighted_requirements": weighted_requirements,
+        "summary": {
+            "strong": "Die gewichteten Anforderungen werden insgesamt sehr gut erfüllt.",
+            "good": "Die gewichteten Anforderungen werden insgesamt gut erfüllt.",
+            "partial": "Die gewichteten Anforderungen werden teilweise erfüllt.",
+            "weak": "Viele oder besonders wichtige Anforderungen sind nicht ausreichend belegt.",
+            "unknown": "Es liegen noch keine bewerteten Anforderungen vor.",
+        }[level],
+    }
+
+
+def _matching_recommendation(
+    qualification_fit: dict,
+    target_fit: dict,
+) -> dict:
+    qualification_score = qualification_fit.get("score")
+    target_score = target_fit.get("score")
+    target_conflict = target_fit.get("level") == "conflict"
+    must_gaps = sum(
+        1
+        for item in qualification_fit.get("weighted_requirements", [])
+        if item["priority"] == "must" and item["match_level"] in {"gap", "unknown"}
+    )
+    review_exclusions = sum(
+        1
+        for item in target_fit.get("exclusions", [])
+        if item["status"] == "review"
+    )
+
+    if target_conflict:
+        verdict = "deprioritize"
+        headline = "Nicht priorisieren"
+        rationale = (
+            "Ein strukturiert erkennbares Ausschlusskriterium trifft zu. "
+            "Die Stelle sollte nur weiterverfolgt werden, wenn dieses Kriterium "
+            "inhaltlich falsch erkannt wurde oder nicht mehr gilt."
+        )
+    elif qualification_score is None:
+        verdict = "review"
+        headline = "Zunächst Qualifikationen prüfen"
+        rationale = "Es liegt noch keine belastbare Qualifikationsbewertung vor."
+    elif target_score is None:
+        verdict = "review"
+        headline = "Ziel-Fit manuell prüfen"
+        rationale = (
+            "Der Qualifikations-Fit ist bewertbar, für den Ziel-Fit fehlen jedoch "
+            "ausreichende strukturierte Stellenmerkmale."
+        )
+    elif qualification_score >= 60 and target_score >= 60 and must_gaps == 0:
+        verdict = "apply"
+        headline = "Bewerbung empfohlen"
+        rationale = (
+            "Qualifikationen und berufliche Ziele passen insgesamt gut zur Stelle; "
+            "es wurden keine unbelegten Muss-Anforderungen erkannt."
+        )
+    elif qualification_score >= 40 and target_score >= 60:
+        verdict = "consider"
+        headline = "Bewerbung erwägen"
+        rationale = (
+            "Die Stelle passt zum Zielprofil, der Qualifikations-Fit ist jedoch nur "
+            "teilweise gegeben. Vor einer Bewerbung sollten die wichtigsten Lücken "
+            "und übertragbaren Erfahrungen geprüft werden."
+        )
+    elif qualification_score >= 60 and target_score < 45:
+        verdict = "review"
+        headline = "Fachlich passend, Ziel-Fit schwach"
+        rationale = (
+            "Die Qualifikationen passen, mehrere Stellenmerkmale weichen aber vom "
+            "beruflichen Zielprofil ab. Nur weiterverfolgen, wenn diese Präferenzen "
+            "verhandelbar sind."
+        )
+    elif qualification_score < 40:
+        verdict = "deprioritize"
+        headline = "Eher nicht priorisieren"
+        rationale = (
+            "Der gewichtete Qualifikations-Fit ist niedrig. Eine Bewerbung ist nur "
+            "sinnvoll, wenn die Stelle strategisch besonders interessant ist und "
+            "die Muss-Lücken realistisch erklärt oder geschlossen werden können."
+        )
+    else:
+        verdict = "review"
+        headline = "Manuell abwägen"
+        rationale = (
+            "Die beiden Bewertungen ergeben kein eindeutiges Gesamtbild. "
+            "Einzelanforderungen und Zielkriterien sollten manuell geprüft werden."
+        )
+
+    reasons = [
+        (
+            f"Qualifikations-Fit: {qualification_score} %"
+            if qualification_score is not None
+            else "Qualifikations-Fit: unklar"
+        ),
+        (
+            f"Ziel-Fit: {target_score} %"
+            if target_score is not None
+            else "Ziel-Fit: unklar"
+        ),
+    ]
+    if must_gaps:
+        reasons.append(f"{must_gaps} unbelegte oder unklare Muss-Anforderung(en)")
+    if review_exclusions:
+        reasons.append(f"{review_exclusions} Ausschlusskriterium/-kriterien manuell prüfen")
+    return {
+        "verdict": verdict,
+        "headline": headline,
+        "rationale": rationale,
+        "reasons": reasons,
+        "requires_manual_review": (
+            verdict in {"consider", "review"}
+            or must_gaps > 0
+            or review_exclusions > 0
+        ),
+    }
+
+
 async def get_stored_matching(job_id, profile_id) -> dict:
     session_factory = get_session_factory()
     if session_factory is None:
@@ -847,6 +1299,8 @@ async def get_stored_matching(job_id, profile_id) -> dict:
         for match in matches:
             level = match["match_level"]
             summary[level] = summary.get(level, 0) + 1
+        qualification_fit = _qualification_fit(matches)
+        target_fit = _evaluate_target_fit(job, company, profile)
         return {
             "job": {
                 "id": str(job.id),
@@ -865,4 +1319,10 @@ async def get_stored_matching(job_id, profile_id) -> dict:
             },
             "matches": matches,
             "summary": summary,
+            "qualification_fit": qualification_fit,
+            "target_fit": target_fit,
+            "recommendation": _matching_recommendation(
+                qualification_fit,
+                target_fit,
+            ),
         }

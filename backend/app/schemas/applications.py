@@ -23,7 +23,13 @@ ApplicationChannel = Literal[
     "personal",
     "other",
 ]
-EventType = Literal["created", "status_change", "communication", "note"]
+EventType = Literal[
+    "created",
+    "status_change",
+    "internal_forwarded",
+    "communication",
+    "note",
+]
 
 
 class ApplicationCreate(BaseModel):
@@ -35,6 +41,7 @@ class ApplicationCreate(BaseModel):
     occurred_at: datetime | None = None
     channel: ApplicationChannel | None = None
     portal_name: str | None = Field(default=None, max_length=100)
+    contact_person: str | None = Field(default=None, max_length=300)
     note: str | None = Field(default=None, max_length=5000)
     next_action: str | None = Field(default=None, max_length=2000)
     next_action_at: datetime | None = None
@@ -60,14 +67,17 @@ class ApplicationEventCreate(BaseModel):
     occurred_at: datetime | None = None
     channel: ApplicationChannel | None = None
     portal_name: str | None = Field(default=None, max_length=100)
+    contact_person: str | None = Field(default=None, max_length=300)
     note: str | None = Field(default=None, max_length=5000)
 
 
 class ApplicationEventUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    status: ApplicationStatus
+    event_type: EventType | None = None
+    status: ApplicationStatus | None = None
     occurred_at: datetime
     channel: ApplicationChannel | None = None
     portal_name: str | None = Field(default=None, max_length=100)
+    contact_person: str | None = Field(default=None, max_length=300)
     note: str | None = Field(default=None, max_length=5000)

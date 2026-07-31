@@ -41,6 +41,23 @@ def test_matching_admin_page_is_readable(client) -> None:
     assert "Auswertung laden" in response.text
     assert "Starker Match" in response.text
     assert "Portfolio-Projekt" in response.text
+    assert "Qualifikations-Fit" in response.text
+    assert 'id="targetFit"' in response.text
+    assert 'id="qualificationFit"' in response.text
+    assert 'id="recommendation"' in response.text
+    assert "Fazit" in response.text
+    assert "Muss ×" in response.text
+    assert '<details class="fit-section" id="targetFitDetails">' in response.text
+    assert '<details class="fit-section" id="qualificationFitDetails">' in response.text
+    assert "const jobLabel" in response.text
+    assert "sourceName" not in response.text
+    assert response.text.index('id="recommendation"') < response.text.index(
+        'id="targetFitDetails"'
+    )
+    qualification_start = response.text.index('id="qualificationFitDetails"')
+    qualification_end = response.text.index("</details>", qualification_start)
+    assert response.text.index('id="summary"', qualification_start) < qualification_end
+    assert response.text.index('id="results"', qualification_start) < qualification_end
 
 
 def test_matching_jobs_uses_service(client, monkeypatch) -> None:
@@ -145,6 +162,24 @@ def test_stored_matching_results_use_job_and_profile(client, monkeypatch) -> Non
 
     assert response.status_code == 200
     assert response.json()["profile"]["display_name"] == "Main"
+
+
+def test_target_fit_uses_job_and_profile(client, monkeypatch) -> None:
+    job_id = uuid4()
+    profile_id = uuid4()
+
+    async def fake_target_fit(received_job_id, received_profile_id):
+        assert received_job_id == job_id
+        assert received_profile_id == profile_id
+        return {"level": "strong", "score": 90, "criteria": [], "exclusions": []}
+
+    monkeypatch.setattr("app.api.routes.matching.get_target_fit", fake_target_fit)
+    response = client.get(
+        f"/matching/target-fit?job_id={job_id}&profile_id={profile_id}"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["score"] == 90
 
 
 def test_matching_context_uses_job_and_profile_ids(client, monkeypatch) -> None:

@@ -11,11 +11,13 @@
     .button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;text-decoration:none;display:inline-block;cursor:pointer}.button:hover{background:#0f4dcc}.button:focus-visible{outline:3px solid #91b4ff;outline-offset:2px}.button:disabled{cursor:not-allowed;opacity:.6}.button.secondary{background:#e9eef6;color:#27364a}.button.secondary:hover{background:#d9e2ef}.button.strong{background:#193a63;color:#fff}.button.strong:hover{background:#102a49}
     main{max-width:1050px;margin:auto;padding:26px 22px 60px}.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:22px;margin-bottom:18px}
     .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.meta div{padding:11px;border-radius:9px;background:#f6f8fb}.meta strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+    .matching-summary{border-left:5px solid var(--blue)}.matching-summary h2{font-size:20px;margin:0 0 5px}.matching-summary p{margin:5px 0}.fit-scores{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}.fit-score{padding:8px 11px;border-radius:8px;background:#f6f8fb;border:1px solid var(--line)}.fit-score strong{margin-right:5px}.matching-details{margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}.fit-detail{margin-top:10px;border:1px solid var(--line);border-radius:9px;background:#f8fafc}.fit-detail>summary,.requirement-detail>summary{cursor:pointer;padding:12px;font-weight:700}.fit-detail-body{padding:0 12px 12px}.fit-criteria{display:grid;gap:7px}.fit-criterion{padding:9px;border-radius:7px;background:#fff}.fit-criterion span{display:block;color:var(--muted);font-size:13px;margin-top:3px}.requirement-detail{margin-top:7px;border:1px solid var(--line);border-radius:8px;background:#fff}.requirement-body{padding:0 12px 12px}.requirement-body p{margin:7px 0}.requirement-body strong{color:#34445b}
     .content{overflow-wrap:anywhere;line-height:1.62}.content h1{font-size:1.55rem;margin:1.5em 0 .55em}.content h2{font-size:1.35rem;margin:1.4em 0 .5em}.content h3,.content h4{font-size:1.12rem;margin:1.25em 0 .45em}.content p{margin:.65em 0}.content ul,.content ol{padding-left:1.55rem}.content li{margin:.35em 0}.content blockquote{margin:1em 0;padding:.15em 1em;border-left:4px solid #b9c8dd;background:#f6f8fb;color:#40506a}.content a{color:var(--blue)}.content pre{overflow:auto;padding:12px;background:#f2f5f8;border-radius:8px}.content hr{border:0;border-top:1px solid var(--line);margin:1.5em 0}.warning{color:#8a4b08}.error{color:#b42318}.source{overflow-wrap:anywhere}
+    .structured-groups{display:grid;gap:16px}.structured-group{padding:16px;border-radius:10px;background:#f6f8fb}.structured-group h3{margin:0 0 11px;font-size:17px}.structured-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.structured-field{padding:9px;background:#fff;border-radius:8px}.structured-field strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.requirement-groups{display:grid;gap:13px}.requirement-group h4{margin:0 0 7px}.requirement-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}.requirement-list li{padding:10px 11px;background:#fff;border:1px solid var(--line);border-radius:8px}.requirement-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.tag{padding:2px 7px;border-radius:999px;background:#e7edf7;color:#34445b;font-size:12px}.reference-details summary{cursor:pointer;font-weight:700;font-size:18px}.reference-details[open] summary{margin-bottom:18px}.reference-hint{color:var(--muted);font-size:13px}
     .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid label{font-size:12px;font-weight:700;color:var(--muted)}select,input,textarea{display:block;width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit}.full{grid-column:1/-1}.timeline{display:grid;gap:8px;margin-top:18px}.event{position:relative;padding:11px 86px 11px 11px;border-left:4px solid var(--blue);background:#f6f8fb;border-radius:7px;cursor:pointer}.event:hover{background:#edf3ff}.event strong{display:block}.event span{font-size:12px;color:var(--muted)}.delete-event{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:none;color:#b42318;font:inherit;font-weight:700;cursor:pointer;padding:7px}.hidden{display:none}
     .documents{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}.documents h3{margin:0 0 8px}.document-list{display:grid;gap:8px;margin-top:14px}.document-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px;background:#f6f8fb;border-radius:8px}.document-row span{display:block;font-size:12px;color:var(--muted);margin-top:3px}.document-actions{display:flex;gap:8px;flex-shrink:0}.document-actions a,.document-actions button{font:inherit;font-weight:700;color:var(--blue);background:none;border:0;padding:5px;cursor:pointer}.document-warning{padding:10px;border-radius:8px;background:#fff4e5;color:#8a4b08}
     details.inline-editor{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}details.inline-editor summary{cursor:pointer;color:var(--blue);font-weight:700}.application-overview{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.application-overview span{padding:8px 11px;border-radius:8px;background:#f6f8fb}
-    @media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
+    @media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid,.structured-fields{grid-template-columns:1fr}.full{grid-column:auto}}
   </style>
 </head>
 <body>
@@ -25,7 +27,6 @@
       <a class="nav-link" href="/">Dashboard</a>
       <a class="nav-link" href="/jobs">Jobübersicht</a>
       <a class="nav-link" href="/manage#job-import">Job importieren</a>
-      <a class="nav-link" id="matchingLink" href="/matching/admin">Matching</a>
     </div>
   </header>
   <main>
@@ -60,15 +61,22 @@
         </form>
       </details>
     </section>
+    <section class="panel matching-summary hidden" id="matchingSummary" aria-live="polite"></section>
     <section class="panel">
       <h2>Bewerbungsverlauf</h2>
       <div class="application-overview" id="applicationOverview"></div>
       <details class="inline-editor" id="applicationEditor">
-        <summary>Bewerbungsstatus und Unterlagen bearbeiten</summary>
+        <summary>Verlauf und Unterlagen bearbeiten</summary>
         <form id="applicationForm">
         <div class="form-grid">
           <label>Profil<select id="profile"></select></label>
-          <label>Status<select id="applicationStatus">
+          <label>Verlaufsereignis<select id="eventType">
+            <option value="status_change">Statusänderung</option>
+            <option value="internal_forwarded">Intern weitergeleitet</option>
+            <option value="communication">Sonstige Kommunikation</option>
+            <option value="note">Notiz</option>
+          </select></label>
+          <label id="applicationStatusField">Neuer Status<select id="applicationStatus">
             <option value="draft">Entwurf</option><option value="applied">Beworben</option>
             <option value="followed_up">Nachgefragt</option><option value="interview">Vorstellungsgespräch</option>
             <option value="rejected">Abgelehnt</option><option value="offer">Angebot erhalten</option>
@@ -80,9 +88,10 @@
             <input id="portalName" maxlength="100" list="jobPortalNames" placeholder="z. B. LinkedIn">
             <datalist id="jobPortalNames"><option value="LinkedIn"><option value="Indeed"><option value="Instaffo"><option value="StepStone"><option value="XING"><option value="Bundesagentur für Arbeit"></datalist>
           </label>
+          <label>Kontaktperson<input id="contactPerson" maxlength="300" placeholder="z. B. Maria Mustermann"></label>
           <label class="full">Notiz<textarea id="applicationNote" rows="3" placeholder="Optionale Notiz zum Statuswechsel"></textarea></label>
         </div>
-        <p><button class="button" id="saveStatus" type="submit">Bewerbungsstatus speichern</button> <button class="button secondary hidden" id="cancelEdit" type="button">Bearbeitung abbrechen</button></p>
+        <p><button class="button" id="saveStatus" type="submit">Verlaufsereignis speichern</button> <button class="button secondary hidden" id="cancelEdit" type="button">Bearbeitung abbrechen</button></p>
         </form>
         <div class="documents">
         <h3>Abgeschickte Unterlagen</h3>
@@ -106,8 +115,15 @@
       <div class="timeline" id="timeline"></div>
     </section>
     <section class="panel">
-      <h2>Importierter Inhalt</h2>
-      <div class="content" id="content"></div>
+      <h2>Erkannte Stellendetails</h2>
+      <div class="structured-groups" id="structuredDetails"></div>
+    </section>
+    <section class="panel">
+      <details class="reference-details">
+        <summary>Importierter Referenztext</summary>
+        <p class="reference-hint">Dieser geparste Text dient als Referenz für die erkannten strukturierten Daten.</p>
+        <div class="content" id="content"></div>
+      </details>
     </section>
   </main>
   <script>
@@ -119,6 +135,7 @@
       return job.source_filename||job.source_portal||"Unbekannte Quelle";
     };
     const statusLabels={draft:"Entwurf",applied:"Beworben",followed_up:"Nachgefragt",interview:"Vorstellungsgespräch",rejected:"Abgelehnt",offer:"Angebot erhalten",accepted:"Angenommen",withdrawn:"Zurückgezogen",closed:"Geschlossen"};
+    const eventLabels={created:"Bewerbung angelegt",status_change:"Status geändert",internal_forwarded:"Intern weitergeleitet",communication:"Kommunikation",note:"Notiz"};
     const channelLabels={email:"E-Mail",company_portal:"Arbeitgeberportal",job_portal:"Jobportal",phone:"Telefon",personal:"Persönlich",other:"Sonstiges"};
     const documentLabels={resume:"Lebenslauf",cover_letter:"Anschreiben",certificate:"Zeugnis",other:"Sonstige Anlage"};
     let currentJob=null,currentApplication=null,editingEventId=null,currentEvents=[],currentFiles=[];
@@ -136,25 +153,39 @@
       document.getElementById("portalName").required=isJobPortal;
       if(!isJobPortal)document.getElementById("portalName").value="";
     }
+    function syncEventType(){
+      const changesStatus=document.getElementById("eventType").value==="status_change";
+      document.getElementById("applicationStatusField").classList.toggle("hidden",!changesStatus);
+      document.getElementById("applicationStatus").required=changesStatus;
+      document.getElementById("applicationNote").placeholder=changesStatus
+        ?"Optionale Notiz zur Statusänderung"
+        :"Beschreibung des Verlaufsereignisses";
+    }
     function resetEventEditor(){
       editingEventId=null;
-      document.getElementById("saveStatus").textContent="Bewerbungsstatus speichern";
+      document.getElementById("saveStatus").textContent="Verlaufsereignis speichern";
       document.getElementById("cancelEdit").classList.add("hidden");
       document.getElementById("applicationStatus").value=currentApplication?.status||"draft";
+      document.getElementById("eventType").value="status_change";
       document.getElementById("occurredAt").value=localNow();
       document.getElementById("channel").value=currentApplication?.response_channel||currentApplication?.application_channel||"";
       document.getElementById("portalName").value=currentApplication?.response_portal_name||currentApplication?.application_portal_name||"";
+      document.getElementById("contactPerson").value="";
       syncPortalName();
+      syncEventType();
       document.getElementById("applicationNote").value="";
     }
     function editEvent(eventId){
       const event=currentEvents.find(item=>item.id===eventId);if(!event)return;
       editingEventId=event.id;
+      document.getElementById("eventType").value=["internal_forwarded","communication","note"].includes(event.event_type)?event.event_type:"status_change";
       document.getElementById("applicationStatus").value=event.status||currentApplication?.status||"draft";
       document.getElementById("occurredAt").value=localDateTime(event.occurred_at);
       document.getElementById("channel").value=event.channel||"";
       document.getElementById("portalName").value=event.portal_name||"";
+      document.getElementById("contactPerson").value=event.contact_person||"";
       syncPortalName();
+      syncEventType();
       document.getElementById("applicationNote").value=event.note||"";
       document.getElementById("saveStatus").textContent="Statuseintrag aktualisieren";
       document.getElementById("cancelEdit").classList.remove("hidden");
@@ -163,7 +194,7 @@
     }
     function renderTimeline(events){
       currentEvents=events;
-      document.getElementById("timeline").innerHTML=events.length?events.map(event=>`<article class="event" data-event-id="${esc(event.id)}" title="Zum Bearbeiten anklicken"><strong>${esc(statusLabels[event.status]||event.event_type)}</strong><span>${esc(formatDate(event.occurred_at))}${event.channel?` · ${esc(channelLabels[event.channel]||event.channel)}${event.portal_name?` (${esc(event.portal_name)})`:""}`:""}</span>${event.note?`<div>${esc(event.note)}</div>`:""}<button type="button" class="delete-event" data-delete-event-id="${esc(event.id)}" title="Eintrag löschen">Löschen</button></article>`).join(""):`<p class="warning">Noch kein Bewerbungsverlauf vorhanden.</p>`;
+      document.getElementById("timeline").innerHTML=events.length?events.map(event=>`<article class="event" data-event-id="${esc(event.id)}" title="Zum Bearbeiten anklicken"><strong>${esc(event.event_type==="created"||event.event_type==="status_change"?statusLabels[event.status]||eventLabels[event.event_type]:eventLabels[event.event_type]||event.event_type)}</strong><span>${esc(formatDate(event.occurred_at))}${event.channel?` · ${esc(channelLabels[event.channel]||event.channel)}${event.portal_name?` (${esc(event.portal_name)})`:""}`:""}${event.contact_person?` · ${esc(event.contact_person)}`:""}</span>${event.note?`<div>${esc(event.note)}</div>`:""}<button type="button" class="delete-event" data-delete-event-id="${esc(event.id)}" title="Eintrag löschen">Löschen</button></article>`).join(""):`<p class="warning">Noch kein Bewerbungsverlauf vorhanden.</p>`;
       document.querySelectorAll(".event[data-event-id]").forEach(element=>element.onclick=()=>editEvent(element.dataset.eventId));
       document.querySelectorAll("[data-delete-event-id]").forEach(button=>button.onclick=event=>{event.stopPropagation();deleteEvent(button.dataset.deleteEventId)});
     }
@@ -193,6 +224,45 @@
         </article>`).join(""):(currentApplication?'<p class="warning">Noch keine abgeschickten Unterlagen hinterlegt.</p>':"");
       document.querySelectorAll("[data-file-id]").forEach(button=>button.onclick=()=>deleteDocument(button.dataset.fileId));
     }
+    function humanize(value){
+      const labels={skill:"Fachkenntnisse",experience:"Berufserfahrung",education:"Ausbildung",language:"Sprachen",soft_skill:"Persönliche Kompetenzen",responsibility:"Aufgaben",other:"Weitere Anforderungen",must:"Muss",should:"Soll",nice_to_have:"Optional",strong_match:"Starker Match",partial_match:"Teilweiser Match",transferable:"Übertragbar",gap:"Lücke",unknown:"Unklar",match:"Passend",partial:"Teilweise",mismatch:"Abweichend",not_configured:"Nicht gepflegt",clear:"Kein Konflikt",conflict:"Ausschluss"};
+      return labels[value]||String(value||"Weitere Anforderungen").replaceAll("_"," ").replace(/^\w/,char=>char.toUpperCase());
+    }
+    function renderStructuredDetails(job){
+      const fields=[
+        ["Unternehmen",job.company],["Ort",job.location],["Arbeitsmodell",job.work_model],
+        ["Beschäftigungsart",job.employment_type],["Befristung",job.contract_term],
+        ["Veröffentlicht",job.published_text||(job.published_at?formatDate(job.published_at):null)],
+        ["Bewerbungsfrist",job.deadline?formatDate(job.deadline):null],["Sprache",job.language==="de"?"Deutsch":job.language==="en"?"Englisch":null]
+      ].filter(([,value])=>value);
+      const grouped=(job.requirements||[]).reduce((groups,item)=>{
+        const category=item.category||"other";
+        (groups[category]??=[]).push(item);
+        return groups;
+      },{});
+      const requirements=Object.entries(grouped).map(([category,items])=>`
+        <section class="requirement-group">
+          <h4>${esc(humanize(category))}</h4>
+          <ul class="requirement-list">${items.map(item=>`
+            <li>
+              <div>${esc(item.requirement)}</div>
+              <div class="requirement-meta">
+                <span class="tag">${esc(humanize(item.priority))}</span>
+                ${(item.keywords||[]).map(keyword=>`<span class="tag">${esc(keyword)}</span>`).join("")}
+              </div>
+            </li>`).join("")}
+          </ul>
+        </section>`).join("");
+      document.getElementById("structuredDetails").innerHTML=`
+        <section class="structured-group">
+          <h3>Rahmenbedingungen</h3>
+          <div class="structured-fields">${fields.map(([label,value])=>`<div class="structured-field"><strong>${esc(label)}</strong>${esc(value)}</div>`).join("")}</div>
+        </section>
+        <section class="structured-group">
+          <h3>Anforderungen</h3>
+          ${requirements?`<div class="requirement-groups">${requirements}</div>`:'<p class="warning">Noch keine strukturierten Anforderungen erkannt.</p>'}
+        </section>`;
+    }
     async function loadDocuments(){
       if(!currentApplication){renderDocuments([]);return}
       renderDocuments(await request(`/applications/${encodeURIComponent(currentApplication.id)}/files`));
@@ -216,14 +286,104 @@
       resetEventEditor();
       await loadDocuments();
     }
+    async function loadMatchingSummary(){
+      const node=document.getElementById("matchingSummary"),profileId=document.getElementById("profile").value;
+      node.classList.add("hidden");
+      node.innerHTML="";
+      if(!profileId)return;
+      try{
+        const data=await request(`/matching/results?job_id=${encodeURIComponent(jobId)}&profile_id=${encodeURIComponent(profileId)}`);
+        const recommendation=data.recommendation, target=data.target_fit, qualification=data.qualification_fit;
+        if(!data.matches?.length){
+          const profileName=document.getElementById("profile").selectedOptions[0]?.textContent||"ausgewähltes Profil";
+          node.innerHTML=`
+            <h2>Matching</h2>
+            <p>Für <strong>${esc(profileName)}</strong> liegt noch keine Matching-Bewertung vor.</p>
+            <button class="button" id="runJobMatching" type="button">Matching starten</button>
+            <span id="matchingStatus" role="status" aria-live="polite"></span>`;
+          node.classList.remove("hidden");
+          document.getElementById("runJobMatching").onclick=runJobMatching;
+          return;
+        }
+        const targetCriteria=(target?.criteria||[]).map(item=>`
+          <div class="fit-criterion">
+            <strong>${esc(item.label)} · ${esc(humanize(item.status))}</strong>
+            <span>Stelle: ${esc(item.actual||"nicht angegeben")}</span>
+            <span>Ziel: ${esc((item.desired||[]).join(", ")||"nicht gepflegt")}</span>
+          </div>`).join("");
+        const requirements=(data.matches||[]).map(match=>`
+          <details class="requirement-detail">
+            <summary>${esc(match.requirement)} · ${esc(humanize(match.match_level))}</summary>
+            <div class="requirement-body">
+              <div class="requirement-meta"><span class="tag">${esc(humanize(match.priority))}</span><span class="tag">${esc(humanize(match.category))}</span></div>
+              ${match.explanation?`<p><strong>Bewertung:</strong> ${esc(match.explanation)}</p>`:""}
+              ${match.evidence?`<p><strong>Evidenz:</strong> ${esc(match.evidence)}</p>`:""}
+              ${match.gap?`<p><strong>Lücke:</strong> ${esc(match.gap)}</p>`:""}
+              ${match.recommended_action?`<p><strong>Empfehlung:</strong> ${esc(match.recommended_action)}</p>`:""}
+            </div>
+          </details>`).join("");
+        node.innerHTML=`
+          <h2>Fazit${recommendation?.headline?` · ${esc(recommendation.headline)}`:""}</h2>
+          ${recommendation?.rationale?`<p>${esc(recommendation.rationale)}</p>`:""}
+          <div class="fit-scores">
+            <span class="fit-score"><strong>Ziel-Fit:</strong> ${target?.score==null?"nicht bewertet":`${esc(target.score)} %`}</span>
+            <span class="fit-score"><strong>Qualifikations-Fit:</strong> ${qualification?.score==null?"nicht bewertet":`${esc(qualification.score)} %`}</span>
+          </div>
+          <button class="button" id="runJobMatching" type="button">Matching neu berechnen</button>
+          <button class="button secondary" id="toggleMatchingDetails" type="button" aria-expanded="false">Matching-Details anzeigen</button>
+          <span id="matchingStatus" role="status" aria-live="polite"></span>
+          <div class="matching-details hidden" id="matchingDetails">
+            <details class="fit-detail">
+              <summary>Ziel-Fit · ${target?.score==null?"nicht bewertet":`${esc(target.score)} %`}</summary>
+              <div class="fit-detail-body">
+                ${target?.summary?`<p>${esc(target.summary)}</p>`:""}
+                <div class="fit-criteria">${targetCriteria||'<p class="warning">Keine Zielkriterien vorhanden.</p>'}</div>
+              </div>
+            </details>
+            <details class="fit-detail">
+              <summary>Qualifikations-Fit · ${qualification?.score==null?"nicht bewertet":`${esc(qualification.score)} %`}</summary>
+              <div class="fit-detail-body">
+                ${qualification?.summary?`<p>${esc(qualification.summary)}</p>`:""}
+                ${requirements||'<p class="warning">Keine Anforderungsbewertungen vorhanden.</p>'}
+              </div>
+            </details>
+          </div>`;
+        document.getElementById("runJobMatching").onclick=runJobMatching;
+        document.getElementById("toggleMatchingDetails").onclick=event=>{
+          const details=document.getElementById("matchingDetails"),show=details.classList.contains("hidden");
+          details.classList.toggle("hidden",!show);
+          event.currentTarget.setAttribute("aria-expanded",String(show));
+          event.currentTarget.textContent=show?"Matching-Details ausblenden":"Matching-Details anzeigen";
+        };
+        node.classList.remove("hidden");
+      }catch(error){
+        node.innerHTML=`<h2>Matching</h2><p class="error">Matching-Status konnte nicht geladen werden: ${esc(error.message)}</p>`;
+        node.classList.remove("hidden");
+      }
+    }
+    async function runJobMatching(){
+      const button=document.getElementById("runJobMatching"),status=document.getElementById("matchingStatus"),profileId=document.getElementById("profile").value;
+      if(!button||!profileId)return;
+      button.disabled=true;
+      button.textContent="Matching läuft …";
+      status.textContent=" Die Anforderungen werden mit dem Profil verglichen.";
+      try{
+        await request("/matching/run",{method:"POST",body:JSON.stringify({job_id:jobId,profile_id:profileId})});
+        await loadMatchingSummary();
+      }catch(error){
+        button.disabled=false;
+        button.textContent="Matching erneut versuchen";
+        status.textContent=` Fehler: ${error.message}`;
+        status.className="error";
+      }
+    }
     async function load(){
       try{
         const [data,profiles]=await Promise.all([request(`/matching/jobs/${encodeURIComponent(jobId)}`),request("/profiles")]);
         currentJob=data;
         document.title=`${data.title} · Application Assistant`;
         document.getElementById("title").textContent=data.title;
-        document.getElementById("subtitle").textContent=`${data.company||"Firma unbekannt"} · ${sourceName(data)}`;
-        document.getElementById("matchingLink").href=`/matching/admin?job_id=${encodeURIComponent(data.id)}`;
+        document.getElementById("subtitle").textContent=data.company||"Firma unbekannt";
         document.getElementById("meta").innerHTML=[
           ["Firma",data.company||"nicht erkannt"],
           ["Ort",data.location||"nicht angegeben"],
@@ -251,11 +411,12 @@
         document.getElementById("metadataPublishedAt").value=data.published_at||"";
         document.getElementById("metadataDeadline").value=data.deadline||"";
         document.getElementById("content").innerHTML=data.content_html||"<p>Kein Inhalt gespeichert.</p>";
+        renderStructuredDetails(data);
         document.querySelectorAll("#content a").forEach(link=>{link.target="_blank";link.rel="noopener noreferrer"});
         document.getElementById("profile").innerHTML=profiles.map(profile=>`<option value="${profile.id}">${esc(profile.display_name)}</option>`).join("");
-        document.getElementById("profile").onchange=loadApplication;
+        document.getElementById("profile").onchange=async()=>{await Promise.all([loadApplication(),loadMatchingSummary()])};
         document.getElementById("occurredAt").value=localNow();
-        await loadApplication();
+        await Promise.all([loadApplication(),loadMatchingSummary()]);
       }catch(error){
         document.getElementById("subtitle").textContent="Job konnte nicht geladen werden.";
         document.getElementById("content").innerHTML=`<p class="error">${esc(error.message)}</p>`;
@@ -263,21 +424,28 @@
     }
     document.getElementById("applicationForm").onsubmit=async event=>{
       event.preventDefault();
+      const eventType=document.getElementById("eventType").value,changesStatus=eventType==="status_change";
       const body={
-        status:document.getElementById("applicationStatus").value,
+        event_type:eventType,
+        status:changesStatus?document.getElementById("applicationStatus").value:null,
         occurred_at:new Date(document.getElementById("occurredAt").value).toISOString(),
         channel:document.getElementById("channel").value||null,
         portal_name:document.getElementById("channel").value==="job_portal"?document.getElementById("portalName").value.trim()||null:null,
+        contact_person:document.getElementById("contactPerson").value.trim()||null,
         note:document.getElementById("applicationNote").value.trim()||null
       };
       try{
         if(editingEventId)await request(`/applications/${currentApplication.id}/events/${editingEventId}`,{method:"PATCH",body:JSON.stringify(body)});
-        else if(currentApplication)await request(`/applications/${currentApplication.id}`,{method:"PATCH",body:JSON.stringify(body)});
-        else await request("/applications",{method:"POST",body:JSON.stringify({...body,job_id:jobId,profile_id:document.getElementById("profile").value})});
+        else if(currentApplication)await request(`/applications/${currentApplication.id}/events`,{method:"POST",body:JSON.stringify(body)});
+        else if(changesStatus){
+          const {event_type,...applicationBody}=body;
+          await request("/applications",{method:"POST",body:JSON.stringify({...applicationBody,job_id:jobId,profile_id:document.getElementById("profile").value})});
+        }else throw new Error("Lege zuerst mit einer Statusänderung eine Bewerbung an.");
         await loadApplication();
       }catch(error){alert(error.message)}
     };
     document.getElementById("channel").onchange=syncPortalName;
+    document.getElementById("eventType").onchange=syncEventType;
     document.getElementById("metadataForm").onsubmit=async event=>{
       event.preventDefault();
       const value=id=>document.getElementById(id).value.trim()||null;

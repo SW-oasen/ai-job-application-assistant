@@ -30,6 +30,8 @@ def test_manage_page(client) -> None:
     assert response.status_code == 200
     assert "Zentralverwaltung" in response.text
     assert "Datei-Fallback" in response.text
+    assert "sourceName" not in response.text
+    assert "importiert" in response.text
 
 
 def test_job_detail_page(client) -> None:
@@ -39,7 +41,19 @@ def test_job_detail_page(client) -> None:
     assert "Jobdetails" in response.text
     assert "Matching" in response.text
     assert '<details class="inline-editor" id="applicationEditor">' in response.text
-    assert "Bewerbungsstatus und Unterlagen bearbeiten" in response.text
+    assert "Verlauf und Unterlagen bearbeiten" in response.text
+    assert "Intern weitergeleitet" in response.text
+    assert 'id="contactPerson"' in response.text
+    assert 'id="matchingSummary"' in response.text
+    assert "Qualifikations-Fit:" in response.text
+    assert "Matching-Details anzeigen" in response.text
+    assert "Matching starten" in response.text
+    assert "Matching neu berechnen" in response.text
+    assert 'request("/matching/run"' in response.text
+    assert 'class="requirement-detail"' in response.text
+    assert 'textContent=data.company||"Firma unbekannt"' in response.text
+    assert "Erkannte Stellendetails" in response.text
+    assert "<summary>Importierter Referenztext</summary>" in response.text
 
 
 def test_jobs_page(client) -> None:
@@ -47,3 +61,5 @@ def test_jobs_page(client) -> None:
 
     assert response.status_code == 200
     assert "Jobs und Bewerbungen" in response.text
+    assert "sourceName" not in response.text
+    assert "importiert" in response.text

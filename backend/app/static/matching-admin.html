@@ -27,6 +27,29 @@
     label { display:block; margin-bottom:5px; color:var(--muted); font-size:12px; font-weight:700; }
     select { width:100%; padding:10px 11px; border:1px solid #bdc8d6; border-radius:8px; background:#fff; color:var(--ink); }
     .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; margin:24px 0; }
+    .fit-section { margin:24px 0; padding:18px; border:1px solid var(--line); border-radius:13px; background:var(--surface); }
+    .fit-section h3 { margin:0 0 8px; }
+    .fit-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+    .fit-score { font-size:24px; font-weight:800; color:var(--accent); }
+    .fit-criteria { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:9px; margin-top:14px; }
+    .fit-criterion { padding:10px 12px; border:1px solid var(--line); border-radius:9px; }
+    .fit-criterion strong,.fit-criterion span { display:block; }
+    .fit-criterion span { margin-top:3px; color:var(--muted); font-size:12px; }
+    .fit-exclusions { margin:14px 0 0; padding-left:20px; }
+    details.fit-section > summary { display:flex; justify-content:space-between; gap:16px; align-items:center; cursor:pointer; list-style:none; }
+    details.fit-section > summary::-webkit-details-marker { display:none; }
+    details.fit-section > summary::before { content:"›"; color:var(--muted); font-size:24px; line-height:1; transition:transform .15s ease; }
+    details.fit-section[open] > summary::before { transform:rotate(90deg); }
+    details.fit-section > summary strong { flex:1; }
+    details.fit-section > summary span { color:var(--accent); font-weight:800; }
+    details.fit-section > .fit-details { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+    .recommendation { margin:24px 0; padding:18px; border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:13px; background:var(--surface); }
+    .recommendation.apply { border-left-color:#17803d; }
+    .recommendation.consider { border-left-color:#667b18; }
+    .recommendation.review { border-left-color:var(--warning); }
+    .recommendation.deprioritize { border-left-color:var(--danger); }
+    .recommendation h3 { margin:0 0 6px; }
+    .recommendation ul { margin:12px 0 0; padding-left:20px; }
     .metric { padding:10px 12px; border:1px solid var(--line); border-radius:13px; background:var(--surface); color:inherit; text-align:left; cursor:pointer; }
     .metric:hover { border-color:#9bb9f5; }
     .metric.active { border-color:var(--accent); background:#eef4ff; box-shadow:inset 0 0 0 1px var(--accent); }
@@ -87,8 +110,19 @@
         <div><h2 id="jobTitle"></h2><p class="hint" id="jobMeta"></p></div>
         <a id="jobLink" class="button ghost" target="_blank" rel="noopener" hidden>Stellenanzeige öffnen</a>
       </div>
-      <div class="summary" id="summary"></div>
-      <div class="results" id="results"></div>
+      <section class="recommendation" id="recommendation"></section>
+      <details class="fit-section" id="targetFitDetails">
+        <summary><strong id="targetFitSummary">Ziel-Fit</strong><span id="targetFitScore">–</span></summary>
+        <div class="fit-details" id="targetFit"></div>
+      </details>
+      <details class="fit-section" id="qualificationFitDetails">
+        <summary><strong id="qualificationFitSummary">Qualifikations-Fit</strong><span id="qualificationFitScore">–</span></summary>
+        <div class="fit-details">
+          <div id="qualificationFit"></div>
+          <div class="summary" id="summary"></div>
+          <div class="results" id="results"></div>
+        </div>
+      </details>
     </section>
   </main>
   <script>
@@ -105,11 +139,10 @@
     let activeLevel = "all";
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
     const formatDate = value => value ? new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).format(new Date(value)) : "nicht angegeben";
-    const sourceName = job => {
-      if (job.source_url) {
-        try { return new URL(job.source_url).origin; } catch {}
-      }
-      return job.source_filename || job.source_portal || "unbekannte Quelle";
+    const jobKey = job => `${job.title || ""}\u0000${job.company || ""}`.toLocaleLowerCase("de");
+    const jobLabel = (job, counts) => {
+      const base = `${job.title} · ${job.company || "Firma unbekannt"}`;
+      return counts.get(jobKey(job)) > 1 ? `${base} · importiert ${formatDate(job.imported_at)}` : base;
     };
     async function request(url, options = {}) {
       const response = await fetch(url, options);
@@ -120,7 +153,8 @@
     async function init() {
       try {
         const [jobs, profiles] = await Promise.all([request("/matching/jobs"),request("/profiles")]);
-        $("jobSelect").innerHTML = jobs.length ? jobs.map(job => `<option value="${job.id}">${escapeHtml(job.title)} · ${escapeHtml(job.company || "Firma unbekannt")} · ${escapeHtml(sourceName(job))} · veröffentlicht ${escapeHtml(job.published_text || formatDate(job.published_at))} · importiert ${escapeHtml(formatDate(job.imported_at))}</option>`).join("") : `<option value="">Keine Stelle</option>`;
+        const jobCounts = jobs.reduce((counts, job) => counts.set(jobKey(job), (counts.get(jobKey(job)) || 0) + 1), new Map());
+        $("jobSelect").innerHTML = jobs.length ? jobs.map(job => `<option value="${job.id}">${escapeHtml(jobLabel(job, jobCounts))}</option>`).join("") : `<option value="">Keine Stelle</option>`;
         $("profileSelect").innerHTML = profiles.length ? profiles.map(profile => `<option value="${profile.id}">${escapeHtml(profile.display_name)}</option>`).join("") : `<option value="">Kein Profil</option>`;
         const selectedJob = new URLSearchParams(location.search).get("job_id");
         if (selectedJob && jobs.some(job => job.id === selectedJob)) {
@@ -138,7 +172,6 @@
       if (!jobId || !profileId) return showEmpty("Stelle und Profil müssen ausgewählt sein.");
       try {
         const data = await request(`/matching/results?job_id=${encodeURIComponent(jobId)}&profile_id=${encodeURIComponent(profileId)}`);
-        if (!data.matches.length) return showEmpty("Für diese Kombination ist noch keine Matching-Auswertung gespeichert.");
         render(data);
       } catch (error) { showEmpty(error.message); }
     }
@@ -168,14 +201,81 @@
       $("jobTitle").textContent = data.job.title;
       $("jobMeta").textContent = [
         data.job.company || "Firma unbekannt",
-        sourceName(data.job),
         `veröffentlicht: ${data.job.published_text || formatDate(data.job.published_at)}`,
         `importiert: ${formatDate(data.job.imported_at)}`,
         `Profil: ${data.profile.display_name}`
       ].join(" · ");
       $("jobLink").hidden = !data.job.source_url; $("jobLink").href = data.job.source_url || "#";
+      renderTargetFit();
+      renderQualificationFit();
+      renderRecommendation();
       renderSummary();
       renderMatches();
+    }
+    function renderTargetFit() {
+      const fit = currentData.target_fit;
+      if (!fit) {
+        $("targetFitSummary").textContent = "Ziel-Fit · Unklar";
+        $("targetFitScore").textContent = "–";
+        $("targetFit").innerHTML = "<p class=\"hint\">Keine Ziel-Fit-Auswertung verfügbar.</p>";
+        return;
+      }
+      const levelLabels = {strong:"Stark",partial:"Teilweise",weak:"Schwach",conflict:"Ausschluss",unknown:"Unklar"};
+      const statusLabels = {match:"Passend",partial:"Teilweise",mismatch:"Abweichend",unknown:"Unklar",not_configured:"Nicht gepflegt"};
+      const exclusions = (fit.exclusions || []).filter(item => item.status !== "clear");
+      $("targetFitSummary").textContent = `Ziel-Fit · ${levelLabels[fit.level] || fit.level}`;
+      $("targetFitScore").textContent = fit.score == null ? "–" : `${fit.score} %`;
+      $("targetFit").innerHTML = `
+        <p class="hint">${escapeHtml(fit.summary)}</p>
+        <div class="fit-criteria">${fit.criteria.map(item => `
+          <div class="fit-criterion">
+            <strong>${escapeHtml(item.label)} · ${escapeHtml(statusLabels[item.status] || item.status)}</strong>
+            <span>Stelle: ${escapeHtml(item.actual || "nicht angegeben")}</span>
+            <span>Ziel: ${escapeHtml((item.desired || []).join(", ") || "nicht gepflegt")}</span>
+          </div>`).join("")}
+        </div>
+        ${exclusions.length ? `<ul class="fit-exclusions">${exclusions.map(item =>
+          `<li><strong>${escapeHtml(item.status === "conflict" ? "Ausschluss erkannt" : "Bitte prüfen")}:</strong> ${escapeHtml(item.criterion)} · ${escapeHtml(item.explanation)}</li>`
+        ).join("")}</ul>` : ""}`;
+    }
+    function renderQualificationFit() {
+      const fit = currentData.qualification_fit;
+      if (!fit) {
+        $("qualificationFitSummary").textContent = "Qualifikations-Fit · Unklar";
+        $("qualificationFitScore").textContent = "–";
+        $("qualificationFit").innerHTML = "<p class=\"hint\">Keine Gesamtwertung verfügbar.</p>";
+        return;
+      }
+      const levelLabels = {strong:"Sehr gut",good:"Gut",partial:"Teilweise",weak:"Schwach",unknown:"Unklar"};
+      const weights = fit.weights || {};
+      const priority = weights.priority || {};
+      const levels = weights.match_level_percent || {};
+      $("qualificationFitSummary").textContent = `Qualifikations-Fit · ${levelLabels[fit.level] || fit.level}`;
+      $("qualificationFitScore").textContent = fit.score == null ? "–" : `${fit.score} %`;
+      $("qualificationFit").innerHTML = `
+        <p class="hint">${escapeHtml(fit.summary)}</p>
+        <p class="hint">
+          Gewichtung: Muss × ${priority.must ?? 3}, Soll × ${priority.should ?? 2},
+          optional × ${priority.nice_to_have ?? 1}. Erfüllung: stark ${levels.strong_match ?? 100} %,
+          teilweise ${levels.partial_match ?? 65} %, übertragbar ${levels.transferable ?? 40} %,
+          Lücke/unklar 0 %. ${fit.requirement_count} Anforderungen ·
+          ${fit.achieved_points} von ${fit.possible_points} gewichteten Punkten.
+        </p>`;
+    }
+    function renderRecommendation() {
+      const recommendation = currentData.recommendation;
+      const node = $("recommendation");
+      if (!recommendation) {
+        node.className = "recommendation review";
+        node.innerHTML = "<h3>Fazit</h3><p class=\"hint\">Keine gemeinsame Empfehlung verfügbar.</p>";
+        return;
+      }
+      node.className = `recommendation ${recommendation.verdict}`;
+      node.innerHTML = `
+        <h3>Fazit · ${escapeHtml(recommendation.headline)}</h3>
+        <div>${escapeHtml(recommendation.rationale)}</div>
+        <ul>${(recommendation.reasons || []).map(reason => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
+        ${recommendation.requires_manual_review ? "<p class=\"hint\">Die Empfehlung enthält Punkte, die vor einer Entscheidung manuell geprüft werden sollten.</p>" : ""}`;
     }
     function renderSummary() {
       const cards = [

@@ -11,13 +11,17 @@ from app.domain.skill_taxonomy import SKILL_CATEGORIES, SKILL_LEVELS
 from app.schemas.cv_import import (
     CvImportCreate,
     CvSuggestionReview,
+    PortfolioSourceImportCreate,
     StructuredCvImportCreate,
+    StructuredPortfolioImportCreate,
 )
 from app.schemas.profile import (
     CertificateCreate,
     CertificateUpdate,
     EducationCreate,
     EducationUpdate,
+    PortfolioProjectCreate,
+    PortfolioProjectUpdate,
     ProfileCreate,
     ProfileUpdate,
     ReferenceCreate,
@@ -30,7 +34,9 @@ from app.schemas.profile import (
 from app.services.cv_import_service import (
     apply_cv_suggestion,
     create_cv_import,
+    create_portfolio_source_import,
     create_structured_cv_import,
+    create_structured_portfolio_import,
     list_cv_imports,
     reject_cv_suggestion,
 )
@@ -100,6 +106,22 @@ async def create_structured_cv_import_entry(
     payload: StructuredCvImportCreate,
 ) -> dict:
     return await create_structured_cv_import(profile_id, payload)
+
+
+@router.post("/{profile_id}/portfolio-imports/structured")
+async def create_structured_portfolio_import_entry(
+    profile_id: UUID,
+    payload: StructuredPortfolioImportCreate,
+) -> dict:
+    return await create_structured_portfolio_import(profile_id, payload)
+
+
+@router.post("/{profile_id}/portfolio-imports/source")
+async def create_portfolio_source_import_entry(
+    profile_id: UUID,
+    payload: PortfolioSourceImportCreate,
+) -> dict:
+    return await create_portfolio_source_import(profile_id, payload)
 
 
 @router.post("/{profile_id}/cv-imports/pdf")
@@ -190,6 +212,25 @@ async def update_experience(
     profile_id: UUID, item_id: UUID, payload: WorkExperienceUpdate
 ) -> dict:
     return await update_resource(profile_id, "experiences", item_id, payload)
+
+
+@router.get("/{profile_id}/projects")
+async def get_projects(profile_id: UUID) -> list[dict]:
+    return await list_resources(profile_id, "projects")
+
+
+@router.post("/{profile_id}/projects")
+async def create_project(profile_id: UUID, payload: PortfolioProjectCreate) -> dict:
+    return await create_resource(profile_id, "projects", payload)
+
+
+@router.patch("/{profile_id}/projects/{item_id}")
+async def update_project(
+    profile_id: UUID,
+    item_id: UUID,
+    payload: PortfolioProjectUpdate,
+) -> dict:
+    return await update_resource(profile_id, "projects", item_id, payload)
 
 
 @router.get("/{profile_id}/education")

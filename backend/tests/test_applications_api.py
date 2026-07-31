@@ -69,6 +69,34 @@ def test_application_event_validates_channel(client) -> None:
     assert response.status_code == 422
 
 
+def test_internal_forwarded_event_keeps_status_optional(client, monkeypatch) -> None:
+    application_id = uuid4()
+
+    async def fake_add(received_application_id, payload):
+        assert received_application_id == application_id
+        assert payload.event_type == "internal_forwarded"
+        assert payload.status is None
+        assert payload.contact_person == "Maria Mustermann"
+        return {"id": str(uuid4()), "event_type": payload.event_type}
+
+    monkeypatch.setattr(
+        "app.api.routes.applications.add_application_event",
+        fake_add,
+    )
+    response = client.post(
+        f"/applications/{application_id}/events",
+        json={
+            "event_type": "internal_forwarded",
+            "channel": "email",
+            "contact_person": "Maria Mustermann",
+            "note": "An die zuständigen Kollegen weitergeleitet.",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["event_type"] == "internal_forwarded"
+
+
 def test_update_application_event_uses_service(client, monkeypatch) -> None:
     application_id, event_id = uuid4(), uuid4()
 

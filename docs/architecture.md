@@ -155,13 +155,15 @@ CV-Importe erzeugen prüfbare Vorschläge und überschreiben das kanonische
 Profil nicht automatisch. Änderungen an Profilentitäten erzeugen
 Revisionssnapshots.
 
-Matching verwendet belegte Skills, Berufserfahrung, Ausbildung und
-Zertifikate. Berufliche, projektbezogene, schulische und Trainingskontexte
+Matching verwendet belegte Skills, Berufserfahrung, Portfolio-Projekte,
+Ausbildung und Zertifikate. Berufliche, projektbezogene, schulische und
+Trainingskontexte
 bleiben unterscheidbar. Referenzen und Kontaktdaten werden nicht als
 Matching-Evidenz an Dify übergeben.
 
-Portfolio-Projekte und persönliche Ziele sind geplante Erweiterungen. Der
-aktuelle Stand und die Evaluationsstrategie stehen in der
+Portfolio-Projekte sind als eigene, prüfbare Evidenzquelle umgesetzt;
+persönliche Ziele sind strukturiert am Profil erfasst. Der aktuelle Stand und
+die Evaluationsstrategie stehen in der
 [Roadmap](roadmap.md) und in [Evaluation](evaluation.md).
 
 ## Bewerbungsverlauf und Dokumente

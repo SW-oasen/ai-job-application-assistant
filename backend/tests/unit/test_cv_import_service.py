@@ -1,7 +1,10 @@
 from app.services.cv_import_service import (
     _conflict_details,
     _find_matching_entity,
+    _parse_projects_javascript,
+    _portfolio_projects_to_suggestions,
     _structured_cv_to_suggestions,
+    _structured_portfolio_to_suggestions,
 )
 
 
@@ -68,12 +71,81 @@ def test_reference_import_never_grants_usage_consent() -> None:
         },
         "en",
     )
-
     assert suggestions[0].proposed_data["usage_consent"] is False
     assert (
         suggestions[0].proposed_data["localizations"][0]["summary"]
         == "https://example.invalid/ada"
     )
+
+
+def test_structured_portfolio_becomes_reviewable_project_suggestions() -> None:
+    suggestions = _structured_portfolio_to_suggestions(
+        [
+            {
+                "name": "Application Assistant",
+                "summary": "Evidence-based job matching",
+                "bullets": ["Built profile matching"],
+                "technologies": "Python, FastAPI, PostgreSQL",
+                "role": "Konzeption und Entwicklung",
+                "repository_url": "https://github.com/example/application-assistant",
+                "start_date": "2026-01",
+                "end_date": "2026-07",
+            }
+        ],
+        "de",
+    )
+
+    assert len(suggestions) == 1
+    assert suggestions[0].resource_type == "projects"
+    project = suggestions[0].proposed_data
+    assert project["canonical_name"] == "Application Assistant"
+    assert project["technologies"] == ["Python", "FastAPI", "PostgreSQL"]
+    assert project["start_date"] == "2026-01-01"
+    assert project["end_date"] == "2026-07-31"
+    assert project["localizations"][0]["summary"] == "Evidence-based job matching"
+
+
+def test_portfolio_import_skips_unnamed_projects() -> None:
+    assert _structured_portfolio_to_suggestions([{"summary": "Missing name"}], "de") == []
+
+
+def test_projects_javascript_is_parsed_without_manual_json_conversion() -> None:
+    source = """
+      import { something } from "./other";
+      const PROJECTS = [
+        {
+          id: "example-project",
+          tags: ["software", "ai"],
+          date: "2026-07",
+          stack: ["Python", "FastAPI"],
+          resources: { repo: "https://example.invalid/repo", live: null },
+          translations: {
+            de: {
+              title: "Beispielprojekt",
+              summary: "Deutsche Zusammenfassung",
+              highlights: ["Eigener Beitrag"],
+            },
+            en: {
+              title: "Example project",
+              summary: "English summary",
+              highlights: ["Own contribution"],
+            },
+          },
+        },
+      ];
+      export function getProjects() {}
+    """
+
+    parsed = _parse_projects_javascript(source)
+    suggestions = _portfolio_projects_to_suggestions(parsed)
+
+    assert len(parsed) == 1
+    assert suggestions[0].proposed_data["canonical_name"] == "example-project"
+    assert suggestions[0].proposed_data["technologies"] == ["Python", "FastAPI"]
+    assert [item["language"] for item in suggestions[0].proposed_data["localizations"]] == [
+        "de",
+        "en",
+    ]
 
 
 def test_partial_cv_dates_become_reviewable_iso_dates() -> None:

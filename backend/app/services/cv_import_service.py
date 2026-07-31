@@ -4,6 +4,7 @@ import unicodedata
 from datetime import UTC, date, datetime
 from uuid import UUID
 
+import json5
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -14,13 +15,17 @@ from app.schemas.cv_import import (
     CvImportCreate,
     CvSuggestionInput,
     CvSuggestionReview,
+    PortfolioSourceImportCreate,
     StructuredCvImportCreate,
+    StructuredPortfolioImportCreate,
 )
 from app.schemas.profile import (
     CertificateCreate,
     CertificateUpdate,
     EducationCreate,
     EducationUpdate,
+    PortfolioProjectCreate,
+    PortfolioProjectUpdate,
     ProfileUpdate,
     ReferenceCreate,
     ReferenceUpdate,
@@ -41,12 +46,14 @@ from app.services.profile_service import (
 CREATE_SCHEMAS = {
     "skills": SkillCreate,
     "experiences": WorkExperienceCreate,
+    "projects": PortfolioProjectCreate,
     "education": EducationCreate,
     "certificates": CertificateCreate,
     "references": ReferenceCreate,
 }
 
 MONTH_YEAR_PATTERN = re.compile(r"^\s*(0?[1-9]|1[0-2])[\s./-]+(\d{4})\s*$")
+YEAR_MONTH_PATTERN = re.compile(r"^\s*(\d{4})-(0?[1-9]|1[0-2])\s*$")
 NAMED_MONTH_YEAR_PATTERN = re.compile(
     r"^\s*([A-Za-zÄÖÜäöüß]+)\.?\s+(\d{4})\s*$"
 )
@@ -98,8 +105,12 @@ def _normalize_cv_date(value: object, *, end_of_month: bool = False) -> str | No
         return date.fromisoformat(text).isoformat()
     except ValueError:
         pass
+    year_month_match = YEAR_MONTH_PATTERN.fullmatch(text)
     numeric_match = MONTH_YEAR_PATTERN.fullmatch(text)
-    if numeric_match:
+    if year_month_match:
+        year = int(year_month_match.group(1))
+        month = int(year_month_match.group(2))
+    elif numeric_match:
         month = int(numeric_match.group(1))
         year = int(numeric_match.group(2))
     else:
@@ -115,6 +126,7 @@ def _normalize_cv_date(value: object, *, end_of_month: bool = False) -> str | No
 UPDATE_SCHEMAS = {
     "skills": SkillUpdate,
     "experiences": WorkExperienceUpdate,
+    "projects": PortfolioProjectUpdate,
     "education": EducationUpdate,
     "certificates": CertificateUpdate,
     "references": ReferenceUpdate,
@@ -148,6 +160,9 @@ def _identity_key(resource_type: str, data: dict) -> tuple[str, ...] | None:
         company = _normalized_text(data.get("company"))
         title = _localization_title(data)
         return (company, title) if company and title else None
+    if resource_type == "projects":
+        name = _normalized_text(data.get("canonical_name"))
+        return (name,) if name else None
     if resource_type == "education":
         institution = _normalized_text(data.get("institution"))
         title = _localization_title(data)
@@ -328,6 +343,61 @@ async def create_structured_cv_import(
             source_metadata={
                 "profile_summary_ignored": True,
                 "adapter": "dify-import-cv-v2",
+            },
+            suggestions=suggestions,
+        ),
+    )
+
+
+async def create_structured_portfolio_import(
+    profile_id: UUID,
+    payload: StructuredPortfolioImportCreate,
+) -> dict:
+    suggestions = _structured_portfolio_to_suggestions(
+        payload.projects,
+        payload.source_language,
+    )
+    if not suggestions:
+        raise ApplicationError(
+            "Der Portfolio-Import enthält keine Projekte mit einem Namen.",
+            code="portfolio_contains_no_projects",
+            status_code=422,
+        )
+    return await create_cv_import(
+        profile_id,
+        CvImportCreate(
+            source_filename=payload.source_name,
+            source_language=payload.source_language,
+            source_metadata={
+                "adapter": "structured-portfolio-v1",
+                "source_kind": "portfolio",
+            },
+            suggestions=suggestions,
+        ),
+    )
+
+
+async def create_portfolio_source_import(
+    profile_id: UUID,
+    payload: PortfolioSourceImportCreate,
+) -> dict:
+    projects = _parse_projects_javascript(payload.source_content, payload.export_name)
+    suggestions = _portfolio_projects_to_suggestions(projects)
+    if not suggestions:
+        raise ApplicationError(
+            "PROJECTS enthält keine importierbaren Projekte.",
+            code="portfolio_contains_no_projects",
+            status_code=422,
+        )
+    return await create_cv_import(
+        profile_id,
+        CvImportCreate(
+            source_filename=payload.source_name,
+            source_language=None,
+            source_metadata={
+                "adapter": "portfolio-projects-js-v1",
+                "source_kind": "portfolio",
+                "export_name": payload.export_name,
             },
             suggestions=suggestions,
         ),
@@ -700,4 +770,231 @@ def _structured_cv_to_suggestions(
                     source_excerpt=f"{name} · {item.get('company') or ''}".strip(" ·"),
                 )
             )
+    return suggestions
+
+
+def _structured_portfolio_to_suggestions(
+    projects: list[dict],
+    language: str,
+) -> list[CvSuggestionInput]:
+    suggestions: list[CvSuggestionInput] = []
+    for item in projects:
+        name = str(item.get("name") or item.get("canonical_name") or "").strip()
+        if not name:
+            continue
+        title = str(item.get("title") or name).strip()
+        summary = str(item.get("summary") or item.get("description") or "").strip()
+        raw_bullets = item.get("bullets") or item.get("highlights") or []
+        if isinstance(raw_bullets, str):
+            raw_bullets = raw_bullets.splitlines()
+        bullets = [
+            str(value).strip()
+            for value in raw_bullets
+            if str(value).strip()
+        ]
+        raw_technologies = item.get("technologies") or item.get("tech_stack") or []
+        if isinstance(raw_technologies, str):
+            raw_technologies = raw_technologies.split(",")
+        technologies = [
+            str(value).strip()
+            for value in raw_technologies
+            if str(value).strip()
+        ]
+        proposed_data = {
+            "canonical_name": name,
+            "project_type": str(item.get("project_type") or "").strip() or None,
+            "role": str(item.get("role") or "").strip() or None,
+            "start_date": _normalize_cv_date(item.get("start_date")),
+            "end_date": _normalize_cv_date(item.get("end_date"), end_of_month=True),
+            "source_url": str(item.get("source_url") or item.get("url") or "").strip()
+            or None,
+            "repository_url": str(
+                item.get("repository_url") or item.get("repository") or ""
+            ).strip()
+            or None,
+            "technologies": technologies,
+            "status": "draft",
+            "localizations": [
+                {
+                    "language": language,
+                    "title": title,
+                    "summary": summary or None,
+                    "bullets": bullets,
+                    "status": "draft",
+                }
+            ],
+        }
+        suggestions.append(
+            CvSuggestionInput(
+                resource_type="projects",
+                proposed_data=proposed_data,
+                source_excerpt=" · ".join(
+                    value for value in (name, ", ".join(technologies)) if value
+                ),
+            )
+        )
+    return suggestions
+
+
+def _extract_javascript_literal(source: str, export_name: str) -> str:
+    declaration = re.search(
+        rf"(?:export\s+)?const\s+{re.escape(export_name)}\s*=",
+        source,
+    )
+    if declaration is None:
+        raise ApplicationError(
+            f"Die JavaScript-Konstante {export_name} wurde nicht gefunden.",
+            code="portfolio_export_not_found",
+            status_code=422,
+        )
+    start = next(
+        (
+            index
+            for index in range(declaration.end(), len(source))
+            if source[index] in "[{"
+        ),
+        None,
+    )
+    if start is None:
+        raise ApplicationError(
+            f"{export_name} enthält kein Objekt oder Array.",
+            code="portfolio_literal_not_found",
+            status_code=422,
+        )
+
+    pairs = {"[": "]", "{": "}"}
+    stack: list[str] = []
+    quote: str | None = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+    index = start
+    while index < len(source):
+        char = source[index]
+        following = source[index + 1] if index + 1 < len(source) else ""
+        if line_comment:
+            if char in "\r\n":
+                line_comment = False
+        elif block_comment:
+            if char == "*" and following == "/":
+                block_comment = False
+                index += 1
+        elif quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in {'"', "'"}:
+            quote = char
+        elif char == "/" and following == "/":
+            line_comment = True
+            index += 1
+        elif char == "/" and following == "*":
+            block_comment = True
+            index += 1
+        elif char in pairs:
+            stack.append(pairs[char])
+        elif char in "]}":
+            if not stack or char != stack.pop():
+                raise ApplicationError(
+                    f"Ungültige Klammerung in {export_name}.",
+                    code="invalid_portfolio_javascript",
+                    status_code=422,
+                )
+            if not stack:
+                return source[start : index + 1]
+        index += 1
+    raise ApplicationError(
+        f"{export_name} ist nicht vollständig geschlossen.",
+        code="incomplete_portfolio_javascript",
+        status_code=422,
+    )
+
+
+def _parse_projects_javascript(source: str, export_name: str = "PROJECTS") -> list[dict]:
+    literal = _extract_javascript_literal(source, export_name)
+    try:
+        parsed = json5.loads(literal)
+    except ValueError as exc:
+        raise ApplicationError(
+            f"{export_name} konnte nicht als JavaScript-Objektliteral gelesen werden: {exc}",
+            code="invalid_portfolio_javascript",
+            status_code=422,
+        ) from exc
+    if not isinstance(parsed, list):
+        raise ApplicationError(
+            f"{export_name} muss ein Array sein.",
+            code="portfolio_export_must_be_array",
+            status_code=422,
+        )
+    return [item for item in parsed if isinstance(item, dict)]
+
+
+def _portfolio_projects_to_suggestions(
+    projects: list[dict],
+) -> list[CvSuggestionInput]:
+    suggestions: list[CvSuggestionInput] = []
+    for item in projects:
+        translations = item.get("translations") or {}
+        localizations = []
+        for language in ("de", "en"):
+            translation = translations.get(language) or {}
+            title = str(translation.get("title") or "").strip()
+            if not title:
+                continue
+            localizations.append(
+                {
+                    "language": language,
+                    "title": title,
+                    "summary": str(translation.get("summary") or "").strip() or None,
+                    "bullets": [
+                        str(value).strip()
+                        for value in translation.get("highlights") or []
+                        if str(value).strip()
+                    ],
+                    "status": "draft",
+                }
+            )
+        name = str(item.get("id") or "").strip()
+        if not name or not localizations:
+            continue
+        resources = item.get("resources") or {}
+        date_value = str(item.get("date") or "").strip()
+        proposed_data = {
+            "canonical_name": name,
+            "project_type": ", ".join(
+                str(value).strip()
+                for value in item.get("tags") or []
+                if str(value).strip()
+            )
+            or None,
+            "role": None,
+            "start_date": None,
+            "end_date": _normalize_cv_date(date_value, end_of_month=True),
+            "source_url": str(resources.get("live") or "").strip() or None,
+            "repository_url": str(resources.get("repo") or "").strip() or None,
+            "technologies": [
+                str(value).strip()
+                for value in item.get("stack") or []
+                if str(value).strip()
+            ],
+            "status": "draft",
+            "localizations": localizations,
+        }
+        suggestions.append(
+            CvSuggestionInput(
+                resource_type="projects",
+                proposed_data=proposed_data,
+                source_excerpt=" · ".join(
+                    value
+                    for value in (
+                        localizations[0]["title"],
+                        ", ".join(proposed_data["technologies"]),
+                    )
+                    if value
+                ),
+            )
+        )
     return suggestions

@@ -16,13 +16,15 @@ der [README](../README.md), technische Grundlagen im
 
 - Extraktion in Anforderungen, Tätigkeiten und Rahmenbedingungen trennen.
 - Doppelte und unnötig fragmentierte Anforderungen reduzieren.
-- Portfolio-Projekte als eigene Evidenzquelle aufnehmen.
-- Berufliche Ziele strukturiert erfassen.
-- Qualifikations-Fit und Ziel-Fit getrennt bewerten und anzeigen.
 
 ## Erledigt
 
 - Profil, CV-Import, Jobimport und evidenzbasiertes Matching umgesetzt.
+- Berufliche Ziele im Profil strukturiert erfassbar gemacht.
+- Portfolio-Projekte mit geprüftem JSON-Import als eigene Evidenzquelle
+  aufgenommen.
+- Qualifikations-Fit und strukturierten Ziel-Fit getrennt bewertet und
+  angezeigt.
 - Deutsch-englische Begriffszuordnung für Vorhersagemodelle, Rohdatenanalyse,
   Datenbereinigung und Datenqualität ergänzt.
 - Einträge im Bewerbungsverlauf löschbar gemacht; Status wird anschließend aus

@@ -34,6 +34,18 @@ Das Profil selbst enthält editierbare, weitgehend stabile Stammdaten:
 - Telefon und E-Mail,
 - LinkedIn-, GitHub- und Portfolio-Link.
 
+Zusätzlich enthält es ein strukturiertes berufliches Zielprofil:
+
+- übergeordnetes berufliches Ziel,
+- Zielrollen, Zielbranchen und Zielorte,
+- bevorzugte Arbeitsmodelle und Beschäftigungsarten,
+- echte Ausschlusskriterien.
+
+Diese Angaben beschreiben Wünsche und werden nicht als belegte Qualifikationen
+verwendet. Sie bilden die Grundlage für einen späteren, vom
+Qualifikations-Fit getrennten Ziel-Fit. Das Zielprofil wird manuell gepflegt
+und nicht aus einem CV abgeleitet.
+
 Stellenbezogene Profilzusammenfassungen und Berufsbezeichnungen aus einem
 angepassten CV werden nicht als Stammdaten übernommen.
 
@@ -41,6 +53,7 @@ angepassten CV werden nicht als Stammdaten übernommen.
 
 - Skills
 - Berufserfahrungen
+- Portfolio-Projekte
 - Ausbildungen
 - Zertifikate
 - Referenzen
@@ -229,8 +242,31 @@ Backend lädt genau eine PDF zu Dify hoch und startet den veröffentlichten
 Workflow mit der ausgewählten Profil-ID. Der strukturierte JSON-Import bleibt
 in der Oberfläche als Diagnose- und Fallbackweg verfügbar.
 
-## Portfolio-Grenze
+## Portfolio-Projekte
 
-Etappe 1 enthält keinen Portfolio-Connector und nimmt keinerlei Änderungen am
-Portfolio-Repository vor. Die spätere Integration wird ausschließlich lesend
-auf die festgelegten GitHub-Dateien zugreifen.
+Portfolio-Projekte können manuell gepflegt oder direkt aus der JavaScript-Datei
+`projects.js` des Portfolios importiert werden. Der Parser extrahiert die
+Konstante `PROJECTS`; eine manuelle Umwandlung in striktes JSON ist nicht
+erforderlich. Der Import erzeugt dieselben prüfbaren Vorschläge wie ein CV-Import;
+erst eine ausdrückliche Übernahme ändert das kanonische Profil.
+
+Unterstützte Importfelder sind:
+
+- `name` (erforderlich), `title`, `summary` beziehungsweise `description`,
+- `bullets` beziehungsweise `highlights`,
+- `technologies` beziehungsweise `tech_stack`,
+- `role`, `project_type`, `start_date` und `end_date`,
+- `repository_url` und `source_url`.
+
+Der Backend-Endpunkt lautet:
+
+```text
+POST /profiles/{profile_id}/portfolio-imports/structured
+POST /profiles/{profile_id}/portfolio-imports/source
+```
+
+`/source` akzeptiert den vollständigen Inhalt von `projects.js`.
+`projectDetails.js` ist nicht die Primärquelle, weil diese Datei ausführliche
+UI-Details und JavaScript-Ausdrücke enthält. Der Import verändert keine
+Portfolio- oder GitHub-Repositories. Ein späterer Repository-Connector muss
+ebenfalls ausschließlich lesend arbeiten.

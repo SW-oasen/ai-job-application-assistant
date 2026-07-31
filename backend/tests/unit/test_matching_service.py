@@ -1,12 +1,139 @@
+from types import SimpleNamespace
+
 from app.schemas.matching import EvidenceInput
 from app.services.matching_service import (
     COMPANY_PATTERNS,
     StoredEvidence,
     _evaluate,
+    _evaluate_target_fit,
     _first_metadata_match,
+    _matching_recommendation,
     _nationality_evidence_input,
+    _qualification_fit,
     _terms,
 )
+
+
+def test_target_fit_is_separate_and_uses_structured_preferences() -> None:
+    job = SimpleNamespace(
+        title="Machine Learning Engineer",
+        location="Berlin",
+        work_model="Hybrid",
+        employment_type="Unbefristete Vollzeitstelle",
+        normalized_content="Entwicklung von Machine-Learning-Anwendungen.",
+    )
+    company = SimpleNamespace(industry=None)
+    profile = SimpleNamespace(
+        target_roles=["Data Scientist", "Machine Learning Engineer"],
+        target_industries=[],
+        target_locations=["Berlin"],
+        preferred_work_models=["remote", "hybrid"],
+        preferred_employment_types=["permanent"],
+        deal_breakers=["Freiberuflich"],
+    )
+
+    result = _evaluate_target_fit(job, company, profile)
+
+    assert result["level"] == "strong"
+    assert result["score"] == 100
+    assert result["exclusions"][0]["status"] == "clear"
+
+
+def test_target_fit_detects_structured_freelance_conflict() -> None:
+    job = SimpleNamespace(
+        title="AI Engineer",
+        location="Berlin",
+        work_model="Remote",
+        employment_type="Freelance",
+        normalized_content="Freelance AI project",
+    )
+    profile = SimpleNamespace(
+        target_roles=["AI Engineer"],
+        target_industries=[],
+        target_locations=["Berlin"],
+        preferred_work_models=["remote"],
+        preferred_employment_types=["permanent"],
+        deal_breakers=["Freiberuflich"],
+    )
+
+    result = _evaluate_target_fit(job, None, profile)
+
+    assert result["level"] == "conflict"
+    assert result["exclusions"][0]["status"] == "conflict"
+
+
+def test_qualification_fit_weights_must_requirements_more_strongly() -> None:
+    result = _qualification_fit(
+        [
+            {
+                "requirement_id": "1",
+                "requirement": "Python",
+                "priority": "must",
+                "match_level": "strong_match",
+            },
+            {
+                "requirement_id": "2",
+                "requirement": "Production ML",
+                "priority": "must",
+                "match_level": "gap",
+            },
+            {
+                "requirement_id": "3",
+                "requirement": "Cloud",
+                "priority": "should",
+                "match_level": "partial_match",
+            },
+            {
+                "requirement_id": "4",
+                "requirement": "Domain knowledge",
+                "priority": "nice_to_have",
+                "match_level": "transferable",
+            },
+        ]
+    )
+
+    assert result["score"] == 52
+    assert result["level"] == "partial"
+    assert result["achieved_points"] == 4.7
+    assert result["possible_points"] == 9
+    assert result["weighted_requirements"][0]["priority_weight"] == 3
+
+
+def test_qualification_fit_without_requirements_is_unknown() -> None:
+    result = _qualification_fit([])
+
+    assert result["score"] is None
+    assert result["level"] == "unknown"
+
+
+def test_matching_recommendation_encourages_two_strong_fits_without_must_gaps() -> None:
+    recommendation = _matching_recommendation(
+        {
+            "score": 82,
+            "weighted_requirements": [
+                {"priority": "must", "match_level": "strong_match"}
+            ],
+        },
+        {"score": 76, "level": "strong", "exclusions": []},
+    )
+
+    assert recommendation["verdict"] == "apply"
+    assert recommendation["headline"] == "Bewerbung empfohlen"
+    assert recommendation["requires_manual_review"] is False
+
+
+def test_matching_recommendation_prioritizes_target_conflict() -> None:
+    recommendation = _matching_recommendation(
+        {"score": 95, "weighted_requirements": []},
+        {
+            "score": 90,
+            "level": "conflict",
+            "exclusions": [{"status": "conflict"}],
+        },
+    )
+
+    assert recommendation["verdict"] == "deprioritize"
+    assert recommendation["headline"] == "Nicht priorisieren"
 
 
 def evidence(context: str, keywords: list[str]) -> StoredEvidence:

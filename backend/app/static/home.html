@@ -36,10 +36,12 @@ const date=value=>value?new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).fo
 let activeFilter="total",dashboardJobs=[],dashboardApps=[];
 async function req(url){const r=await fetch(url),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error?.message||`HTTP ${r.status}`);return d}
 function normalized(value){return String(value??"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLocaleLowerCase("de")}
+function jobKey(job){return `${job.title||""}\u0000${job.company||""}`.toLocaleLowerCase("de")}
 function searchable(job){return normalized([job.title,job.company,job.location,job.work_model,job.employment_type,job.source_portal].filter(Boolean).join(" "))}
 function render(){
   const terms=normalized($("search").value).trim().split(/\s+/).filter(Boolean);
   const jobs=terms.length?dashboardJobs.filter(job=>{const text=searchable(job);return terms.every(term=>text.includes(term))}):dashboardJobs;
+  const jobCounts=dashboardJobs.reduce((counts,job)=>counts.set(jobKey(job),(counts.get(jobKey(job))||0)+1),new Map());
   const jobIds=new Set(jobs.map(job=>job.id));
   const apps=dashboardApps.filter(app=>jobIds.has(app.job_id));
   const byJob=new Map(apps.map(a=>[a.job_id,a])),open=jobs.filter(j=>!byJob.has(j.id));
@@ -54,8 +56,8 @@ function render(){
   $("openJobsPanel").hidden=statusFilter;
   $("applicationsTitle").textContent=statusFilter?labels[activeFilter]||"Gefilterte Bewerbungen":"Aktuelle Bewerbungen";
   $("openJobsTitle").textContent="Offene Jobs";
-  $("applications").innerHTML=visibleApps.length?visibleApps.map(a=>{const when=a.status==="applied"?a.applied_at:a.status_changed_at;const channel=a.status==="applied"?a.application_channel:a.response_channel;return `<a class="item" href="/jobs/${a.job_id}"><strong>${esc(a.job.title)}</strong><span>${esc(a.job.company||"Firma unbekannt")} · ${esc(date(when))}${channel?` · ${esc(channels[channel]||channel)}`:""}</span><i class="status">${esc(labels[a.status]||a.status)}</i></a>`}).join(""):`<p class="empty">Keine passenden Bewerbungen.</p>`;
-  $("openJobs").innerHTML=open.length?open.map(j=>`<a class="item" href="/jobs/${j.id}"><strong>${esc(j.title)}</strong><span>${esc(j.company||"Firma unbekannt")}</span></a>`).join(""):`<p class="empty">Keine passenden offenen Jobs.</p>`;
+  $("applications").innerHTML=visibleApps.length?visibleApps.map(a=>`<a class="item" href="/jobs/${a.job_id}"><strong>${esc(a.job.title)}</strong><span>${esc(a.job.company||"Firma unbekannt")}${jobCounts.get(jobKey(a.job))>1?` · importiert ${esc(date(a.job.imported_at))}`:""}</span><i class="status">${esc(labels[a.status]||a.status)}</i></a>`).join(""):`<p class="empty">Keine passenden Bewerbungen.</p>`;
+  $("openJobs").innerHTML=open.length?open.map(j=>`<a class="item" href="/jobs/${j.id}"><strong>${esc(j.title)}</strong><span>${esc(j.company||"Firma unbekannt")}${jobCounts.get(jobKey(j))>1?` · importiert ${esc(date(j.imported_at))}`:""}</span></a>`).join(""):`<p class="empty">Keine passenden offenen Jobs.</p>`;
 }
 async function loadDashboard(){
   const profileId=$("profile").value;if(!profileId)return;

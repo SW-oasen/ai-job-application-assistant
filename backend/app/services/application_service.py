@@ -41,6 +41,7 @@ def _event_dict(event: ApplicationEvent) -> dict:
         "occurred_at": event.occurred_at,
         "channel": event.channel,
         "portal_name": event.portal_name,
+        "contact_person": event.contact_person,
         "note": event.note,
         "created_at": event.created_at,
     }
@@ -231,6 +232,7 @@ async def create_application(payload: ApplicationCreate) -> dict:
                 occurred_at=occurred_at,
                 channel=payload.channel,
                 portal_name=payload.portal_name,
+                contact_person=payload.contact_person,
                 note=payload.note,
             )
         )
@@ -246,7 +248,7 @@ async def update_application(application_id, payload: ApplicationUpdate) -> dict
             raise ApplicationError(
                 "Application not found.", code="application_not_found", status_code=404
             )
-        if payload.status is not None:
+        if payload.event_type in {"created", "status_change"} and payload.status is not None:
             _apply_status(
                 application,
                 status=payload.status,
@@ -306,10 +308,11 @@ async def add_application_event(application_id, payload: ApplicationEventCreate)
         event = ApplicationEvent(
             application_id=application.id,
             event_type=payload.event_type,
-            status=payload.status or application.status,
+            status=payload.status,
             occurred_at=occurred_at,
             channel=payload.channel,
             portal_name=payload.portal_name,
+            contact_person=payload.contact_person,
             note=payload.note,
         )
         session.add(event)
@@ -336,12 +339,15 @@ async def update_application_event(
                 code="application_event_not_found",
                 status_code=404,
             )
+        if payload.event_type is not None:
+            event.event_type = payload.event_type
         event.status = payload.status
         event.occurred_at = payload.occurred_at
         event.channel = payload.channel
         event.portal_name = (
             payload.portal_name if payload.channel == "job_portal" else None
         )
+        event.contact_person = payload.contact_person
         event.note = payload.note
         await _rebuild_application_state(session, application)
         await session.commit()
