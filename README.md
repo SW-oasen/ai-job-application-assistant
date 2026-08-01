@@ -13,21 +13,23 @@ Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen
 ## Funktionsumfang
 
 - kanonische deutsch- und englischsprachige Profilverwaltung
+- strukturiertes berufliches Zielprofil mit davon getrenntem Ziel-Fit
+- Portfolio-Projekte als eigene, prüfbare Evidenzquelle inklusive Import aus
+  `projects.js`
 - kontrollierter CV-Import mit Konflikt- und Duplikatprüfung
 - Jobimport per URL, PDF oder HTML/SingleFile
 - Ein-Klick-Jobimport über ein Browser-Lesezeichen für komplexe Jobportale wie Indeed
 - PDF-Reimport unter Beibehaltung von Job-ID und Bewerbungsdaten
-- editierbare Job-Metadaten und persistente Jobliste
+- editierbare Job-Metadaten, persistente Jobliste und Jobarchivierung
+- Änderungsverlauf einer Stellenanzeige über mehrere Importe hinweg
 - regelbasierte und optional semantische Metadatenextraktion mit Fundstellen
-- evidenzbasiertes, profilspezifisches Matching
+- evidenzbasiertes, profilspezifisches Matching inklusive Senioritätsabgleich
 - Bewerbungsstatus und bearbeitbarer Ereignisverlauf
 - Archivierung tatsächlich versendeter Bewerbungs-PDFs
 - getrennte Erfassung von Quellportal und Bewerbungsweg
 - Dashboard mit Statusfiltern und Stichwortsuche (nun auf der Hauptseite)
 
-Portfolio-Projekte, persönliche Karriereziele und ein davon getrennter
-Ziel-Fit sind geplante Erweiterungen. Der aktuelle Plan steht in der
-[Roadmap](docs/roadmap.md).
+Der aktuelle Arbeitsplan steht in der [Roadmap](docs/roadmap.md).
 
 ## Datenschutz und Netzwerk
 
@@ -46,6 +48,7 @@ Dokumente gehören nicht in das Repository.
 |---|---|
 | Jobs und Bewerbungen (Hauptseite) | `http://localhost:8080/` |
 | Zentralverwaltung und Jobimport | `http://localhost:8080/manage` |
+| Jobdetails, Matching und Bewerbung | `http://localhost:8080/jobs/{job_id}` |
 | Browser-Bridge für Ein-Klick-Jobimport | `http://localhost:8080/browser-import` |
 | Profilverwaltung und CV-Import | `http://localhost:8080/profiles/admin` |
 | API-Dokumentation in Entwicklung | `http://localhost:8080/docs` |
@@ -95,7 +98,7 @@ ausgeführt.
    importieren.
 3. Vorschläge und mögliche Konflikte bewusst prüfen.
 4. Stellenanzeige per URL, PDF oder HTML importieren.
-5. Alternativ das Browser-Lesezeichen unter `/browser-import` einrichten und
+5. Alternativ das Browser-Lesezeichen wie unter `Verwaltung > Stellen importieren > Firefox-Import einrichten` erstellen und
    eine geöffnete Stellenanzeige mit einem Klick an die lokale Anwendung senden.
    Auch komplexe Seiten wie Indeed werden dabei automatisch in strukturierte
    Jobdaten umgewandelt.

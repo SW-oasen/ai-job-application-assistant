@@ -2,12 +2,16 @@ import re
 from dataclasses import dataclass
 
 HEADING_PATTERN = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*$")
+# Some ads use a bold standalone phrase instead of a markdown heading, e.g.
+# "**Deine Aufgaben** Produkte entwickeln:" right before the list.
+BOLD_HEADING_PATTERN = re.compile(r"^\s*\*\*(?P<heading>[^*]{2,60})\*\*\s*.{0,80}$")
 LIST_ITEM_PATTERN = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.+?)\s*$")
 ACTIVITY_HEADINGS = re.compile(
     r"\b("
     r"aufgaben|tätigkeiten|verantwortung|verantwortlichkeiten|"
     r"deine rolle|ihr aufgabengebiet|das erwartet dich|"
-    r"responsibilities|your role|what you(?:'|’)ll do|the role"
+    r"responsibilities|your role|what you(?:'|’)ll do|what you(?:'|’)ll be doing|"
+    r"the role|in this (?:position|role)|key responsibilities|day[- ]to[- ]day"
     r")\b",
     re.IGNORECASE,
 )
@@ -16,7 +20,8 @@ REQUIREMENT_HEADINGS = re.compile(
     r"anforderungen|qualifikationen|profil|das bringst du mit|"
     r"das zeichnet dich aus|ihr profil|"
     r"requirements|qualifications|what you bring|your profile|"
-    r"what we(?:'|’)re looking for"
+    r"what we(?:'|’)re looking for|about you|who you are|"
+    r"what you(?:'|’)ll bring|must[- ]haves?|skills (?:and|&) experience"
     r")\b",
     re.IGNORECASE,
 )
@@ -155,6 +160,17 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
             else:
                 section = None
             continue
+        bold_heading_match = BOLD_HEADING_PATTERN.match(raw_line)
+        if bold_heading_match:
+            candidate_heading = _clean_item(bold_heading_match.group("heading"))
+            if ACTIVITY_HEADINGS.search(candidate_heading):
+                heading = candidate_heading
+                section = "activity"
+                continue
+            if REQUIREMENT_HEADINGS.search(candidate_heading):
+                heading = candidate_heading
+                section = "requirement"
+                continue
         if section is None:
             continue
         item_match = LIST_ITEM_PATTERN.match(raw_line)

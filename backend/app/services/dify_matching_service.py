@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import httpx
@@ -6,12 +7,38 @@ from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.schemas.matching import MatchingWorkflowRequest
 
+# Sandbox code-node failures surface as a raw Python traceback; only the final
+# exception line is useful to a user, so extract it instead of showing the trace.
+_TRACEBACK_EXCEPTION_LINE = re.compile(r"^[\w.]*Error: (?P<message>.+)$", re.MULTILINE)
+
+_KNOWN_WORKFLOW_ERRORS: dict[str, str] = {
+    "Keine prüfbaren Anforderungen in der Stellenanzeige erkannt": (
+        "Für diese Stellenanzeige konnten keine prüfbaren Anforderungen ermittelt "
+        "werden. Bitte Job-Metadaten prüfen oder die Anzeige erneut importieren."
+    ),
+}
+
 
 def _workflow_url() -> str:
     base = str(get_settings().dify_base_url).rstrip("/")
     if not base.endswith("/v1"):
         base = f"{base}/v1"
     return f"{base}/workflows/run"
+
+
+def _friendly_workflow_failure_message(raw_error: str | None) -> tuple[str, str]:
+    """Turn a raw Dify/sandbox error (possibly a full traceback) into a user message."""
+    raw_error = (raw_error or "").strip()
+    if not raw_error:
+        return "Der Dify-Matching-Workflow ist fehlgeschlagen.", "dify_matching_workflow_failed"
+    match = _TRACEBACK_EXCEPTION_LINE.search(raw_error)
+    exception_message = match.group("message").strip() if match else raw_error
+    for known_fragment, friendly_message in _KNOWN_WORKFLOW_ERRORS.items():
+        if known_fragment in exception_message:
+            return friendly_message, "matching_no_requirements"
+    if match:
+        return exception_message, "dify_matching_workflow_failed"
+    return "Der Dify-Matching-Workflow ist fehlgeschlagen.", "dify_matching_workflow_failed"
 
 
 def _workflow_error(response: httpx.Response) -> ApplicationError:
@@ -77,10 +104,11 @@ async def run_matching_workflow(payload: MatchingWorkflowRequest) -> dict:
     result = response.json()
     data = result.get("data") or {}
     if data.get("status") != "succeeded":
+        message, code = _friendly_workflow_failure_message(data.get("error"))
         raise ApplicationError(
-            data.get("error") or "Der Dify-Matching-Workflow ist fehlgeschlagen.",
-            code="dify_matching_workflow_failed",
-            status_code=502,
+            message,
+            code=code,
+            status_code=422 if code == "matching_no_requirements" else 502,
         )
     return {
         "workflow_run_id": data.get("id") or result.get("workflow_run_id"),

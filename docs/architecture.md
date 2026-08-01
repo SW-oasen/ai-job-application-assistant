@@ -159,7 +159,14 @@ Matching verwendet belegte Skills, Berufserfahrung, Portfolio-Projekte,
 Ausbildung und Zertifikate. Berufliche, projektbezogene, schulische und
 Trainingskontexte
 bleiben unterscheidbar. Referenzen und Kontaktdaten werden nicht als
-Matching-Evidenz an Dify übergeben.
+Matching-Evidenz an Dify übergeben. Seniority-Anforderungen aus der
+Stellenanzeige werden separat gegen die Berufserfahrung im Profil bewertet und
+fließen als eigener Teilbefund in das Ergebnis ein.
+
+Jeder erneute Import derselben Stelle (Reimport, PDF-Ersatz) schreibt einen
+Änderungssatz in den Job-Aktivitätsverlauf. Archivierte Jobs bleiben erhalten,
+werden aber standardmäßig aus aktiven Listen ausgeblendet und können
+wiederhergestellt werden.
 
 Portfolio-Projekte sind als eigene, prüfbare Evidenzquelle umgesetzt;
 persönliche Ziele sind strukturiert am Profil erfasst. Der aktuelle Stand und

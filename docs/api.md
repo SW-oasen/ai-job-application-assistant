@@ -51,11 +51,15 @@ Generierungsworkflow ausgegeben.
 - `POST /imports/url`
 - `POST /imports/pdf`
 - `POST /imports/html`
+- `POST /imports/browser-capture`
 - `POST /imports/jobs/{job_id}/reimport`
 
 URL-Importe akzeptieren nur öffentliche HTTP(S)-Ziele. Eingebettete
 Zugangsdaten sowie lokale, private und reservierte Adressen werden blockiert.
-Redirects und Browser-Subrequests werden erneut validiert.
+Redirects und Browser-Subrequests werden erneut validiert. `browser-capture`
+nimmt Seiteninhalt vom Browser-Lesezeichen unter `/browser-import` entgegen
+und verlangt den internen Header `X-Browser-Capture: receiver-v1`, sodass der
+Endpunkt nicht direkt von außen aufrufbar ist.
 
 PDFs werden zunächst nativ gelesen. Bei unzureichender Qualität wird MinerU
 verwendet; bei einem eindeutig beschädigten Text-Layer werden die Seiten
@@ -64,17 +68,23 @@ Ressourcen nach.
 
 ## Matching und Jobs
 
-- `GET /matching/jobs?profile_id={profile_id}`
+- `GET /matching/jobs?profile_id={profile_id}&include_archived={bool}`
 - `GET /matching/jobs/{job_id}`
 - `PATCH /matching/jobs/{job_id}/metadata`
+- `POST /matching/jobs/{job_id}/archive`
+- `POST /matching/jobs/{job_id}/restore`
 - `DELETE /matching/jobs/{job_id}`
 - `GET /matching/results?job_id={job_id}&profile_id={profile_id}`
+- `GET /matching/target-fit?job_id={job_id}&profile_id={profile_id}`
 - `GET /matching/context?job_id={job_id}&profile_id={profile_id}`
 - `POST /matching/evaluate`
 - `POST /matching/run`
 
 Der Matching-Kontext enthält den normalisierten Jobtext und kanonische
-Profilevidenz. Referenzen und Kontaktdaten werden ausgeschlossen.
+Profilevidenz. Referenzen und Kontaktdaten werden ausgeschlossen. Archivierte
+Jobs werden standardmäßig aus `matching/jobs` ausgeblendet. `target-fit`
+liefert den vom Qualifikations-Fit getrennten Abgleich mit dem strukturierten
+Zielprofil.
 
 ## Profile
 
@@ -104,8 +114,12 @@ Revisionen liefert
 - `POST /profiles/{profile_id}/cv-imports`
 - `POST /profiles/{profile_id}/cv-imports/structured`
 - `POST /profiles/{profile_id}/cv-imports/pdf`
+- `POST /profiles/{profile_id}/portfolio-imports/structured`
+- `POST /profiles/{profile_id}/portfolio-imports/source`
 - `POST /profiles/{profile_id}/cv-suggestions/{suggestion_id}/apply`
 - `POST /profiles/{profile_id}/cv-suggestions/{suggestion_id}/reject`
 
-CV-Importe verändern das kanonische Profil nicht automatisch. Vorschläge
-müssen geprüft, übernommen oder verworfen werden.
+CV- und Portfolio-Importe verändern das kanonische Profil nicht automatisch.
+Vorschläge müssen geprüft, übernommen oder verworfen werden.
+`portfolio-imports/source` akzeptiert den vollständigen Inhalt der
+Portfolio-Datei `projects.js`.
