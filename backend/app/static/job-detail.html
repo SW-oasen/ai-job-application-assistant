@@ -19,6 +19,7 @@
     details.inline-editor{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}details.inline-editor summary{cursor:pointer;color:var(--blue);font-weight:700}.application-overview{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.application-overview span{padding:8px 11px;border-radius:8px;background:#f6f8fb}
     .summary-card h2{margin:0 0 14px;font-size:22px}.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.summary-grid>div{padding:11px;border-radius:9px;background:#f6f8fb}.summary-grid strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.summary-grid select{margin-top:0}
     details.section>summary{cursor:pointer;font-weight:700;font-size:18px;list-style:revert}details.section .section-body{margin-top:16px}
+    .review-history{display:grid;gap:10px}.review-run{padding:12px;border:1px solid var(--line);border-radius:8px;background:#f6f8fb}.review-run h3{margin:0;font-size:15px}.review-run p{margin:7px 0 0;color:var(--muted);font-size:13px}.review-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.review-meta .tag{background:#fff}.review-issues{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}.review-issues li{padding:8px;background:#fff;border-radius:6px;font-size:13px}.review-issues strong{display:block}.review-error{color:#8a4b08}
     @media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid,.structured-fields,.summary-grid{grid-template-columns:1fr}.full{grid-column:auto}}
   </style>
 </head>
@@ -139,6 +140,10 @@
       <summary>Erkannte Stellendetails</summary>
       <div class="structured-groups section-body" id="structuredDetails"></div>
     </details>
+    <details class="panel section" id="reviewSection">
+      <summary>Prüfverlauf</summary>
+      <div class="section-body review-history" id="reviewHistory" aria-live="polite"></div>
+    </details>
     <details class="panel section reference-details" id="referenceSection">
       <summary>Importierter Referenztext</summary>
       <p class="reference-hint">Dieser geparste Text dient als Referenz für die erkannten strukturierten Daten.</p>
@@ -157,6 +162,8 @@
     const eventLabels={created:"Bewerbung angelegt",status_change:"Status geändert",internal_forwarded:"Intern weitergeleitet",communication:"Kommunikation",note:"Notiz"};
     const channelLabels={email:"E-Mail",company_portal:"Arbeitgeberportal",job_portal:"Jobportal",phone:"Telefon",personal:"Persönlich",other:"Sonstiges"};
     const documentLabels={resume:"Lebenslauf",cover_letter:"Anschreiben",certificate:"Zeugnis",other:"Sonstige Anlage"};
+    const reviewStatusLabels={pending:"Ausstehend",accepted:"Freigegeben",corrected:"Korrigiert",retry_requested:"Wiederholung angefordert",manual_review_required:"Manuelle Prüfung erforderlich",failed:"Fehlgeschlagen"};
+    const reviewDecisionLabels={accept:"Original übernommen",correct:"Korrektur übernommen",retry:"Wiederholung",manual_review:"Manuelle Prüfung"};
     let currentJob=null,currentApplication=null,editingEventId=null,currentEvents=[],currentFiles=[];
     async function request(url,options={}){
       const response=await fetch(url,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
@@ -290,6 +297,33 @@
           <h3>Anforderungen</h3>
           ${requirements?`<div class="requirement-groups">${requirements}</div>`:'<p class="warning">Noch keine strukturierten Anforderungen erkannt.</p>'}
         </section>`;
+    }
+    function renderReviewHistory(reviews){
+      const node=document.getElementById("reviewHistory");
+      if(!reviews.length){node.innerHTML='<p class="warning">Noch keine Review-Ergebnisse vorhanden.</p>';return}
+      node.innerHTML=reviews.map(review=>{
+        const issues=review.issues||[],highest=issues.reduce((current,item)=>({low:1,medium:2,high:3,critical:4}[item.severity]||0)>({low:1,medium:2,high:3,critical:4}[current]||0)?item.severity:current,null);
+        const used=Object.keys(review.corrected_result||{}).length?"Korrigiertes Ergebnis":"Originalergebnis";
+        return `<article class="review-run">
+          <h3>${esc(humanize(review.review_type))} · ${esc(reviewStatusLabels[review.status]||review.status)}</h3>
+          <div class="review-meta">
+            <span class="tag">${esc(used)}</span>
+            <span class="tag">${esc(reviewDecisionLabels[review.decision]||"Keine Entscheidung")}</span>
+            <span class="tag">Confidence: ${review.overall_confidence==null?"–":`${esc(Math.round(review.overall_confidence*100))} %`}</span>
+            <span class="tag">Issues: ${esc(issues.length)}</span>
+            ${highest?`<span class="tag">Höchste Schwere: ${esc(humanize(highest))}</span>`:""}
+            <span class="tag">Versuch ${esc(review.attempt||1)}</span>
+          </div>
+          ${review.technical_error?`<p class="review-error">${esc(review.technical_error)}</p>`:""}
+          ${issues.length?`<ul class="review-issues">${issues.map(issue=>`<li><strong>${esc(issue.field)} · ${esc(humanize(issue.severity))}</strong>${esc(issue.message)}${issue.evidence?`<br><span>${esc(issue.evidence)}</span>`:""}</li>`).join("")}</ul>`:""}
+        </article>`;
+      }).join("");
+    }
+    async function loadReviewHistory(){
+      const node=document.getElementById("reviewHistory");
+      node.innerHTML='<p class="warning">Review-Verlauf wird geladen …</p>';
+      try{renderReviewHistory(await request(`/matching/jobs/${encodeURIComponent(jobId)}/reviews`))}
+      catch(error){node.innerHTML=`<p class="review-error">Review-Verlauf ist derzeit nicht verfügbar: ${esc(error.message)}</p>`}
     }
     async function loadDocuments(){
       if(!currentApplication){renderDocuments([]);return}
@@ -460,6 +494,7 @@
         document.getElementById("profile").onchange=async()=>{await Promise.all([loadApplication(),loadMatchingSummary()])};
         document.getElementById("occurredAt").value=localNow();
         await Promise.all([loadApplication(),loadMatchingSummary()]);
+        await loadReviewHistory();
       }catch(error){
         document.getElementById("summaryTitle").textContent="Job konnte nicht geladen werden.";
         document.getElementById("content").innerHTML=`<p class="error">${esc(error.message)}</p>`;

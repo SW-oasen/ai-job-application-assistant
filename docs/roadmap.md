@@ -16,6 +16,8 @@ der [README](../README.md), technische Grundlagen im
 
 - Extraktion in Anforderungen, Tätigkeiten und Rahmenbedingungen trennen.
 - Doppelte und unnötig fragmentierte Anforderungen reduzieren.
+- Review-Integration abschließen: Dify-Workflows finalisieren, Migration und
+  Konfiguration testen, Automatisierung der Review-Historie prüfen.
 
 ## Erledigt
 

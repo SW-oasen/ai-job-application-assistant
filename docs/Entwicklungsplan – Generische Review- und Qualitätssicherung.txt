@@ -1,0 +1,875 @@
+# Entwicklungsplan – Generische Review- und Qualitätssicherung
+
+## Projekt
+
+Job Application Assistant
+
+## Ziel
+
+Der Assistent soll eine wiederverwendbare Qualitätssicherungsschicht erhalten, die Ergebnisse von LLM-Workflows prüft, korrigiert, freigibt oder zur manuellen Kontrolle markiert.
+
+Die erste konkrete Umsetzung erfolgt für:
+
+1. Job-Extraktion
+2. Job-Matching
+
+Die Architektur soll anschließend auch für folgende Workflows nutzbar sein:
+
+* Profil-Extraktion
+* Skill-Mapping
+* Projekt-Auswahl
+* Lebenslauf-Entwurf
+* Anschreiben-Entwurf
+* Lebenslauf-Review
+* Anschreiben-Review
+* Übersetzungen und Textoptimierungen
+
+Die bestehende Browser-Bridge funktioniert bereits zuverlässig und soll im Rahmen dieses Arbeitspakets nicht grundlegend überarbeitet werden.
+
+---
+
+# Prioritäten
+
+1. Generische Review-Infrastruktur
+2. Extraction Reviewer
+3. Integration in den Job-Import
+4. Matching Reviewer
+5. Kontrollierte Korrektur- und Retry-Logik
+6. GUI-Darstellung
+7. Tests und Evaluation
+
+---
+
+# Technische Grundprinzipien
+
+## Verantwortlichkeiten
+
+### Python-Anwendung
+
+Die Python-Anwendung übernimmt:
+
+* Orchestrierung der Workflows
+* Auswahl des passenden Review-Workflows
+* Validierung der Workflow-Ausgaben
+* Speicherung der Ergebnisse
+* Entscheidung über Freigabe, Korrektur oder Wiederholung
+* Retry-Zähler und Abbruchbedingungen
+* Versionsverwaltung
+* Logging
+* manuelle Prüfprozesse
+* GUI-Anbindung
+
+### Dify
+
+Dify übernimmt klar abgegrenzte LLM-Aufgaben:
+
+* Job-Extraktion
+* Extraction Review
+* Matching
+* Matching Review
+* spätere Dokumentengenerierung
+* spätere Dokumenten-Reviews
+
+Die Dify-Workflows sollen nicht direkt und dauerhaft miteinander verdrahtet werden. Die Orchestrierung bleibt in der Python-Anwendung.
+
+---
+
+# Zielarchitektur
+
+```text
+Browser Bridge
+    ↓
+Receive-Node
+    ↓
+HTML-Parsing und Textbereinigung
+    ↓
+Job Extraction
+    ↓
+Generische Review-Schicht
+    ↓
+Extraction Reviewer
+    ↓
+Entscheidung
+    ├── accept
+    ├── correct
+    ├── retry
+    └── manual_review
+    ↓
+Job-Datenbank
+    ↓
+Matching
+    ↓
+Generische Review-Schicht
+    ↓
+Matching Reviewer
+    ↓
+Entscheidung
+    ├── accept
+    ├── correct
+    ├── retry
+    └── manual_review
+    ↓
+GUI
+```
+
+---
+
+# Phase 1 – Bestehende Architektur analysieren
+
+Vor Änderungen zunächst den vorhandenen Code gezielt untersuchen.
+
+Zu identifizieren sind:
+
+* Einstiegspunkt des Job-Imports
+* Empfang der Browser-Bridge-Daten
+* Job-Extraktionsservice
+* Dify-Client
+* Matching-Service
+* Datenbankmodelle
+* Repository- oder DAO-Schicht
+* GUI-Komponenten für Jobdetails und Matching
+* bestehende JSON-Schemas oder Pydantic-Modelle
+* vorhandene Logging- und Fehlerbehandlung
+
+Es sollen keine parallelen Strukturen aufgebaut werden, wenn bereits geeignete Komponenten vorhanden sind.
+
+Bestehende Benennungen, Patterns und Abstraktionen sollen bevorzugt weiterverwendet werden.
+
+---
+
+# Phase 2 – Generisches Review-Datenmodell
+
+Eine wiederverwendbare Review-Struktur implementieren.
+
+## Review-Typen
+
+Mindestens folgende Review-Typen vorsehen:
+
+```text
+job_extraction
+job_matching
+profile_extraction
+skill_mapping
+project_selection
+cv_draft
+cover_letter_draft
+```
+
+Zunächst müssen nur `job_extraction` und `job_matching` aktiv genutzt werden.
+
+## Review-Status
+
+Folgende Statuswerte vorsehen:
+
+```text
+pending
+accepted
+corrected
+retry_requested
+manual_review_required
+failed
+```
+
+## Review-Entscheidungen
+
+```text
+accept
+correct
+retry
+manual_review
+```
+
+## Review Issue
+
+Ein einzelnes Problem soll strukturiert gespeichert werden.
+
+Beispiel:
+
+```json
+{
+  "field": "required_skills",
+  "issue_type": "missing_value",
+  "severity": "medium",
+  "message": "Docker wird im Originaltext genannt, fehlt aber in der Extraktion.",
+  "evidence": "Erfahrung mit Docker und containerisierten Anwendungen",
+  "suggested_value": "Docker"
+}
+```
+
+Vorgesehene Issue-Typen:
+
+```text
+missing_value
+unsupported_value
+wrong_value
+wrong_category
+inconsistent_value
+schema_error
+missing_evidence
+weak_evidence
+score_inconsistency
+hallucination
+other
+```
+
+Vorgesehene Schweregrade:
+
+```text
+low
+medium
+high
+critical
+```
+
+## Generisches Review-Ergebnis
+
+Beispielstruktur:
+
+```json
+{
+  "review_type": "job_extraction",
+  "status": "corrected",
+  "decision": "correct",
+  "overall_confidence": 0.84,
+  "issues": [],
+  "field_confidence": {},
+  "corrected_result": {},
+  "retry_instructions": [],
+  "reviewer_model": "",
+  "workflow_version": "",
+  "created_at": ""
+}
+```
+
+## Anforderungen
+
+* Pydantic oder das bereits verwendete Validierungssystem nutzen.
+* Review-Ergebnisse müssen JSON-serialisierbar sein.
+* Fachspezifische Erweiterungen sollen möglich sein.
+* `corrected_result` darf je nach Review-Typ unterschiedliche Daten enthalten.
+* Unsichere oder fehlende Werte sollen nicht durch erfundene Informationen ersetzt werden.
+
+---
+
+# Phase 3 – Generischer Review-Service
+
+Einen zentralen Service für Review-Aufrufe implementieren.
+
+Mögliche Schnittstelle:
+
+```python
+review_result = review_service.review(
+    review_type="job_extraction",
+    source_data=source_data,
+    generated_result=generated_result,
+    context=context,
+)
+```
+
+Der Service soll:
+
+1. passenden Dify-Workflow auswählen
+2. Eingabedaten vorbereiten
+3. Workflow aufrufen
+4. Ausgabe validieren
+5. Review-Ergebnis normalisieren
+6. Fehler behandeln
+7. Metadaten ergänzen
+8. Ergebnis zurückgeben
+
+Der aufrufende Fachservice soll nicht selbst wissen müssen, wie der jeweilige Dify-Workflow technisch angesprochen wird.
+
+## Konfiguration
+
+Die Zuordnung zwischen Review-Typ und Workflow soll konfigurierbar sein.
+
+Beispiel:
+
+```yaml
+review_workflows:
+  job_extraction:
+    api_key: <dify-job-extraction-review-api-key>
+    enabled: true
+    max_retries: 1
+
+  job_matching:
+    api_key: <dify-job-matching-review-api-key>
+    enabled: true
+    max_retries: 1
+```
+
+Keine API-Daten fest im Code verteilen.
+
+---
+
+# Phase 4 – Extraction Reviewer
+
+## Zweck
+
+Der Extraction Reviewer vergleicht die extrahierten Jobdaten mit dem ursprünglichen Inhalt der Stellenanzeige.
+
+## Eingaben
+
+* URL
+* Seitentitel
+* bereinigter sichtbarer Text
+* optional relevanter HTML-Ausschnitt
+* extrahiertes Job-JSON
+* gültiges Job-Schema
+* optional vorheriges Review-Feedback
+* Nummer des aktuellen Versuchs
+
+Nicht unnötig das vollständige rohe HTML an das Modell senden, wenn der bereinigte Text ausreicht.
+
+## Prüfaufgaben
+
+Der Reviewer prüft:
+
+* Jobtitel
+* Unternehmen
+* Standort
+* Remote- oder Hybridregelung
+* Beschäftigungsart
+* Aufgaben
+* Muss-Anforderungen
+* Kann-Anforderungen
+* technische Skills
+* Soft Skills
+* Sprachkenntnisse
+* Ausbildungsanforderungen
+* Berufserfahrung
+* Erfahrungsjahre
+* Benefits
+* Ansprechpartner
+* sonstige relevante Felder
+
+Zusätzlich:
+
+* Wurden Inhalte ausgelassen?
+* Wurden Inhalte erfunden?
+* Wurden Aufgaben als Anforderungen klassifiziert?
+* Wurden Muss- und Kann-Kriterien verwechselt?
+* Wurden Unternehmensbeschreibungen als Anforderungen interpretiert?
+* Stimmen Werte und Textbelege überein?
+* Entspricht das Ergebnis dem Schema?
+
+## Ausgabe
+
+Der Reviewer soll ein strukturiertes Review-Ergebnis zurückgeben.
+
+Bei kleinen und klaren Fehlern soll er ein vollständig korrigiertes Jobobjekt liefern.
+
+Bei grundlegenden Problemen soll er eine Wiederholung empfehlen und konkrete Retry-Anweisungen zurückgeben.
+
+---
+
+# Phase 5 – Extraction Review in den Import integrieren
+
+Der Job-Import wird erweitert.
+
+## Ablauf
+
+```text
+Browser-Inhalt empfangen
+→ Inhalt parsen und bereinigen
+→ Extraction ausführen
+→ Ergebnis technisch validieren
+→ Extraction Review ausführen
+→ Review-Entscheidung anwenden
+→ finale Version speichern
+→ Status in der GUI anzeigen
+```
+
+## Entscheidungslogik
+
+### Accept
+
+Voraussetzungen:
+
+* keine kritischen Fehler
+* Schema gültig
+* ausreichende Confidence
+* keine wesentlichen unbelegten Werte
+
+Aktion:
+
+* Extraktion übernehmen
+* Review speichern
+* Job als geprüft markieren
+
+### Correct
+
+Geeignet bei:
+
+* wenigen klaren Fehlern
+* fehlenden Einzelwerten
+* falscher Kategorisierung
+* eindeutigen unbelegten Angaben
+
+Aktion:
+
+* korrigiertes Ergebnis validieren
+* korrigiertes Ergebnis speichern
+* ursprüngliche Extraktion erhalten
+* Review-Historie speichern
+
+### Retry
+
+Geeignet bei:
+
+* vielen fehlenden Anforderungen
+* strukturell fehlerhafter Extraktion
+* ungültiger oder unvollständiger Ausgabe
+* widersprüchlichen Feldern
+* sehr niedriger Confidence
+
+Aktion:
+
+* Extraktion einmal mit Review-Feedback wiederholen
+* vorherige Extraktion als Kontext mitsenden
+* Retry-Anweisungen hinzufügen
+* neuen Review-Durchlauf starten
+
+### Manual Review
+
+Auslösen bei:
+
+* weiterhin niedriger Qualität nach dem erlaubten Retry
+* widersprüchlichen Review-Ergebnissen
+* fehlender Originalquelle
+* ungültiger Korrektur
+* technischen Fehlern
+* kritischen Unsicherheiten
+
+## Begrenzung
+
+Zunächst maximal:
+
+```text
+1 regulärer Extraktionslauf
+1 Retry mit Review-Feedback
+```
+
+Keine unbegrenzten Schleifen.
+
+---
+
+# Phase 6 – Matching Reviewer
+
+## Zweck
+
+Der Matching Reviewer prüft, ob das Matching zwischen Stellenanforderungen und Kandidatenprofil sachlich korrekt und durch Evidenz belegt ist.
+
+## Eingaben
+
+* validierte Jobdaten
+* Kandidatenprofil
+* Skills
+* Berufserfahrung
+* Projekte
+* Ausbildung
+* Zertifikate
+* ursprüngliches Matching-Ergebnis
+* optional vorheriges Review-Feedback
+
+## Prüfaufgaben
+
+* Ist jede Match-Aussage belegt?
+* Wurde eine verwandte Technologie als direkter Match gewertet?
+* Wurden fehlende Kenntnisse zu positiv bewertet?
+* Wurden passende Projekte übersehen?
+* Wurden Muss-Anforderungen angemessen gewichtet?
+* Ist ein Partial Match sinnvoll begründet?
+* Stimmen Einzelbewertungen und Gesamtscore überein?
+* Gibt es widersprüchliche Bewertungen?
+* Enthält das Matching unbelegte Behauptungen?
+* Werden fehlende Daten als fehlende Kompetenz interpretiert?
+* Wird Berufserfahrung von Projekt- oder Lernpraxis unterschieden?
+
+## Beispiel
+
+Folgende Bewertung soll als problematisch erkannt werden:
+
+```text
+Anforderung: Kubernetes
+Beleg: Docker im RAG-Projekt
+Bewertung: vollständiger Match
+```
+
+Korrekte Bewertung:
+
+```text
+Kein direkter Kubernetes-Beleg.
+Docker ist verwandte Container-Erfahrung, aber kein vollständiger Match.
+```
+
+## Reviewer-Ausgabe
+
+Beispiel:
+
+```json
+{
+  "review_type": "job_matching",
+  "decision": "correct",
+  "overall_confidence": 0.88,
+  "issues": [
+    {
+      "field": "requirements.kubernetes",
+      "issue_type": "weak_evidence",
+      "severity": "high",
+      "message": "Docker-Erfahrung wurde als vollständiger Kubernetes-Match bewertet.",
+      "evidence": "Docker-Nutzung im AI-RAG-Projekt"
+    }
+  ],
+  "corrected_result": {
+    "original_score": 78,
+    "reviewed_score": 65,
+    "requirements": []
+  }
+}
+```
+
+---
+
+# Phase 7 – Matching Review integrieren
+
+## Ablauf
+
+```text
+Validierte Jobdaten laden
+→ Profil und Projekte laden
+→ Matching ausführen
+→ Matching Review ausführen
+→ Entscheidung anwenden
+→ finale Bewertung speichern
+→ Ergebnis in GUI anzeigen
+```
+
+## Retry-Strategie
+
+Bei niedriger Confidence nicht automatisch immer das vollständige Matching wiederholen.
+
+Der Reviewer soll möglichst angeben, welche Anforderungen erneut geprüft werden müssen:
+
+```json
+{
+  "requirements_to_recheck": [
+    "Kubernetes",
+    "MLOps",
+    "Cloud-Erfahrung"
+  ]
+}
+```
+
+Der zweite Matching-Lauf soll sich auf diese strittigen Anforderungen konzentrieren.
+
+Zunächst maximal ein Retry.
+
+---
+
+# Phase 8 – Datenbank und Versionierung
+
+Ursprüngliche Workflow-Ergebnisse dürfen nicht überschrieben werden.
+
+Zu speichern sind:
+
+* ursprüngliches Ergebnis
+* Review-Ergebnis
+* korrigiertes Ergebnis
+* finale freigegebene Version
+* Review-Typ
+* Status
+* Confidence
+* Issues
+* Retry-Anweisungen
+* Versuchsnummer
+* Modellname
+* Workflow-Version
+* Prompt-Version, sofern verfügbar
+* Zeitstempel
+* Laufzeit
+* technische Fehlermeldung
+
+Die konkrete Tabellenstruktur soll sich an der bestehenden Datenbankarchitektur orientieren.
+
+Bevorzugt eine generische Review-Tabelle statt separater Tabellen für jeden Workflow verwenden, sofern dies mit dem vorhandenen Datenmodell sinnvoll umsetzbar ist.
+
+---
+
+# Phase 9 – GUI
+
+Die GUI soll Review-Ergebnisse nachvollziehbar anzeigen.
+
+## Minimale Anzeige
+
+* Review-Status
+* Confidence
+* Anzahl der Issues
+* höchste Issue-Schwere
+* ursprüngliches oder korrigiertes Ergebnis verwendet
+* manueller Review erforderlich
+
+## Detailansicht
+
+Für jedes Issue anzeigen:
+
+* betroffenes Feld
+* Problemtyp
+* Schweregrad
+* Beschreibung
+* Textbeleg
+* vorgeschlagene Korrektur
+
+## Vergleichsansicht
+
+Nach Möglichkeit:
+
+```text
+Original
+↔
+Reviewer-Korrektur
+```
+
+Die erste Version darf technisch einfach sein. Funktionalität ist wichtiger als visuelle Perfektion.
+
+## Manuelle Aktionen
+
+Vorbereiten oder implementieren:
+
+* Original übernehmen
+* Korrektur übernehmen
+* manuell bearbeiten
+* Workflow erneut ausführen
+* als geprüft markieren
+
+---
+
+# Phase 10 – Technische Validierung vor LLM-Review
+
+Nicht jede Qualitätsprüfung benötigt ein LLM.
+
+Vor jedem Review deterministisch prüfen:
+
+* gültiges JSON
+* korrektes Schema
+* Pflichtfelder
+* Datentypen
+* erlaubte Enum-Werte
+* leere Listen und leere Strings
+* ungültige Scores
+* Score außerhalb des erlaubten Bereichs
+* doppelte Skills
+* offensichtlich identische Einträge
+* unzulässige zusätzliche Felder
+
+Technische Fehler sollen möglichst vor dem LLM-Review erkannt werden.
+
+---
+
+# Phase 11 – Tests
+
+## Unit-Tests
+
+Mindestens testen:
+
+* Review-Modell validiert gültige Ausgaben
+* ungültige Entscheidungen werden abgelehnt
+* Confidence außerhalb von 0 bis 1 wird abgelehnt
+* Issues werden korrekt serialisiert
+* Workflow-Zuordnung funktioniert
+* Review-Service behandelt Dify-Fehler
+* Retry-Limit wird eingehalten
+* korrigierte Ergebnisse werden erneut validiert
+* ursprüngliche Ergebnisse bleiben erhalten
+
+## Integrationstests
+
+Testfälle:
+
+1. gute Extraktion wird akzeptiert
+2. kleiner Extraktionsfehler wird korrigiert
+3. schlechte Extraktion löst einen Retry aus
+4. zweiter schlechter Versuch führt zu manueller Prüfung
+5. korrektes Matching wird akzeptiert
+6. unbelegtes Matching wird korrigiert
+7. inkonsistenter Gesamtscore wird erkannt
+8. Dify nicht erreichbar
+9. ungültige Reviewer-Ausgabe
+10. Reviewer liefert kein korrigiertes Ergebnis trotz `correct`
+
+---
+
+# Phase 12 – Evaluationsdatensatz
+
+Für reale Stellenanzeigen sollen Testfälle aufgebaut werden.
+
+Pro Testfall speichern:
+
+* Originalquelle
+* bereinigter Text
+* ursprüngliche Extraktion
+* manuell korrigierte Extraktion
+* ursprüngliches Matching
+* manuell korrigiertes Matching
+* Reviewer-Ausgaben
+* erwartete Entscheidung
+
+Zu Beginn reichen wenige gute Beispiele.
+
+Empfohlener Start:
+
+```text
+5 bis 10 Stellenanzeigen
+```
+
+Dabei unterschiedliche Formate und Rollen verwenden:
+
+* Data Scientist
+* ML Engineer
+* AI Engineer
+* Software Engineer
+* Technical Project Manager
+* deutsche Anzeige
+* englische Anzeige
+* kurze Anzeige
+* lange und unstrukturierte Anzeige
+
+---
+
+# Token- und Kontingentstrategie für Copilot
+
+Das Copilot-Kontingent soll sparsam verwendet werden.
+
+## Arbeitsweise
+
+Copilot soll nicht das gesamte Projekt bei jeder Aufgabe analysieren.
+
+Für jeden Arbeitsschritt:
+
+1. Nur relevante Dateien öffnen.
+2. Bestehende Architektur zuerst lesen.
+3. Kleine, abgeschlossene Änderungen umsetzen.
+4. Keine unnötigen Refactorings durchführen.
+5. Keine neuen Frameworks oder Abhängigkeiten einführen, wenn bestehende Mittel ausreichen.
+6. Nach jedem Arbeitspaket Tests ausführen.
+7. Änderungen kompakt dokumentieren.
+8. Keine Dateien vollständig neu schreiben, wenn gezielte Änderungen genügen.
+
+## Keine unnötigen Aufgaben
+
+Nicht bearbeiten:
+
+* Browser-Bridge neu entwickeln
+* vollständiges UI-Redesign
+* allgemeines Projekt-Refactoring
+* CV-Generator
+* Anschreiben-Generator
+* freie Multi-Agent-Architektur
+* unbegrenzte autonome Agentenschleifen
+
+## Implementierungsreihenfolge für Copilot
+
+Copilot soll die folgenden Pakete nacheinander umsetzen.
+
+### Paket 1
+
+Bestehende Architektur analysieren und relevante Dateien benennen.
+
+Noch keine Änderungen durchführen.
+
+Erwartete Ausgabe:
+
+* relevante Dateien
+* aktueller Datenfluss
+* geeignete Integrationspunkte
+* mögliche Risiken
+* minimale Änderungsvorschläge
+
+### Paket 2
+
+Generische Review-Datenmodelle und Enums implementieren.
+
+### Paket 3
+
+Generischen Review-Service und Workflow-Konfiguration implementieren.
+
+### Paket 4
+
+Extraction-Review-Schnittstelle integrieren.
+
+Zunächst mit Mock- oder Stub-Ergebnis testbar machen.
+
+### Paket 5
+
+Persistenz und Review-Historie implementieren.
+
+### Paket 6
+
+Extraction Reviewer mit echtem Dify-Workflow verbinden.
+
+### Paket 7
+
+Entscheidungslogik für `accept`, `correct` und `manual_review` implementieren.
+
+### Paket 8
+
+Maximal einen Retry mit Review-Feedback ergänzen.
+
+### Paket 9
+
+Review-Ergebnisse in der GUI anzeigen.
+
+### Paket 10
+
+Matching Reviewer auf derselben Infrastruktur aufbauen.
+
+---
+
+# Abnahmekriterien
+
+Die erste Ausbaustufe ist abgeschlossen, wenn:
+
+* eine generische Review-Struktur existiert
+* mindestens zwei Review-Typen unterstützt werden
+* Extraction-Ergebnisse automatisch geprüft werden
+* Reviewer-Korrekturen gespeichert werden können
+* Originaldaten erhalten bleiben
+* maximal ein Retry möglich ist
+* fehlerhafte Fälle zur manuellen Prüfung markiert werden
+* Matching-Ergebnisse geprüft werden können
+* Confidence und Issues in der GUI sichtbar sind
+* alle neuen Kernfunktionen durch Tests abgesichert sind
+* bestehender Job-Import weiterhin funktioniert
+
+---
+
+# Arbeitsauftrag an Copilot
+
+Analysiere zunächst die bestehende Codebasis und implementiere anschließend schrittweise eine generische Review- und Qualitätssicherungsschicht für den Job Application Assistant.
+
+Beginne mit der vorhandenen Architektur und verwende bestehende Patterns, Services, Datenmodelle und Validierungsmechanismen weiter.
+
+Die erste konkrete Nutzung betrifft Job-Extraktion und Job-Matching. Die Architektur muss später auch für Profil-Extraktion, Skill-Mapping, Projekt-Auswahl, Lebenslauf-Entwürfe und Anschreiben-Entwürfe wiederverwendbar sein.
+
+Wichtige Einschränkungen:
+
+* Die Browser-Bridge funktioniert bereits gut und soll nicht neu entwickelt werden.
+* Die Orchestrierung bleibt in Python.
+* Dify übernimmt nur klar definierte LLM-Aufgaben.
+* Keine unbegrenzten Agenten- oder Retry-Schleifen.
+* Maximal ein Retry pro Workflow.
+* Originalergebnisse dürfen nicht überschrieben werden.
+* Reviewer-Ergebnisse müssen strukturiert und validierbar sein.
+* Technische Validierung soll vor dem LLM-Review stattfinden.
+* Keine unnötigen Refactorings oder neuen Abhängigkeiten.
+* Token- und Kontextverbrauch gering halten.
+
+Bearbeite zunächst ausschließlich Paket 1:
+
+1. relevante Dateien und Komponenten identifizieren
+2. aktuellen Datenfluss beschreiben
+3. Integrationspunkte für die Review-Schicht bestimmen
+4. notwendige minimale Änderungen vorschlagen
+5. noch keinen Code ändern
+
+Nach der Analyse soll die Implementierung paketweise erfolgen.

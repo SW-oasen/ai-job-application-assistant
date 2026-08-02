@@ -105,6 +105,22 @@ def test_matching_job_detail_uses_service(client, monkeypatch) -> None:
     assert response.json()["content"] == "Python"
 
 
+def test_job_review_history_uses_review_history_service(client, monkeypatch) -> None:
+    job_id = uuid4()
+
+    async def fake_history(*, subject_type, subject_id, review_type=None):
+        assert subject_type == "job"
+        assert subject_id == job_id
+        assert review_type is None
+        return [{"review_type": "job_extraction", "status": "accepted", "issues": []}]
+
+    monkeypatch.setattr("app.api.routes.matching.list_review_history", fake_history)
+    response = client.get(f"/matching/jobs/{job_id}/reviews")
+
+    assert response.status_code == 200
+    assert response.json()[0]["review_type"] == "job_extraction"
+
+
 def test_edit_job_metadata_uses_service(client, monkeypatch) -> None:
     job_id = uuid4()
 

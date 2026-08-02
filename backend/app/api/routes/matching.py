@@ -10,6 +10,7 @@ from app.schemas.matching import (
     MatchingResponse,
     MatchingWorkflowRequest,
 )
+from app.schemas.review import ReviewType
 from app.services.dify_matching_service import run_matching_workflow
 from app.services.matching_service import (
     archive_matching_job,
@@ -23,6 +24,7 @@ from app.services.matching_service import (
     restore_matching_job,
     update_job_metadata,
 )
+from app.services.review_history_service import list_review_history
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
@@ -33,6 +35,18 @@ async def matching_jobs(
     include_archived: bool = False,
 ) -> list[dict]:
     return await list_matching_jobs(profile_id, include_archived=include_archived)
+
+
+@router.get("/jobs/{job_id}/reviews")
+async def job_review_history(
+    job_id: UUID,
+    review_type: ReviewType | None = None,
+) -> list[dict]:
+    return await list_review_history(
+        subject_type="job",
+        subject_id=job_id,
+        review_type=review_type,
+    )
 
 
 @router.get("/jobs/{job_id}")

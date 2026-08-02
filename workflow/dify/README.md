@@ -9,6 +9,8 @@ versionierten Workflow-DSLs des Application Assistant.
 | `01-import-job-url-v3.yml` | öffentliche Stellen-URL importieren und validieren |
 | `02-matching-v4.yml` | Jobanforderungen aus dem gespeicherten Job übernehmen oder extrahieren und evidenzbasiert bewerten |
 | `03-job-metadata-fallback-v1.yml` | fehlende oder unplausible Metadaten ergänzen |
+| `04-job-extraction-review-v1.yml` | strukturierte Job-Extraktionen gegen den Stellentext prüfen |
+| `05-job-matching-review-v1.yml` | gespeicherte Job-Matchings auf Evidenz und Konsistenz prüfen |
 
 Lokale Sicherungen älterer Workflows unter `workflow/backup` sind ignoriert
 und nicht Bestandteil des öffentlichen Repositorys.
@@ -100,6 +102,38 @@ prüfbaren Fundstelle im Ausgangstext.
 
 Der Schlüssel wird als `DIFY_METADATA_WORKFLOW_API_KEY` gespeichert. Ist der
 Workflow nicht verfügbar, bleibt der normale Import funktionsfähig.
+
+## Reviews
+
+`04-job-extraction-review-v1.yml` und `05-job-matching-review-v1.yml`
+erwarten die generischen Eingaben `review_type`, `source_data_json`,
+`generated_result_json`, `context_json`, `retry_instructions_json` und
+`attempt`. Beide geben `review_json` aus, das dem Backend-Schema
+`ReviewResult` entspricht.
+
+Reviews sind standardmäßig deaktiviert. Nach Import, Veröffentlichung und
+Erzeugung je eines API-Schlüssels werden sie in der Backend-`.env` als ein
+JSON-Wert aktiviert. Der API-Schlüssel einer veröffentlichten Dify-App wählt
+die auszuführende App aus:
+
+```env
+REVIEW_WORKFLOWS={"job_extraction":{"api_key":"<secret>","workflow_version":"v1","prompt_version":"v1"},"job_matching":{"api_key":"<secret>","workflow_version":"v1","prompt_version":"v1"}}
+```
+
+Ohne einen vollständigen Eintrag mit API-Schlüssel bleibt der jeweilige
+Produktionspfad unverändert. Extraktionsreviews werden direkt nach URL-,
+HTML-, PDF- und Reimport ausgeführt. Matching-Reviews werden nach einem
+erfolgreichen Matching gespeichert; sie ändern das angezeigte Matching noch
+nicht automatisch.
+
+Vor der Aktivierung muss die Review-Historie migriert werden:
+
+```powershell
+docker compose exec application-assistant-backend alembic upgrade head
+```
+
+Der Prüflauf ist im Job-Detail unter „Prüfverlauf“ über
+`GET /matching/jobs/{job_id}/reviews` einsehbar.
 
 ## Lokale Workflow-Sicherungen
 

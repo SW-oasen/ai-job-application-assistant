@@ -7,6 +7,10 @@ from app.database.repositories.jobs import (
 )
 from app.parsers.job_structure import extract_job_structure
 from app.schemas.imports import JobReimportResponse, UrlImportRequest
+from app.services.job_extraction_review_integration import (
+    review_job_extraction_if_configured,
+    store_job_extraction_review_history,
+)
 from app.services.semantic_metadata_service import enrich_job_metadata
 from app.services.url_import_service import import_url
 
@@ -58,6 +62,12 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         source_url=source.source_url,
     )
     structure = extract_job_structure(source.normalized_content)
+    reviewed = await review_job_extraction_if_configured(
+        content=source.normalized_content,
+        metadata=semantic.metadata,
+        activities=structure.activities,
+        requirements=structure.requirements,
+    )
     warnings = [
         warning
         for warning in source.import_warnings
@@ -76,14 +86,14 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         content_hash=source.content_hash,
         retrieval_method=source.retrieval_method,
         warnings=warnings,
-        metadata_override=semantic.metadata,
+        metadata_override=reviewed.metadata,
         extracted_json={
             "semantic_metadata": semantic.details,
-            "activities": structure.activities,
-            "requirements": structure.requirements,
+            "activities": reviewed.activities,
+            "requirements": reviewed.requirements,
         },
-        activities=structure.activities,
-        requirements=structure.requirements,
+        activities=reviewed.activities,
+        requirements=reviewed.requirements,
         replace_existing=True,
         replace_job_id=job_id,
     )
@@ -92,6 +102,14 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
             "The stored job could not be reimported.",
             code="job_reimport_failed",
             status_code=500,
+        )
+    if persisted.job_id and reviewed.review_results:
+        await store_job_extraction_review_history(
+            job_id=persisted.job_id,
+            original_metadata=semantic.metadata,
+            original_activities=structure.activities,
+            original_requirements=structure.requirements,
+            reviewed=reviewed,
         )
     return JobReimportResponse(
         job_id=job_id,

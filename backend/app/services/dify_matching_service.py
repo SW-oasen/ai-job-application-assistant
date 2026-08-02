@@ -6,6 +6,7 @@ import httpx
 from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.schemas.matching import MatchingWorkflowRequest
+from app.services.job_matching_review_integration import review_stored_job_matching_if_configured
 
 # Sandbox code-node failures surface as a raw Python traceback; only the final
 # exception line is useful to a user, so extract it instead of showing the trace.
@@ -110,6 +111,10 @@ async def run_matching_workflow(payload: MatchingWorkflowRequest) -> dict:
             code=code,
             status_code=422 if code == "matching_no_requirements" else 502,
         )
+    await review_stored_job_matching_if_configured(
+        job_id=payload.job_id,
+        profile_id=payload.profile_id,
+    )
     return {
         "workflow_run_id": data.get("id") or result.get("workflow_run_id"),
         "status": data.get("status"),

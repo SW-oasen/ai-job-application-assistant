@@ -17,6 +17,10 @@ from app.importers.pdf_importer import (
 )
 from app.parsers.job_structure import extract_job_structure
 from app.schemas.imports import PdfImportResponse
+from app.services.job_extraction_review_integration import (
+    review_job_extraction_if_configured,
+    store_job_extraction_review_history,
+)
 from app.services.semantic_metadata_service import enrich_job_metadata
 
 SAFE_FILENAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
@@ -121,6 +125,12 @@ async def _persist_response(
         source_filename=response.filename,
     )
     structure = extract_job_structure(response.markdown)
+    reviewed = await review_job_extraction_if_configured(
+        content=response.markdown,
+        metadata=semantic.metadata,
+        activities=structure.activities,
+        requirements=structure.requirements,
+    )
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -135,18 +145,26 @@ async def _persist_response(
         retrieval_method=response.extraction_method,
         warnings=response.warnings,
         replace_existing=replace_existing,
-        metadata_override=semantic.metadata,
+        metadata_override=reviewed.metadata,
         extracted_json={
             "semantic_metadata": semantic.details,
-            "activities": structure.activities,
-            "requirements": structure.requirements,
+            "activities": reviewed.activities,
+            "requirements": reviewed.requirements,
         },
-        activities=structure.activities,
-        requirements=structure.requirements,
+        activities=reviewed.activities,
+        requirements=reviewed.requirements,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate
     response.reimported = persisted.reimported
+    if persisted.job_id and reviewed.review_results:
+        await store_job_extraction_review_history(
+            job_id=persisted.job_id,
+            original_metadata=semantic.metadata,
+            original_activities=structure.activities,
+            original_requirements=structure.requirements,
+            reviewed=reviewed,
+        )
     return response
 
 

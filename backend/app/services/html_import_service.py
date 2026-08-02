@@ -11,6 +11,10 @@ from app.parsers.html_to_markdown import html_to_document
 from app.parsers.job_structure import extract_job_structure
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import HtmlImportResponse
+from app.services.job_extraction_review_integration import (
+    review_job_extraction_if_configured,
+    store_job_extraction_review_history,
+)
 from app.services.semantic_metadata_service import enrich_job_metadata
 
 SAFE_FILENAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
@@ -96,6 +100,12 @@ async def import_html_content(
         source_filename=filename,
     )
     structure = extract_job_structure(document.markdown)
+    reviewed = await review_job_extraction_if_configured(
+        content=document.markdown,
+        metadata=semantic.metadata,
+        activities=structure.activities,
+        requirements=structure.requirements,
+    )
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -103,23 +113,31 @@ async def import_html_content(
         source_type="html",
         source_url=source_url,
         source_filename=filename,
-        title=document.title,
+        title=reviewed.metadata.get("title") or document.title,
         raw_content=html,
         normalized_content=document.markdown,
         content_hash=response.content_hash,
         retrieval_method=retrieval_method,
         warnings=response.warnings,
-        metadata_override=semantic.metadata,
+        metadata_override=reviewed.metadata,
         extracted_json={
             "semantic_metadata": semantic.details,
-            "activities": structure.activities,
-            "requirements": structure.requirements,
+            "activities": reviewed.activities,
+            "requirements": reviewed.requirements,
         },
-        activities=structure.activities,
-        requirements=structure.requirements,
+        activities=reviewed.activities,
+        requirements=reviewed.requirements,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate
+    if persisted.job_id and reviewed.review_results:
+        await store_job_extraction_review_history(
+            job_id=persisted.job_id,
+            original_metadata=semantic.metadata,
+            original_activities=structure.activities,
+            original_requirements=structure.requirements,
+            reviewed=reviewed,
+        )
     return response
 
 

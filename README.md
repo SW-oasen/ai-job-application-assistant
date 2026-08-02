@@ -90,6 +90,37 @@ Dokumente gehören nicht in das Repository.
 Beim Containerstart werden ausstehende Alembic-Migrationen automatisch
 ausgeführt.
 
+## Review-Integration (Dify)
+
+Optional kann die Anwendung sogenannte Review-Workflows an Dify auslagern
+(z. B. Prüfung von extrahierten Job-Metadaten oder Matching-Qualitätschecks).
+Die Review-Workflows sind optional und brechen Importe oder Matchingläufe
+nicht ab; fehlerhafte oder fehlgeschlagene Reviews werden in der Review-
+Historie protokolliert.
+
+- Konfiguration: In der lokalen `.env` kann `REVIEW_WORKFLOWS` als JSON
+   hinterlegt werden. Das Mapping verwendet Dify-App-API-Keys (als Literale
+   `app-...`) als Schlüssel; die Workflows werden serverseitig per App-Key
+   aufgerufen.
+- Beispiel (vereinfachte Form):
+
+   ```text
+   REVIEW_WORKFLOWS='{"app-abc123": {"enabled": true, "api_key": "app-abc123"}}'
+   ```
+
+- Hinweis: `workflow_id` wird nicht mehr in der Payload erwartet; stattdessen
+   wird der App-API-Key verwendet. Die Dify-Workflows erwarten das Feld
+   `attempt` als String (nicht als Zahl).
+- Nach dem Import/Aktualisierung der Workflows ist die Migration für die
+   Review-Historie notwendig (enthält u. a. `review_runs` und `review_issues`).
+   Beispiel:
+
+   ```powershell
+   docker compose exec application-assistant-backend alembic upgrade head
+   ```
+
+Weitere technische Details befinden sich in den Dokumenten unter `docs/`.
+
 ## Bedienungsablauf
 
 1. Profil über den Tab `Profil` in der Profilverwaltung anlegen oder
@@ -98,7 +129,7 @@ ausgeführt.
    importieren.
 3. Vorschläge und mögliche Konflikte bewusst prüfen.
 4. Stellenanzeige per URL, PDF oder HTML importieren.
-5. Alternativ das Browser-Lesezeichen wie unter `Verwaltung > Stellen importieren > Firefox-Import einrichten` erstellen und
+5. Alternativ das Browser-Lesezeichen wie unter `Verwaltung > Stellen importieren > Browser-Import einrichten` erstellen und
    eine geöffnete Stellenanzeige mit einem Klick an die lokale Anwendung senden.
    Auch komplexe Seiten wie Indeed werden dabei automatisch in strukturierte
    Jobdaten umgewandelt.

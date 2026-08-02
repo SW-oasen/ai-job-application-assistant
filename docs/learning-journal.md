@@ -20,3 +20,15 @@ zu geplanten Arbeiten stehen in der [Roadmap](roadmap.md).
   verglichen werden.
 - Entscheidung: Qualifikations-Fit und Ziel-Fit bleiben getrennte Aussagen.
 
+## 2026-07 – Review-Integration und Fehlerhärtung
+
+- Beobachtung: Dify-Workflows lieferten zum Teil fehlerhafte oder anders
+  formatierte Antworten (z. B. numerische `attempt`-Felder), die Persistenz
+  oder Nachverarbeitung störten.
+- Änderung: Review-Läufe als optional und nicht-blockierend implementiert;
+  fehlerhafte Reviews werden in der Review-Historie protokolliert, ohne den
+  Import oder das Matching abzubrechen.
+- Erkenntnis: Exakte Feldtypen (z. B. `attempt` als String) und valide API-
+  Keys sind entscheidend; Migration der Review-Tabellen ist nach Workflow-
+  Import erforderlich.
+

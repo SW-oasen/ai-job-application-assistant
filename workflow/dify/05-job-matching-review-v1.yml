@@ -1,0 +1,152 @@
+app:
+  description: Prüft evidenzbasierte Job-Matching-Ergebnisse und liefert ein ReviewResult.
+  icon: scales
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: job matching review v1
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {enabled: false}
+    opening_statement: ''
+    retriever_resource: {enabled: false}
+    sensitive_word_avoidance: {enabled: false}
+    speech_to_text: {enabled: false}
+    suggested_questions: []
+    suggested_questions_after_answer: []
+    text_to_speech: {enabled: false}
+  graph:
+    edges:
+    - {data: {isInIteration: false, isInLoop: false, sourceType: start, targetType: llm}, id: start-review, source: start, sourceHandle: source, target: review, targetHandle: target, type: custom, zIndex: 0}
+    - {data: {isInIteration: false, isInLoop: false, sourceType: llm, targetType: code}, id: review-serialize, source: review, sourceHandle: source, target: serialize, targetHandle: target, type: custom, zIndex: 0}
+    - {data: {isInIteration: false, isInLoop: false, sourceType: code, targetType: end}, id: serialize-end, source: serialize, sourceHandle: source, target: end, targetHandle: target, type: custom, zIndex: 0}
+    nodes:
+    - data:
+        desc: Eingaben des generischen Backend-Review-Service.
+        selected: false
+        title: Review Input
+        type: start
+        variables:
+        - {default: job_matching, label: review_type, max_length: 100, options: [], required: true, type: text-input, variable: review_type}
+        - {default: '', label: source_data_json, max_length: 60000, options: [], required: true, type: paragraph, variable: source_data_json}
+        - {default: '', label: generated_result_json, max_length: 60000, options: [], required: true, type: paragraph, variable: generated_result_json}
+        - {default: '{}', label: context_json, max_length: 10000, options: [], required: false, type: paragraph, variable: context_json}
+        - {default: '[]', label: retry_instructions_json, max_length: 10000, options: [], required: false, type: paragraph, variable: retry_instructions_json}
+        - {default: '1', label: attempt, max_length: 2, options: [], required: true, type: text-input, variable: attempt}
+      height: 230
+      id: start
+      position: {x: 30, y: 220}
+      positionAbsolute: {x: 30, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context: {enabled: false, variable_selector: []}
+        model:
+          completion_params: {max_tokens: 4096, temperature: 0.1}
+          mode: chat
+          name: qwen2.5vl:7b
+          provider: langgenius/ollama/ollama
+        prompt_template:
+        - id: system
+          role: system
+          text: |
+            Du prüfst ein Job-Matching auf sachliche Korrektheit und belastbare Evidenz.
+            Bewerte jede Match-Aussage gegen die konkrete Profil-Evidenz. Verwandte Technologien
+            sind kein vollständiger Match. Fehlende Daten sind keine fehlende Kompetenz. Prüfe die
+            Konsistenz von Einzelbewertungen, Scores und Empfehlung. Erfinde keine Nachweise.
+            Nutze correct nur für wenige eindeutige Korrekturen; corrected_result muss dann das
+            vollständige Matching-Ergebnis enthalten. Nutze manual_review bei strittiger Evidenz.
+        - id: user
+          role: user
+          text: |
+            Versuch: {{#start.attempt#}}
+            Vorherige Retry-Anweisungen: {{#start.retry_instructions_json#}}
+            Job und Profil: {{#start.source_data_json#}}
+            Matching-Ergebnis: {{#start.generated_result_json#}}
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              review_type: {const: job_matching, type: string}
+              status: {enum: [accepted, corrected, retry_requested, manual_review_required, failed], type: string}
+              decision: {enum: [accept, correct, retry, manual_review], type: string}
+              overall_confidence: {maximum: 1, minimum: 0, type: number}
+              issues: {items: {$ref: '#/$defs/issue'}, type: array}
+              field_confidence: {additionalProperties: {maximum: 1, minimum: 0, type: number}, type: object}
+              corrected_result: {additionalProperties: true, type: object}
+              retry_instructions: {items: {type: string}, type: array}
+            required: [review_type, status, decision, overall_confidence, issues, field_confidence, corrected_result, retry_instructions]
+            type: object
+            $defs:
+              issue:
+                additionalProperties: false
+                properties:
+                  field: {type: string}
+                  issue_type: {enum: [missing_value, unsupported_value, wrong_value, wrong_category, inconsistent_value, schema_error, missing_evidence, weak_evidence, score_inconsistency, hallucination, other], type: string}
+                  severity: {enum: [low, medium, high, critical], type: string}
+                  message: {type: string}
+                  evidence: {type: string}
+                  suggested_value: {}
+                required: [field, issue_type, severity, message]
+                type: object
+        structured_output_enabled: true
+        title: Review Matching
+        type: llm
+        vision: {enabled: false}
+      height: 88
+      id: review
+      position: {x: 334, y: 220}
+      positionAbsolute: {x: 334, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          def main(review: dict) -> dict:
+              return {"review_json": json.dumps(review, ensure_ascii=False)}
+        code_language: python3
+        desc: Serialisiert das strukturierte Review-Ergebnis für das Backend.
+        outputs: {review_json: {children: null, type: string}}
+        selected: false
+        title: Serialize Review
+        type: code
+        variables:
+        - {value_selector: [review, structured_output], value_type: object, variable: review}
+      height: 82
+      id: serialize
+      position: {x: 638, y: 220}
+      positionAbsolute: {x: 638, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ReviewResult als JSON-String.
+        outputs:
+        - {value_selector: [serialize, review_json], value_type: string, variable: review_json}
+        selected: false
+        title: Review Output
+        type: end
+      height: 82
+      id: end
+      position: {x: 942, y: 220}
+      positionAbsolute: {x: 942, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244

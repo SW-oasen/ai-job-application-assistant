@@ -10,6 +10,10 @@ from app.parsers.html_to_markdown import html_to_document
 from app.parsers.job_structure import extract_job_structure
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import UrlImportRequest, UrlImportResponse
+from app.services.job_extraction_review_integration import (
+    review_job_extraction_if_configured,
+    store_job_extraction_review_history,
+)
 from app.services.semantic_metadata_service import enrich_job_metadata
 
 NON_FALLBACK_ERROR_CODES = {
@@ -127,6 +131,12 @@ async def _persist_response(
         source_url=response.source_url,
     )
     structure = extract_job_structure(response.markdown)
+    reviewed = await review_job_extraction_if_configured(
+        content=response.markdown,
+        metadata=semantic.metadata,
+        activities=structure.activities,
+        requirements=structure.requirements,
+    )
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -134,23 +144,31 @@ async def _persist_response(
         source_type="url",
         source_url=response.source_url,
         source_filename=None,
-        title=response.title,
+        title=reviewed.metadata.get("title") or response.title,
         raw_content=response.raw_html,
         normalized_content=response.markdown,
         content_hash=response.content_hash,
         retrieval_method=response.retrieval_method,
         warnings=response.warnings,
-        metadata_override=semantic.metadata,
+        metadata_override=reviewed.metadata,
         extracted_json={
             "semantic_metadata": semantic.details,
-            "activities": structure.activities,
-            "requirements": structure.requirements,
+            "activities": reviewed.activities,
+            "requirements": reviewed.requirements,
         },
-        activities=structure.activities,
-        requirements=structure.requirements,
+        activities=reviewed.activities,
+        requirements=reviewed.requirements,
         replace_existing=replace_job_id is not None,
         replace_job_id=replace_job_id,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate
+    if persisted.job_id and reviewed.review_results:
+        await store_job_extraction_review_history(
+            job_id=persisted.job_id,
+            original_metadata=semantic.metadata,
+            original_activities=structure.activities,
+            original_requirements=structure.requirements,
+            reviewed=reviewed,
+        )
     return response

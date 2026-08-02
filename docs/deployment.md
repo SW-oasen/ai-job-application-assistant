@@ -51,6 +51,24 @@ Für den Produktivbetrieb sollen die abhängigen Container echte Healthchecks
 besitzen und abhängige Dienste erst nach erfolgreicher Readiness freigegeben
 werden. Ein bloßes `depends_on` ohne Health-Bedingung reicht dafür nicht.
 
+### Reviewer / Dify-Workflows und Readiness
+
+Falls die Anwendung auf optionale Dify-Review-Workflows angewiesen ist, gelten
+weitere Prüfpunkte für die Readiness:
+
+- Die importierten Dify-Apps sollten erfolgreich geladen und die zugehörigen
+  API-Keys (`REVIEW_WORKFLOWS`) in der Backend-Umgebung vorhanden sein.
+- Nach dem Import neuer oder geänderter Workflows ist die Datenbankmigration
+  für die Review-Historie erforderlich:
+
+```powershell
+docker compose exec application-assistant-backend alembic upgrade head
+```
+
+- Fehlerhafte oder nicht erreichbare Review-Workflows sollen den Import nicht
+  blockieren; das Backend protokolliert Review-Fehler in der Historie und
+  liefert weiterhin die Hauptfunktionalität aus.
+
 ## Diagnose bei leerer Dify-Seite
 
 1. Den Readiness-Test ausführen und dessen konkreten Fehler festhalten.

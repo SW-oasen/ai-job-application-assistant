@@ -274,6 +274,58 @@ class RequirementMatch(Base):
     job_requirement: Mapped[JobRequirement] = relationship(back_populates="matches")
 
 
+class ReviewRun(TimestampMixin, Base):
+    __tablename__ = "review_runs"
+    __table_args__ = (
+        Index("ix_review_runs_subject", "subject_type", "subject_id"),
+        Index("ix_review_runs_type_status", "review_type", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    subject_type: Mapped[str] = mapped_column(String(50))
+    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    review_type: Mapped[str] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    decision: Mapped[str | None] = mapped_column(String(30))
+    overall_confidence: Mapped[float | None] = mapped_column(Float)
+    source_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    corrected_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    final_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    field_confidence: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    retry_instructions: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    context: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    reviewer_model: Mapped[str | None] = mapped_column(String(500))
+    workflow_version: Mapped[str | None] = mapped_column(String(100))
+    prompt_version: Mapped[str | None] = mapped_column(String(100))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    technical_error: Mapped[str | None] = mapped_column(Text)
+
+    issues: Mapped[list["ReviewIssue"]] = relationship(
+        back_populates="review_run",
+        cascade="all, delete-orphan",
+    )
+
+
+class ReviewIssue(Base):
+    __tablename__ = "review_issues"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    review_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("review_runs.id", ondelete="CASCADE"),
+        index=True,
+    )
+    field: Mapped[str] = mapped_column(String(500))
+    issue_type: Mapped[str] = mapped_column(String(50))
+    severity: Mapped[str] = mapped_column(String(20))
+    message: Mapped[str] = mapped_column(Text)
+    evidence: Mapped[str | None] = mapped_column(Text)
+    suggested_value: Mapped[Any | None] = mapped_column(JSONB)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+    review_run: Mapped[ReviewRun] = relationship(back_populates="issues")
+
+
 class ProfileSource(TimestampMixin, Base):
     __tablename__ = "profile_sources"
 

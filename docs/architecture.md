@@ -100,6 +100,26 @@ Wichtige Variablen:
 Passwörter und API-Schlüssel gehören ausschließlich in `.env`, niemals in
 Git, Workflow-DSLs oder Browser-Code.
 
+### Reviewer / Review-Workflows
+
+Optional kann die Anwendung Extraktions- und Matching-Reviews an externe
+Dify-Workflows auslagern. Reviews laufen asynchron und sind so gestaltet,
+dass fehlgeschlagene oder fehlerhafte Reviews Import- oder Matchingvorgänge
+nicht abbrechen. Stattdessen werden alle Review-Versuche in der Review-
+Historie protokolliert (`review_runs`, `review_issues`).
+
+- Konfiguration erfolgt über die lokale `.env`-Variable `REVIEW_WORKFLOWS`
+  (JSON-Mapping mit Dify-App-API-Keys als Schlüssel). Beispiel:
+
+  ```text
+  REVIEW_WORKFLOWS='{"app-abc123": {"enabled": true, "api_key": "app-abc123"}}'
+  ```
+
+- Wichtig: `workflow_id` wird in den Payloads nicht mehr benötigt. Dify-
+  Workflows erwarten das Feld `attempt` als Text/String; numerische Werte
+  führen zu Fehlern in der DSL. API-Schlüssel und Workflow-Versionen sollten
+  nach dem Import überprüft werden.
+
 ## Datenhaltung
 
 Die Anwendung verwendet eine eigene PostgreSQL-Datenbank. Dify-Datenbanken und

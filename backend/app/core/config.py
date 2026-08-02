@@ -2,10 +2,22 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AnyHttpUrl, RedisDsn, SecretStr
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+
+
+class ReviewWorkflowSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    api_key: SecretStr | None = None
+    timeout_seconds: int = Field(default=120, ge=1, le=600)
+    max_retries: int = Field(default=1, ge=0, le=1)
+    reviewer_model: str | None = Field(default=None, max_length=500)
+    workflow_version: str | None = Field(default=None, max_length=100)
+    prompt_version: str | None = Field(default=None, max_length=100)
 
 
 class Settings(BaseSettings):
@@ -31,6 +43,7 @@ class Settings(BaseSettings):
     dify_metadata_workflow_api_key: SecretStr | None = None
     dify_metadata_workflow_timeout_seconds: int = 120
     semantic_metadata_max_characters: int = 15_000
+    review_workflows: dict[str, ReviewWorkflowSettings] = Field(default_factory=dict)
     mineru_base_url: AnyHttpUrl = "http://mineru-api:8000"
     mineru_timeout_seconds: int = 300
     mineru_backend: Literal["pipeline", "hybrid-engine"] = "pipeline"
