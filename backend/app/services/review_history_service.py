@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
@@ -82,6 +82,13 @@ async def store_review_result(
     factory = _session_factory()
     try:
         async with factory() as session:
+            await session.execute(
+                delete(ReviewRun).where(
+                    ReviewRun.subject_type == subject_type,
+                    ReviewRun.subject_id == subject_id,
+                    ReviewRun.review_type == review_result.review_type,
+                )
+            )
             review_run = ReviewRun(
                 subject_type=subject_type,
                 subject_id=subject_id,

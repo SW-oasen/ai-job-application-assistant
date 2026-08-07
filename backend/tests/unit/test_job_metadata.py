@@ -29,6 +29,14 @@ We offer employees the opportunity to work flexibly and remotely.
     }
 
 
+def test_extracts_location_from_google_maps_link() -> None:
+    metadata = extract_job_metadata(
+        "[Berlin, Deutschland](https://www.google.com/maps/search/?api=1&query=Berlin)"
+    )
+
+    assert metadata["location"] == "Berlin, Deutschland"
+
+
 def test_splits_definition_list_employment_type_and_contract_term() -> None:
     metadata = extract_job_metadata(
         """
@@ -304,3 +312,34 @@ AMAI ist der Spezialist für maßgeschneiderte KI-Beratung.
     assert metadata["location"] == "Karlsruhe"
     assert metadata["employment_type"] == "Vollzeit"
     assert metadata["work_model"] == "Remote"
+
+
+def test_extracts_join_company_link_before_job_heading() -> None:
+    metadata = extract_job_metadata(
+        """
+[![Limebit GmbH](https://cdn.join.com/logo.jpg)
+
+Limebit GmbH](https://join.com/companies/limebit)
+
+# Data Science & Machine Learning for Life-Science (m/w/d)
+
+[Berlin, Deutschland](https://maps.example/berlin)
+""",
+        source_url="https://join.com/companies/limebit/16533009-data-science",
+    )
+
+    assert metadata["title"] == "Data Science & Machine Learning for Life-Science (m/w/d)"
+    assert metadata["company"] == "Limebit GmbH"
+
+
+def test_extracts_brand_link_instead_of_location_below_greenhouse_title() -> None:
+    content = """
+[![GROPYUS Logo](https://example.com/logo.png)](https://www.gropyus.com)
+
+# Data Engineer (all genders)
+
+Berlin, Berlin, Germany
+
+Apply Now
+"""
+    assert extract_job_metadata(content)["company"] == "GROPYUS"

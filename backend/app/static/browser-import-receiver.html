@@ -26,7 +26,7 @@
       const response=await fetch("/imports/browser-capture",{method:"POST",headers:{"Content-Type":"application/json","X-Browser-Capture":"receiver-v1"},body:JSON.stringify({source_url:event.data.source_url,html:event.data.html})});
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error?.message||`HTTP ${response.status}`);
-      if(!data.success||!data.job_id)throw new Error(`Inhalt nicht ausreichend: ${(data.warnings||[]).join(", ")||"keine verwertbare Stellenanzeige"}`);
+      if(!data.success||!data.job_id){const warnings=data.warnings||[];if(warnings.includes("job_description_not_found"))throw new Error("Die Seite enthält keine Stellenbeschreibung, sondern nur Kopf- und Empfehlungsdaten. Bitte eine vollständige Anzeige oder die PDF-Version importieren.");throw new Error(`Inhalt nicht ausreichend: ${warnings.join(", ")||"keine verwertbare Stellenanzeige"}`)}
       status.className="status success";
       status.textContent=data.duplicate?"Diese Stelle war bereits gespeichert.":"Stelle erfolgreich importiert.";
       result.innerHTML=`<a class="button" href="/jobs/${encodeURIComponent(data.job_id)}">Jobdetails öffnen</a>`;

@@ -1,8 +1,15 @@
 from uuid import uuid4
 
 
-def test_profile_admin_page_is_available(client) -> None:
-    response = client.get("/profiles/admin")
+def test_profile_admin_page_redirects_to_manage(client) -> None:
+    response = client.get("/profiles/admin", follow_redirects=False)
+
+    assert response.status_code == 308
+    assert response.headers["location"] == "/manage"
+
+
+def test_profile_admin_is_available_inside_manage(client) -> None:
+    response = client.get("/manage/profile")
 
     assert response.status_code == 200
     assert "Profilverwaltung" in response.text

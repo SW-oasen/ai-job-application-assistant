@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import selectinload
@@ -22,11 +23,12 @@ from app.database.models import (
     ProfileSource,
     RequirementMatch,
     Skill,
+    SkillEvidence,
     WorkExperience,
 )
 from app.database.session import get_session_factory
-from app.parsers.job_metadata import COMPANY_PATTERNS as COMPANY_PATTERNS
 from app.parsers.job_metadata import (
+    COMPANY_PATTERNS,
     extract_job_metadata,
     first_metadata_match,
 )
@@ -42,6 +44,8 @@ from app.schemas.matching import (
     RequirementMatchResponse,
 )
 from app.services.application_file_service import remove_stored_files
+
+__all__ = ["COMPANY_PATTERNS"]
 
 WORD_PATTERN = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9+#.]{2,}")
 MIN_YEARS_PATTERN = re.compile(
@@ -82,10 +86,31 @@ TERM_CONCEPTS = {
         "quality", "qualit\u00e4t", "datenqualit\u00e4t",
     },
 }
+TARGET_FIT_CONCEPTS = {
+    "data_science": {"data science", "data scientist", "datenanalyse", "data analysis", "statistik"},
+    "machine_learning": {"machine learning", "mlops", "scikit", "pytorch", "tensorflow"},
+    "automation": {"automatisierung", "automation", "workflow", "pipeline"},
+    "ai_development": {"ki", "ai", "künstliche intelligenz", "artificial intelligence", "machine learning", "prototyp", "softwaredevelopment", "softwareentwicklung"},
+}
+SENIORITY_RANK = {"entry": 0, "junior": 1, "professional": 2, "senior": 3, "lead": 4}
+TARGET_LEVEL_RANK = {"entry": 0, "junior": 1, "mid": 2, "senior": 3, "staff": 4, "principal": 5, "lead": 6, "manager": 6}
 @dataclass
 class StoredEvidence:
     item: EvidenceInput
     evidence_id: str
+
+
+def _evidence_weight(stored: StoredEvidence) -> float:
+    """Prefer production evidence while retaining projects and training as proof."""
+    try:
+        source = json.loads(stored.item.source_content)
+    except (TypeError, json.JSONDecodeError):
+        source = {}
+    if isinstance(source, dict) and source.get("source_type") == "manual_training":
+        return 0.5
+    return {"professional": 1.0, "project": 0.9, "training": 0.8}.get(
+        stored.item.experience_context, 0.5
+    )
 
 
 def _minimum_years(requirement: str, normalized_value: str | None = None) -> float | None:
@@ -123,7 +148,35 @@ def _evaluate_seniority(
         (stored, years)
         for stored in evidence
         if (years := _skill_years(stored)) is not None
+        and stored.item.experience_context == "professional"
     ]
+    # Generic experience requirements are evaluated from the longest
+    # documented employment station. Skill-specific requirements stay bound
+    # to explicit skill evidence.
+    generic = not re.search(r"\b(?:mit|in|with|for)\b", requirement, re.IGNORECASE)
+    if generic:
+        station_years = []
+        for stored in evidence:
+            if stored.item.experience_context != "professional":
+                continue
+            try:
+                data = json.loads(stored.item.source_content)
+                start = datetime.fromisoformat(str(data["start_date"])).date()
+                end = datetime.fromisoformat(str(data["end_date"])).date() if data.get("end_date") else datetime.now(UTC).date()
+                station_years.append((max(0.0, (end - start).days / 365.25), stored))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+        if station_years:
+            highest_years, stored = max(station_years, key=lambda item: item[0])
+            return RequirementMatchResponse(
+                requirement_id=requirement_id,
+                requirement=requirement,
+                match_level="strong_match" if highest_years >= minimum_years else "gap",
+                evidence=[],
+                explanation=f"Die längste dokumentierte Berufsstation umfasst {highest_years:g} Jahre.",
+                recommended_action="",
+                confidence=0.95,
+            )
     if not skill_evidence:
         return RequirementMatchResponse(
             requirement_id=requirement_id,
@@ -292,7 +345,6 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
     if profile.nationality and profile.nationality.strip():
         evidence.append(_nationality_evidence_input(profile_id, profile.nationality))
     definitions = (
-        (Skill, "skill", "other"),
         (WorkExperience, "experience", "professional"),
         (PortfolioProject, "project", "project"),
         (EducationEntry, "education", "education"),
@@ -313,20 +365,7 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
                 if column.name not in {"created_at", "updated_at"}
             }
             localized_content, titles = _localized_content(row)
-            if model is Skill:
-                label = row.canonical_name
-                years = (
-                    row.years_experience
-                    if row.years_experience is not None
-                    else "nicht angegeben"
-                )
-                core_content = (
-                    f"Skill: {row.canonical_name}; Kategorie: {row.category}; "
-                    f"Niveau: {row.proficiency_level or 'nicht angegeben'}; "
-                    f"Jahre: {years}"
-                )
-                keywords = [row.canonical_name, *row.aliases]
-            elif model is WorkExperience:
+            if model is WorkExperience:
                 label = f"{titles[0] if titles else 'Berufserfahrung'} · {row.company}"
                 core_content = (
                     f"Berufserfahrung bei {row.company}, "
@@ -373,7 +412,47 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
                     keywords=[keyword for keyword in keywords if keyword],
                 )
             )
+    evidence.extend(await _linked_skill_evidence_inputs(session, profile_id))
     return evidence
+
+
+async def _linked_skill_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
+    links = (await session.scalars(
+        select(SkillEvidence).join(Skill).where(Skill.profile_id == profile_id)
+        .options(selectinload(SkillEvidence.skill))
+    )).all()
+    result: list[EvidenceInput] = []
+    for link in links:
+        source = None
+        if link.source_resource_type == "experience" and link.source_resource_id:
+            source = await session.get(WorkExperience, link.source_resource_id)
+        elif link.source_resource_type == "project" and link.source_resource_id:
+            source = await session.get(PortfolioProject, link.source_resource_id)
+        elif link.source_resource_type == "certificate" and link.source_resource_id:
+            source = await session.get(Certificate, link.source_resource_id)
+        elif link.source_resource_type == "education" and link.source_resource_id:
+            source = await session.get(EducationEntry, link.source_resource_id)
+        if source is None and link.source_resource_type != "manual_training":
+            continue
+        label = "Manuelles Training"
+        years = None
+        if isinstance(source, WorkExperience):
+            label = source.company
+            years = max(0.0, ((source.end_date or datetime.now(UTC).date()) - source.start_date).days / 365.25)
+        elif isinstance(source, PortfolioProject): label = source.canonical_name
+        elif isinstance(source, Certificate): label = source.official_name
+        elif isinstance(source, EducationEntry): label = source.institution
+        content = {"skill": link.skill.canonical_name, "source_type": link.source_resource_type}
+        if years is not None: content["years_experience"] = round(years, 2)
+        result.append(EvidenceInput(
+            source_name=f"profile:{profile_id}:skill-evidence:{link.id}", source_type="manual",
+            source_content=json.dumps(content, ensure_ascii=False, sort_keys=True),
+            label=f"{link.skill.canonical_name} · {label}",
+            evidence_text="\n".join(value for value in (f"Skill: {link.skill.canonical_name}", f"Quelle: {label}", link.evidence_text) if value),
+            experience_context=link.experience_context,
+            keywords=[link.skill.canonical_name, *link.skill.aliases],
+        ))
+    return result
 
 
 async def get_matching_context(job_id, profile_id) -> MatchingContextResponse:
@@ -475,7 +554,10 @@ def _evaluate(
         overlap = requirement_terms & evidence_terms
         if overlap:
             scored.append((len(overlap) / len(requirement_terms), stored, overlap))
-    scored.sort(key=lambda pair: pair[0], reverse=True)
+    scored.sort(
+        key=lambda pair: (pair[0] * _evidence_weight(pair[1]), _evidence_weight(pair[1])),
+        reverse=True,
+    )
 
     if not scored:
         if is_soft_skill:
@@ -631,7 +713,7 @@ def _evaluate(
             evidence_text=stored.item.evidence_text,
             experience_context=stored.item.experience_context,
         )
-        for stored in relevant
+        for stored in sorted(relevant, key=_evidence_weight, reverse=True)[:3]
     ]
     return RequirementMatchResponse(
         requirement_id=requirement_id,
@@ -1040,7 +1122,23 @@ def _target_overlap(desired: str, actual: str) -> float:
     actual_terms = set(_normalized_target_text(actual).split())
     if not desired_terms or not actual_terms:
         return 0.0
-    return len(desired_terms & actual_terms) / len(desired_terms)
+    lexical_overlap = len(desired_terms & actual_terms) / len(desired_terms)
+    desired_concepts = {
+        name
+        for name, markers in TARGET_FIT_CONCEPTS.items()
+        if any(marker in _normalized_target_text(desired) for marker in markers)
+    }
+    actual_concepts = {
+        name
+        for name, markers in TARGET_FIT_CONCEPTS.items()
+        if any(marker in _normalized_target_text(actual) for marker in markers)
+    }
+    concept_overlap = (
+        len(desired_concepts & actual_concepts) / len(desired_concepts)
+        if desired_concepts
+        else 0.0
+    )
+    return max(lexical_overlap, concept_overlap)
 
 
 def _preference_criterion(
@@ -1097,6 +1195,29 @@ def _preference_criterion(
     }
 
 
+def _target_role_preferences(profile: Profile) -> list[dict]:
+    structured = getattr(profile, "target_role_preferences", None) or []
+    if structured:
+        return [item for item in structured if isinstance(item, dict) and item.get("role")]
+    return [{"role": role, "level": None, "priority": index + 1}
+            for index, role in enumerate(profile.target_roles or [])]
+
+
+def _target_role_seniority_criterion(job_seniority: dict | None, preferences: list[dict], role_actual: str | None) -> dict:
+    matched = [item for item in preferences if item.get("level") and _target_overlap(item.get("role", ""), role_actual)]
+    if not matched:
+        return _seniority_criterion(job_seniority, 0.0)
+    desired = max(matched, key=lambda item: _target_overlap(item["role"], role_actual))
+    desired_level = str(desired["level"]).casefold()
+    actual_level = str((job_seniority or {}).get("level") or "unknown").casefold()
+    if actual_level not in TARGET_LEVEL_RANK:
+        return {"key": "seniority", "label": "Seniorität", "status": "unknown", "desired": [desired["level"]], "actual": None, "score": None, "weight": 20, "explanation": "Die Stellenanzeige enthält kein eindeutig erkanntes Level."}
+    delta = TARGET_LEVEL_RANK[actual_level] - TARGET_LEVEL_RANK.get(desired_level, 2)
+    score = 1.0 if delta == 0 else 0.8 if delta > 0 else 0.6 if delta == -1 else 0.0
+    status = "match" if score == 1 else "partial" if score else "mismatch"
+    return {"key": "seniority", "label": "Seniorität", "status": status, "desired": [desired["level"]], "actual": actual_level.title(), "score": score, "weight": 20, "explanation": "Das erkannte Stellenlevel passt zum Ziellevel." if status == "match" else "Das Stellenlevel liegt leicht über dem Ziellevel." if delta > 0 else "Das Stellenlevel weicht vom Ziellevel ab."}
+
+
 def _canonical_work_model(value: str | None) -> str | None:
     normalized = _normalized_target_text(value)
     if any(term in normalized for term in ("remote", "homeoffice", "home office")):
@@ -1120,7 +1241,65 @@ def _canonical_employment_type(value: str | None) -> str | None:
     for canonical, markers in mappings:
         if any(marker in normalized for marker in markers):
             return canonical
+    if normalized in {"angestellte r", "angestellter", "employee"}:
+        return None
     return normalized or None
+
+
+def _profile_seniority_years(experiences: list[WorkExperience]) -> float:
+    if not experiences:
+        return 0.0
+    return max(
+        0.0,
+        max(
+            ((entry.end_date or datetime.now(UTC).date()) - entry.start_date).days / 365.25
+            for entry in experiences
+        ),
+    )
+
+
+def _profile_seniority_level(years: float) -> str:
+    if years >= 7:
+        return "senior"
+    if years >= 3:
+        return "professional"
+    if years > 0:
+        return "junior"
+    return "entry"
+
+
+def _seniority_criterion(seniority: dict | None, profile_years: float) -> dict:
+    if not isinstance(seniority, dict) or seniority.get("level") not in SENIORITY_RANK:
+        return {
+            "key": "seniority", "label": "Seniorität", "status": "unknown",
+            "desired": [], "actual": None, "score": None, "weight": 15,
+            "explanation": "Die Stellenanzeige enthält keine belastbare Senioritätsanforderung.",
+        }
+    return {
+        "key": "seniority", "label": "Seniority", "status": "unknown",
+        "desired": [str(seniority["level"])], "actual": None,
+            "score": None, "weight": 20,
+        "explanation": "Skill-specific professional evidence is required; total employment years are not used.",
+    }
+    desired_level = seniority["level"]
+    actual_level = _profile_seniority_level(profile_years)
+    required_years = seniority.get("years_required")
+    meets_level = SENIORITY_RANK[actual_level] >= SENIORITY_RANK[desired_level]
+    meets_years = required_years is None or profile_years >= float(required_years)
+    score = 1.0 if meets_level and meets_years else 0.6 if meets_level else 0.0
+    status = "match" if score == 1 else "partial" if score else "mismatch"
+    required_text = (
+        f"; mindestens {float(required_years):g} Jahre" if required_years is not None else ""
+    )
+    return {
+        "key": "seniority", "label": "Seniorität", "status": status,
+        "desired": [f"{desired_level}{required_text}"],
+        "actual": f"{actual_level} ({profile_years:.1f} Jahre dokumentierte Berufserfahrung)",
+        "score": score, "weight": 20,
+        "explanation": "Die dokumentierte Berufserfahrung erfüllt die Senioritätsanforderung."
+        if score == 1 else "Die Senioritätsanforderung ist nur teilweise belegt."
+        if score else "Die dokumentierte Berufserfahrung liegt unter der Senioritätsanforderung.",
+    }
 
 
 def _evaluate_target_fit(
@@ -1128,31 +1307,35 @@ def _evaluate_target_fit(
     company: Company | None,
     profile: Profile,
     activities: list[JobActivity] | None = None,
+    profile_seniority_years: float = 0.0,
 ) -> dict:
     activity_text = " ".join(
         item.activity_text for item in activities or [] if item.activity_text
     )
     career_goal = getattr(profile, "career_goal", "") or ""
-    activity_goals = [
-        value.strip()
-        for value in re.split(r"[,;\n]+", career_goal)
-        if value.strip()
-    ]
+    activity_goals = [career_goal.strip()] if career_goal.strip() else []
+    job_seniority = (getattr(job, "extracted_json", None) or {}).get("seniority")
+    role_preferences = _target_role_preferences(profile)
+    role_desired = [item["role"] for item in role_preferences]
     criteria = [
         _preference_criterion(
             key="role",
             label="Zielrolle",
-            desired=profile.target_roles or [],
-            actual=job.title,
-            weight=25,
+            desired=role_desired,
+            actual=(getattr(job, "extracted_json", None) or {}).get("role") or job.title,
+            # Job titles are noisy and vary strongly between employers. The
+            # actual responsibilities and qualification matching are more
+            # reliable signals for the target fit.
+            weight=10,
         ),
         _preference_criterion(
             key="activities",
             label="Tätigkeits-Fit",
             desired=activity_goals,
             actual=activity_text or None,
-            weight=30,
+            weight=35,
         ),
+            _target_role_seniority_criterion(job_seniority, role_preferences, (getattr(job, "extracted_json", None) or {}).get("role") or job.title),
         _preference_criterion(
             key="industry",
             label="Zielbranche",
@@ -1182,6 +1365,21 @@ def _evaluate_target_fit(
             weight=10,
         ),
     ]
+    if criteria[0]["desired"]:
+        actual_role = (getattr(job, "extracted_json", None) or {}).get("role") or job.title
+        ranked_roles = sorted(
+            ((item, _target_overlap(item["role"], actual_role)) for item in role_preferences),
+            key=lambda pair: pair[1], reverse=True,
+        )
+        if ranked_roles and ranked_roles[0][1] > 0:
+            selected_priority = max(1, min(5, int(ranked_roles[0][0].get("priority", 1))))
+            criteria[0]["priority"] = selected_priority
+            criteria[0]["weight"] = 10 * (6 - selected_priority) / 5
+            criteria[0]["explanation"] += f" Priorität {selected_priority} wurde als Gewichtung berücksichtigt."
+        criteria[0]["desired"] = [
+            f"{item['role']} · Priorität {item.get('priority', 1)}"
+            for item in role_preferences
+        ]
     source_text = " ".join(
         value
         for value in (
@@ -1289,7 +1487,14 @@ async def get_target_fit(job_id, profile_id) -> dict:
                 .order_by(JobActivity.position)
             )
         ).all()
-        return _evaluate_target_fit(row[0], row[1], profile, list(activities))
+        experiences = (
+            await session.scalars(
+                select(WorkExperience).where(WorkExperience.profile_id == profile_id)
+            )
+        ).all()
+        return _evaluate_target_fit(
+            row[0], row[1], profile, list(activities), _profile_seniority_years(list(experiences))
+        )
 
 
 def _qualification_fit(matches: list[dict]) -> dict:

@@ -2,7 +2,14 @@ from datetime import date
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 from app.domain.skill_taxonomy import SkillCategory, SkillLevel
 
@@ -10,6 +17,23 @@ Language = Literal["de", "en"]
 ContentStatus = Literal["draft", "approved", "inactive"]
 WorkModel = Literal["remote", "hybrid", "onsite"]
 EmploymentType = Literal["permanent", "temporary", "freelance", "internship", "working_student"]
+TargetRoleLevel = Literal["Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Lead", "Manager"]
+
+
+class TargetRolePreference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str = Field(min_length=1, max_length=500)
+    level: TargetRoleLevel | None = None
+    priority: int = Field(default=1, ge=1, le=5)
+
+    @field_validator("role")
+    @classmethod
+    def normalize_role(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("role must not be empty")
+        return value
 
 PROFILE_LIST_FIELDS = (
     "target_roles",
@@ -64,6 +88,7 @@ class ProfileCreate(BaseModel):
     portfolio_url: str | None = Field(default=None, max_length=2048)
     career_goal: str | None = Field(default=None, max_length=10_000)
     target_roles: list[str] = Field(default_factory=list, max_length=50)
+    target_role_preferences: list[TargetRolePreference] = Field(default_factory=list, max_length=50)
     target_industries: list[str] = Field(default_factory=list, max_length=50)
     target_locations: list[str] = Field(default_factory=list, max_length=50)
     preferred_work_models: list[WorkModel] = Field(default_factory=list, max_length=3)
@@ -90,6 +115,7 @@ class ProfileUpdate(BaseModel):
     portfolio_url: str | None = Field(default=None, max_length=2048)
     career_goal: str | None = Field(default=None, max_length=10_000)
     target_roles: list[str] | None = Field(default=None, max_length=50)
+    target_role_preferences: list[TargetRolePreference] | None = Field(default=None, max_length=50)
     target_industries: list[str] | None = Field(default=None, max_length=50)
     target_locations: list[str] | None = Field(default=None, max_length=50)
     preferred_work_models: list[WorkModel] | None = Field(default=None, max_length=3)
@@ -101,7 +127,15 @@ class ProfileUpdate(BaseModel):
 
     @model_validator(mode="after")
     def normalize_goal_lists(self):
-        return _normalize_profile_lists(self)
+        _normalize_profile_lists(self)
+        if self.target_role_preferences is not None:
+            seen = set()
+            for item in self.target_role_preferences:
+                key = item.role.casefold()
+                if key in seen:
+                    raise ValueError("Each target role may occur only once.")
+                seen.add(key)
+        return self
 
 
 class ResourceBase(BaseModel):
@@ -139,6 +173,28 @@ class SkillUpdate(ResourceBase):
     active: bool | None = None
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
+
+
+class SkillEvidenceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: UUID
+    source_resource_type: Literal["experience", "project", "certificate", "education", "manual_training"]
+    source_resource_id: UUID | None = None
+    experience_context: Literal["professional", "project", "training"]
+    evidence_text: str | None = Field(default=None, max_length=10_000)
+    confidence: float = Field(default=1.0, ge=0, le=1)
+
+
+class SkillEvidenceUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: UUID | None = None
+    source_resource_type: Literal["experience", "project", "certificate", "education", "manual_training"] | None = None
+    source_resource_id: UUID | None = None
+    experience_context: Literal["professional", "project", "training"] | None = None
+    evidence_text: str | None = Field(default=None, max_length=10_000)
+    confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class WorkExperienceCreate(ResourceBase):

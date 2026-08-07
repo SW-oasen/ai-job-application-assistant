@@ -15,6 +15,11 @@ from app.importers.pdf_importer import (
     pdf_text_is_sufficient,
     rasterize_pdf,
 )
+from app.parsers.job_seniority import (
+    ensure_seniority_requirement,
+    extract_job_seniority,
+)
+from app.parsers.job_role import extract_job_role
 from app.parsers.job_structure import extract_job_structure
 from app.schemas.imports import PdfImportResponse
 from app.services.job_extraction_review_integration import (
@@ -125,12 +130,15 @@ async def _persist_response(
         source_filename=response.filename,
     )
     structure = extract_job_structure(response.markdown)
+    seniority = extract_job_seniority(response.markdown)
+    job_role = extract_job_role(semantic.metadata.get("title"), response.markdown)
     reviewed = await review_job_extraction_if_configured(
         content=response.markdown,
         metadata=semantic.metadata,
         activities=structure.activities,
         requirements=structure.requirements,
     )
+    requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -149,10 +157,12 @@ async def _persist_response(
         extracted_json={
             "semantic_metadata": semantic.details,
             "activities": reviewed.activities,
-            "requirements": reviewed.requirements,
+            "requirements": requirements,
+            "seniority": seniority,
+            "role": job_role,
         },
         activities=reviewed.activities,
-        requirements=reviewed.requirements,
+        requirements=requirements,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate

@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 from pydantic import ValidationError
+from fastapi.encoders import jsonable_encoder
 
 from app.core.config import ReviewWorkflowSettings, get_settings
 from app.core.errors import ApplicationError
@@ -25,6 +26,29 @@ def _parse_review_output(outputs: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("Review workflow output is not an object.")
     return payload
+
+
+def _serialize_workflow_input(value: object) -> str:
+    return json.dumps(jsonable_encoder(value), ensure_ascii=False)
+
+
+def _normalize_confidence(value: object) -> object:
+    if isinstance(value, (int, float)) and 1 < value <= 100:
+        return value / 100
+    return value
+
+
+def _normalize_review_confidences(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    normalized["overall_confidence"] = _normalize_confidence(
+        normalized.get("overall_confidence")
+    )
+    field_confidence = normalized.get("field_confidence")
+    if isinstance(field_confidence, dict):
+        normalized["field_confidence"] = {
+            key: _normalize_confidence(value) for key, value in field_confidence.items()
+        }
+    return normalized
 
 
 class ReviewService:
@@ -61,11 +85,11 @@ class ReviewService:
                     json={
                         "inputs": {
                             "review_type": review_type,
-                            "source_data_json": json.dumps(source_data, ensure_ascii=False),
-                            "generated_result_json": json.dumps(generated_result, ensure_ascii=False),
-                            "context_json": json.dumps(context or {}, ensure_ascii=False),
-                            "retry_instructions_json": json.dumps(
-                                retry_instructions or [], ensure_ascii=False
+                            "source_data_json": _serialize_workflow_input(source_data),
+                            "generated_result_json": _serialize_workflow_input(generated_result),
+                            "context_json": _serialize_workflow_input(context or {}),
+                            "retry_instructions_json": _serialize_workflow_input(
+                                retry_instructions or []
                             ),
                             "attempt": str(attempt),
                         },
@@ -146,10 +170,20 @@ class ReviewService:
         duration_ms: int,
     ) -> ReviewResult:
         try:
-            result = ReviewResult.model_validate(_parse_review_output(outputs))
+            result = ReviewResult.model_validate(
+                _normalize_review_confidences(_parse_review_output(outputs))
+            )
         except (ValidationError, ValueError, json.JSONDecodeError) as exception:
+            if isinstance(exception, ValidationError):
+                reason = "; ".join(
+                    f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+                    for error in exception.errors()
+                )
+            else:
+                reason = str(exception)
             raise ApplicationError(
-                "Der Dify-Review-Workflow hat kein gültiges Review-Ergebnis geliefert.",
+                "Der Dify-Review-Workflow hat kein gültiges Review-Ergebnis geliefert: "
+                f"{reason}",
                 code="review_workflow_invalid_output",
                 status_code=502,
             ) from exception

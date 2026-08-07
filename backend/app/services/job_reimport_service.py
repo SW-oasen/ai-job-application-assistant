@@ -5,6 +5,10 @@ from app.database.repositories.jobs import (
     get_stored_job_source,
     persist_imported_job,
 )
+from app.parsers.job_seniority import (
+    ensure_seniority_requirement,
+    extract_job_seniority,
+)
 from app.parsers.job_structure import extract_job_structure
 from app.schemas.imports import JobReimportResponse, UrlImportRequest
 from app.services.job_extraction_review_integration import (
@@ -62,12 +66,14 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         source_url=source.source_url,
     )
     structure = extract_job_structure(source.normalized_content)
+    seniority = extract_job_seniority(source.normalized_content)
     reviewed = await review_job_extraction_if_configured(
         content=source.normalized_content,
         metadata=semantic.metadata,
         activities=structure.activities,
         requirements=structure.requirements,
     )
+    requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     warnings = [
         warning
         for warning in source.import_warnings
@@ -90,10 +96,11 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         extracted_json={
             "semantic_metadata": semantic.details,
             "activities": reviewed.activities,
-            "requirements": reviewed.requirements,
+            "requirements": requirements,
+            "seniority": seniority,
         },
         activities=reviewed.activities,
-        requirements=reviewed.requirements,
+        requirements=requirements,
         replace_existing=True,
         replace_job_id=job_id,
     )

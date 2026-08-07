@@ -9,6 +9,7 @@ from app.services import review_history_service
 class FakeSession:
     def __init__(self) -> None:
         self.rows = []
+        self.deleted_statements = []
 
     async def __aenter__(self):
         return self
@@ -18,6 +19,9 @@ class FakeSession:
 
     def add(self, row) -> None:
         self.rows.append(row)
+
+    async def execute(self, statement) -> None:
+        self.deleted_statements.append(statement)
 
     async def commit(self) -> None:
         return None
@@ -62,3 +66,4 @@ async def test_store_review_result_preserves_snapshots_and_ordered_issues(monkey
     assert session.rows[0].corrected_result == {"requirements": ["Python", "Docker"]}
     assert session.rows[0].issues[0].position == 0
     assert stored["issues"][0]["suggested_value"] == "Docker"
+    assert len(session.deleted_statements) == 1

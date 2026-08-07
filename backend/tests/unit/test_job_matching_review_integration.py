@@ -4,6 +4,7 @@ from uuid import uuid4
 from app.core.errors import ApplicationError
 from app.schemas.review import ReviewResult
 from app.services import job_matching_review_integration
+from app.services.job_matching_review_integration import _review_matches
 
 
 class DisabledReviewService:
@@ -32,6 +33,25 @@ class EnabledReviewService:
     def is_configured(self, review_type: str) -> bool:
         assert review_type == "job_matching"
         return True
+
+
+def test_review_matches_limits_evidence_payload() -> None:
+    matches = _review_matches(
+        [
+            {
+                "requirement": "Python",
+                "evaluated_at": "2026-08-02T15:44:52Z",
+                "evidence": [
+                    {"label": f"Evidence {position}", "evidence_text": "x" * 2_000}
+                    for position in range(4)
+                ],
+            }
+        ]
+    )
+
+    assert len(matches[0]["evidence"]) == 3
+    assert len(matches[0]["evidence"][0]["evidence_text"]) == 1_200
+    assert "evaluated_at" not in matches[0]
 
 
 @pytest.mark.asyncio

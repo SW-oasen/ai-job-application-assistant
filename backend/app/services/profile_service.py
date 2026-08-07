@@ -22,11 +22,33 @@ from app.database.models import (
     ProfileReference,
     ReferenceLocalization,
     Skill,
+    SkillEvidence,
     SkillLocalization,
     WorkExperience,
     WorkExperienceLocalization,
 )
 from app.database.session import get_session_factory
+from app.schemas.profile import SkillEvidenceCreate, SkillEvidenceUpdate
+
+
+def _derive_target_role_level(role: str) -> str | None:
+    value = role.casefold()
+    if "principal" in value: return "Principal"
+    if "staff" in value: return "Staff"
+    if "lead" in value or "leiter" in value or "head" in value: return "Lead"
+    if "senior" in value: return "Senior"
+    if "junior" in value: return "Junior"
+    if "manager" in value: return "Manager"
+    return None
+
+
+def _ensure_target_role_preferences(values: dict) -> dict:
+    if "target_role_preferences" not in values and "target_roles" in values:
+        values["target_role_preferences"] = [
+            {"role": role, "level": _derive_target_role_level(role), "priority": index + 1}
+            for index, role in enumerate(values["target_roles"])
+        ]
+    return values
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +211,7 @@ async def _record_revision(
 
 
 async def create_profile(payload: BaseModel) -> dict:
-    values = payload.model_dump(mode="python")
+    values = _ensure_target_role_preferences(payload.model_dump(mode="python"))
     change_reason = values.pop("change_reason", None)
     profile = Profile(**values)
     factory = _session_factory()
@@ -227,7 +249,7 @@ async def list_profiles() -> list[dict]:
 
 
 async def update_profile(profile_id: UUID, payload: BaseModel) -> dict:
-    values = payload.model_dump(mode="python", exclude_unset=True)
+    values = _ensure_target_role_preferences(payload.model_dump(mode="python", exclude_unset=True))
     change_reason = values.pop("change_reason", None)
     factory = _session_factory()
     async with factory() as session:
@@ -264,6 +286,98 @@ async def list_resources(profile_id: UUID, resource_type: str) -> list[dict]:
             )
         ).all()
         return [_serialize(row) for row in rows]
+
+
+_SKILL_EVIDENCE_SOURCE_MODELS = {
+    "experience": WorkExperience,
+    "project": PortfolioProject,
+    "certificate": Certificate,
+    "education": EducationEntry,
+}
+
+
+async def _validate_skill_evidence_source(session, profile_id: UUID, values: dict) -> None:
+    skill = await session.scalar(
+        select(Skill).where(Skill.id == values["skill_id"], Skill.profile_id == profile_id)
+    )
+    if skill is None:
+        raise ApplicationError("Skill not found.", code="profile_entry_not_found", status_code=404)
+    source_type = values["source_resource_type"]
+    source_id = values.get("source_resource_id")
+    if source_type == "manual_training":
+        if source_id is not None:
+            raise ApplicationError("Manual training has no linked resource.", code="invalid_skill_evidence", status_code=422)
+        return
+    model = _SKILL_EVIDENCE_SOURCE_MODELS[source_type]
+    if source_id is None or await session.scalar(
+        select(model.id).where(model.id == source_id, model.profile_id == profile_id)
+    ) is None:
+        raise ApplicationError("Linked profile resource not found.", code="profile_entry_not_found", status_code=404)
+
+
+async def list_skill_evidence(profile_id: UUID) -> list[dict]:
+    factory = _session_factory()
+    async with factory() as session:
+        rows = (
+            await session.scalars(
+                select(SkillEvidence)
+                .join(Skill)
+                .where(Skill.profile_id == profile_id)
+                .order_by(SkillEvidence.created_at)
+            )
+        ).all()
+        return [_serialize(row) for row in rows]
+
+
+async def create_skill_evidence(profile_id: UUID, payload: SkillEvidenceCreate) -> dict:
+    values = payload.model_dump(mode="python")
+    factory = _session_factory()
+    try:
+        async with factory() as session:
+            await _validate_skill_evidence_source(session, profile_id, values)
+            row = SkillEvidence(**values)
+            session.add(row)
+            profile = await session.get(Profile, profile_id)
+            profile.revision += 1
+            await session.flush()
+            await session.commit()
+            return _serialize(row)
+    except IntegrityError as exception:
+        raise ApplicationError("This evidence link already exists.", code="profile_entry_conflict", status_code=409) from exception
+
+
+async def update_skill_evidence(profile_id: UUID, item_id: UUID, payload: SkillEvidenceUpdate) -> dict:
+    values = payload.model_dump(mode="python", exclude_unset=True)
+    factory = _session_factory()
+    async with factory() as session:
+        row = await session.scalar(
+            select(SkillEvidence).join(Skill).where(SkillEvidence.id == item_id, Skill.profile_id == profile_id)
+        )
+        if row is None:
+            raise ApplicationError("Skill evidence not found.", code="profile_entry_not_found", status_code=404)
+        candidate = {"skill_id": row.skill_id, "source_resource_type": row.source_resource_type,
+                     "source_resource_id": row.source_resource_id, **values}
+        await _validate_skill_evidence_source(session, profile_id, candidate)
+        for key, value in values.items():
+            setattr(row, key, value)
+        profile = await session.get(Profile, profile_id)
+        profile.revision += 1
+        await session.commit()
+        return _serialize(row)
+
+
+async def delete_skill_evidence(profile_id: UUID, item_id: UUID) -> None:
+    factory = _session_factory()
+    async with factory() as session:
+        row = await session.scalar(
+            select(SkillEvidence).join(Skill).where(SkillEvidence.id == item_id, Skill.profile_id == profile_id)
+        )
+        if row is None:
+            raise ApplicationError("Skill evidence not found.", code="profile_entry_not_found", status_code=404)
+        profile = await session.get(Profile, profile_id)
+        profile.revision += 1
+        await session.delete(row)
+        await session.commit()
 
 
 async def create_resource(profile_id: UUID, resource_type: str, payload: BaseModel) -> dict:

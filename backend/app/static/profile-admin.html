@@ -82,8 +82,10 @@
       background: transparent;
     }
     nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
-    main { padding: 26px 0 60px 30px; min-width: 0; }
-    .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+    main { width: 100%; min-width: 0; padding: 26px 30px 60px; overflow-x: hidden; }
+    .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; min-width: 0; }
+    .section-head > div:first-child { min-width: 0; }
+    .section-head #newProfileEntry { position: relative !important; right: 30px !important; }
     .section-head h2 { margin: 0; font-size: 25px; line-height: 1.2; }
     .section-head p { color: var(--muted); margin: 7px 0 0; }
     .section-title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -185,7 +187,7 @@
       padding-top: 18px;
       border-top: 1px solid var(--line);
     }
-    .right-actions { display: flex; gap: 8px; }
+    .right-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
     .hint { color: var(--muted); font-size: 12px; }
     dialog {
       border: 0;
@@ -199,6 +201,23 @@
     .dialog-body h3 { margin: 0 0 18px; }
     #profileDialog { margin-top: 24px; width: auto; }
     #profileDialog[hidden] { display: none; }
+    #targetRoleRows { display: grid; gap: 6px; margin: 6px 0 8px; }
+    .target-role-header { display: flex; flex-flow: row nowrap; gap: 6px; align-items: center; margin: 10px 0 4px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .target-role-header span:first-child { flex: 1 1 auto; min-width: 220px; }
+    .target-role-header span { flex: 0 0 130px; }
+    .target-role-header span:nth-last-child(-n+2) { flex: 0 0 34px; }
+    .target-role-row { display: flex !important; flex-flow: row nowrap; gap: 6px; align-items: center; width: 100%; }
+    .target-role-row .target-role-name { flex: 1 1 auto; min-width: 220px; }
+    .target-role-row .target-role-level, .target-role-row .target-role-priority { flex: 0 0 130px; width: 130px; }
+    .target-role-row input, .target-role-row select { min-width: 0; height: 36px; padding: 6px 8px; }
+    .target-role-row .remove-target-role { display: inline-flex !important; flex: 0 0 34px; width: 34px; min-width: 34px; height: 34px; padding: 0; align-items: center; justify-content: center; border: 1px solid #ef4444; border-radius: 6px; background: #fee2e2; color: #b91c1c; font-size: 20px; font-weight: 700; line-height: 1; visibility: visible; opacity: 1; }
+    .target-role-add { margin-top: 6px; }
+    .target-role-add .confirm-target-role { flex: 0 0 34px; height: 34px; padding: 0; }
+    .target-role-row .save-target-role { display: inline-flex; flex: 0 0 34px; width: 34px; min-width: 34px; height: 34px; padding: 0; align-items: center; justify-content: center; color: #166534; border-color: #86efac; background: #dcfce7; }
+    @media (max-width: 700px) {
+      #targetRoleRows { overflow-x: auto; }
+      .target-role-row { min-width: 530px; }
+    }
     .revision { padding: 12px 0; border-bottom: 1px solid var(--line); }
     .revision:last-child { border: 0; }
     .revision code { color: var(--accent); }
@@ -237,6 +256,7 @@
     <nav id="navigation">
       <button data-resource="profile" class="active">Profil</button>
       <button data-resource="skills">Skills</button>
+      <button data-resource="skill-evidence">Skill-Evidenz</button>
       <button data-resource="experiences">Berufserfahrung</button>
       <button data-resource="projects">Portfolio-Projekte</button>
       <button data-resource="education">Ausbildung</button>
@@ -311,9 +331,18 @@
           <span class="hint">Beschreibt die übergeordnete Richtung. Konkrete Präferenzen werden darunter strukturiert erfasst.</span>
         </div>
         <div class="field full">
-          <label for="targetRoles">Zielrollen</label>
-          <textarea id="targetRoles" maxlength="5000" rows="4" placeholder="z. B. Data Scientist, Machine Learning Engineer"></textarea>
-          <span class="hint">Mehrere Angaben durch Kommas trennen.</span>
+          <label>Zielrollen</label>
+          <input id="targetRoles" type="hidden">
+          <div class="target-role-header" aria-hidden="true"><span>Rolle</span><span>Level</span><span>Priorität</span><span></span><span></span></div>
+          <div id="targetRoleRows"></div>
+          <div class="target-role-row target-role-add"><input id="newTargetRoleName" class="target-role-name" list="targetRoleSuggestions" placeholder="Neue Zielrolle"><select id="newTargetRoleLevel" class="target-role-level"><option value="">Unbekannt</option><option>Entry</option><option>Junior</option><option>Mid</option><option>Senior</option><option>Staff</option><option>Principal</option><option>Lead</option><option>Manager</option></select><select id="newTargetRolePriority" class="target-role-priority"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select><button class="button ghost confirm-target-role" type="button" id="addTargetRole" aria-label="Zielrolle hinzufügen">✓</button></div>
+          <datalist id="targetRoleSuggestions">
+            <option value="AI Engineer"><option value="Machine Learning Engineer"><option value="Data Scientist">
+            <option value="Data Engineer"><option value="Applied Scientist"><option value="Software Engineer">
+            <option value="AI Application Engineer"><option value="AI Platform Engineer"><option value="Platform Engineer">
+            <option value="Product Engineer"><option value="Technical Project Manager">
+          </datalist>
+          <span class="hint">Jede Rolle kann ein eigenes Level und eine Priorität von 1 bis 5 erhalten.</span>
         </div>
         <div>
           <label for="targetIndustries">Zielbranchen</label>
@@ -462,13 +491,27 @@
         name: item => item.canonical_name,
         subtitle: item => skillTaxonomy.categories.find(option => option.value === item.category)?.label_de || item.category,
         fields: [
-          ["canonical_name","Name","text",true],
+          ["canonical_name","Canonical Skill Name · lowercase_snake_case, englisch (z. B. machine_learning)","text",true],
           ["category","Kategorie","skill_category",true],
           ["proficiency_level","Kenntnisniveau","skill_level"],
           ["years_experience","Erfahrungsjahre","number"],
           ["last_used_at","Zuletzt verwendet","date"],
           ["aliases","Aliase, kommagetrennt","csv"],
           ["active","Aktiv","checkbox"]
+        ]
+      },
+      "skill-evidence": {
+        title: "Skill-Evidenz",
+        description: "Verknüpft einen Skill mit einer Rolle, einem Projekt oder Training. Nur Berufsstationen zählen für berufliche Erfahrungsjahre.",
+        name: item => evidenceOptions.skills.find(skill => skill.id === item.skill_id)?.canonical_name || item.skill_id,
+        subtitle: item => `${item.experience_context} · ${item.source_resource_type}`,
+        fields: [
+          ["skill_id","Skill","skill_select",true],
+          ["source_resource_type","Quelle","evidence_source_type",true],
+          ["source_resource_id","Verknüpfte Einträge · Mehrfachauswahl möglich","evidence_source_select"],
+          ["experience_context","Evidenzart","evidence_context",true],
+          ["evidence_text","Konkreter Nachweis","textarea"],
+          ["confidence","Sicherheit (0–1)","number"]
         ]
       },
       experiences: {
@@ -550,6 +593,7 @@
     };
 
     let profiles = [], profile = null, resource = "profile", entries = [], selected = null;
+    let evidenceOptions = {skills: [], experiences: [], projects: [], certificates: [], education: []};
     let cvSelected = new Set();
     let skillTaxonomy = {categories: [], levels: []};
     const $ = id => document.getElementById(id);
@@ -607,6 +651,7 @@
     }
 
     async function loadEntries(preferredId=null) {
+      if (resource === "skill-evidence") await loadEvidenceOptions();
       entries = await request(`${API}/${profile.id}/${resource}`);
       if (resource === "cv-imports") {
         const suggestions = entries.flatMap(batch =>
@@ -622,6 +667,15 @@
       selected = entries.find(item => item.id === preferredId) || entries[0] || null;
       renderList();
       renderEditor();
+    }
+
+    async function loadEvidenceOptions() {
+      const [skills, experiences, projects, certificates, education] = await Promise.all([
+        request(`${API}/${profile.id}/skills`), request(`${API}/${profile.id}/experiences`),
+        request(`${API}/${profile.id}/projects`), request(`${API}/${profile.id}/certificates`),
+        request(`${API}/${profile.id}/education`)
+      ]);
+      evidenceOptions = {skills, experiences, projects, certificates, education};
     }
 
     function renderList() {
@@ -671,32 +725,52 @@
         return;
       }
       const values = item || {};
+      const isSkillEvidence = resource === "skill-evidence";
       editor.innerHTML = `
         <h3>${item ? "Eintrag bearbeiten" : "Eintrag anlegen"}</h3>
         <form id="entryForm">
           <div class="grid">
             ${config.fields.map(field => renderField(field, values[field[0]])).join("")}
-            <div class="field">
+            ${!isSkillEvidence ? `<div class="field">
               <label>Status</label>
               <select name="status">${STATUS_OPTIONS.map(([value,label]) => `<option value="${value}" ${values.status === value ? "selected":""}>${label}</option>`).join("")}</select>
-            </div>
+            </div>` : ""}
           </div>
-          ${renderLocale("de", values.localizations)}
-          ${renderLocale("en", values.localizations)}
-          <div class="field full" style="margin-top:18px">
+          ${!isSkillEvidence ? renderLocale("de", values.localizations) : ""}
+          ${!isSkillEvidence ? renderLocale("en", values.localizations) : ""}
+          ${!isSkillEvidence ? `<div class="field full" style="margin-top:18px">
             <label>Änderungsgrund</label>
             <input name="change_reason" maxlength="1000" placeholder="Warum wird dieser Stand gespeichert?">
-          </div>
+          </div>` : ""}
           <div class="form-actions">
-            <span class="hint">${item ? `Revision ${item.revision}` : "Neuer Entwurf"}</span>
+            <span class="hint">${item && !isSkillEvidence ? `Revision ${item.revision}` : ""}</span>
             <div class="right-actions">
-              ${item ? `<button type="button" class="button ghost" id="showRevisions">Revisionen</button>` : ""}
+              ${item && !isSkillEvidence ? `<button type="button" class="button ghost" id="showRevisions">Revisionen</button>` : ""}
               <button class="button" type="submit">Speichern</button>
             </div>
           </div>
         </form>`;
       $("entryForm").onsubmit = saveEntry;
-      if (item) $("showRevisions").onclick = showRevisions;
+      if (isSkillEvidence) {
+        const sourceType = $("entryForm").elements.source_resource_type;
+        const sourceId = $("entryForm").elements.source_resource_id;
+        const filterSourceEntries = () => {
+          const groups = [...sourceId.querySelectorAll("optgroup")];
+          const groupTypes = ["experience", "project", "certificate", "education"];
+          for (const option of sourceId.options) {
+            const groupIndex = groups.indexOf(option.parentElement);
+            const optionType = groupIndex >= 0 ? groupTypes[groupIndex] : null;
+            const matches = !optionType || optionType === sourceType.value;
+            option.hidden = !matches;
+            option.disabled = !matches;
+          }
+          if (sourceId.selectedOptions[0]?.disabled || sourceType.value === "manual_training") sourceId.value = "";
+          sourceId.disabled = sourceType.value === "manual_training";
+        };
+        sourceType.onchange = filterSourceEntries;
+        filterSourceEntries();
+      }
+      if (item && !isSkillEvidence) $("showRevisions").onclick = showRevisions;
     }
 
     function renderCvImports() {
@@ -860,6 +934,11 @@
     }
 
     function renderField([name,label,type,required], value) {
+      if (type === "skill_select") return `<div class="field"><label>${label}</label><select name="${name}" required><option value="">Bitte wählen</option>${evidenceOptions.skills.map(item => `<option value="${item.id}" ${value===item.id?"selected":""}>${escapeHtml(item.canonical_name)}</option>`).join("")}</select></div>`;
+      if (type === "evidence_source_type") return `<div class="field"><label>${label}</label><select name="${name}" required><option value="experience" ${value==="experience"?"selected":""}>Berufsstation</option><option value="project" ${value==="project"?"selected":""}>Projekt</option><option value="certificate" ${value==="certificate"?"selected":""}>Zertifikat</option><option value="education" ${value==="education"?"selected":""}>Ausbildung</option><option value="manual_training" ${value==="manual_training"?"selected":""}>Manuelles Training</option></select></div>`;
+      if (type === "evidence_source_select") { const groups = [["experiences","Berufsstationen", item => item.company],["projects","Projekte", item => item.canonical_name],["certificates","Zertifikate", item => item.official_name],["education","Ausbildung", item => item.institution]]; return `<div class="field"><label>${label}</label><select name="${name}" multiple size="5"><option value="">Kein verknüpfter Eintrag (nur manuelles Training)</option>${groups.map(([key,label,name]) => `<optgroup label="${label}">${evidenceOptions[key].map(item => `<option value="${item.id}" ${value===item.id?"selected":""}>${escapeHtml(name(item))}</option>`).join("")}</optgroup>`).join("")}</select><span class="hint">Mehrere Einträge mit Strg bzw. Cmd auswählen.</span></div>`; }
+      if (type === "evidence_context") return `<div class="field"><label>${label}</label><select name="${name}" required><option value="professional" ${value==="professional"?"selected":""}>Beruflich/Produktion</option><option value="project" ${value==="project"?"selected":""}>Projekt</option><option value="training" ${value==="training"?"selected":""}>Training</option></select></div>`;
+      if (type === "textarea") return `<div class="field full"><label>${label}</label><textarea name="${name}">${escapeHtml(value || "")}</textarea></div>`;
       if (type === "skill_category" || type === "skill_level") {
         const options = type === "skill_category" ? skillTaxonomy.categories : skillTaxonomy.levels;
         const empty = type === "skill_level" ? `<option value="">Nicht festgelegt</option>` : "";
@@ -903,9 +982,9 @@
           const value = form.get(name); if (value !== "") body[name] = value;
         }
       }
-      body.status = form.get("status");
-      body.change_reason = form.get("change_reason") || null;
-      body.localizations = ["de","en"].flatMap(language => {
+      if (resource !== "skill-evidence") body.status = form.get("status");
+      if (resource !== "skill-evidence") body.change_reason = form.get("change_reason") || null;
+      if (resource !== "skill-evidence") body.localizations = ["de","en"].flatMap(language => {
         const title = String(form.get(`${language}_title`) || "").trim();
         if (!title) return [];
         return [{
@@ -917,6 +996,24 @@
         }];
       });
       try {
+        const sourceIds = resource === "skill-evidence"
+          ? [...event.target.elements.source_resource_id.selectedOptions]
+              .map(option => option.value).filter(Boolean)
+          : [];
+        if (resource === "skill-evidence" && !selected && sourceIds.length > 1) {
+          const results = await Promise.allSettled(sourceIds.map(source_resource_id => request(
+            `${API}/${profile.id}/skill-evidence`,
+            {method: "POST", body: JSON.stringify({...body, source_resource_id})}
+          )));
+          const savedCount = results.filter(result => result.status === "fulfilled").length;
+          const duplicateCount = results.filter(result => result.status === "rejected" && /bereits|exist|conflict/i.test(result.reason?.message || "")).length;
+          const failedCount = results.length - savedCount - duplicateCount;
+          toast(`${savedCount} Skill-Evidenz${savedCount === 1 ? "" : "en"} gespeichert${duplicateCount ? `, ${duplicateCount} bereits vorhanden` : ""}${failedCount ? `, ${failedCount} fehlgeschlagen` : ""}.`, failedCount > 0);
+          await loadProfiles(profile.id);
+          await loadEntries();
+          return;
+        }
+        if (resource === "skill-evidence" && sourceIds.length === 1) body.source_resource_id = sourceIds[0];
         const path = selected ? `${API}/${profile.id}/${resource}/${selected.id}` : `${API}/${profile.id}/${resource}`;
         const saved = await request(path, {method: selected ? "PATCH" : "POST", body: JSON.stringify(body)});
         toast("Eintrag gespeichert.");
@@ -952,7 +1049,9 @@
       $("githubUrl").value = edit ? profile.github_url || "" : "";
       $("portfolioUrl").value = edit ? profile.portfolio_url || "" : "";
       $("careerGoal").value = edit ? profile.career_goal || "" : "";
-      $("targetRoles").value = edit ? (profile.target_roles || []).join(", ") : "";
+      renderTargetRoleRows(edit ? (profile.target_role_preferences || []).map(item => ({
+        role: item.role, level: item.level || "", priority: item.priority || 1
+      })) : []);
       $("targetIndustries").value = edit ? (profile.target_industries || []).join(", ") : "";
       $("targetLocations").value = edit ? (profile.target_locations || []).join(", ") : "";
       setSelected("preferredWorkModels", edit ? profile.preferred_work_models : []);
@@ -964,6 +1063,39 @@
       $("profileReason").value = "";
       $("profileDialog").dataset.edit = edit ? "true" : "false";
     }
+
+    const TARGET_LEVELS = ["", "Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Lead", "Manager"];
+    const TARGET_ROLE_SUGGESTIONS = ["AI Engineer", "Machine Learning Engineer", "Data Scientist", "Data Engineer", "Applied Scientist", "Software Engineer", "AI Application Engineer", "AI Platform Engineer", "Platform Engineer", "Product Engineer", "Technical Project Manager"];
+    function renderTargetRoleRows(items) {
+      const rows = items;
+      $("targetRoleRows").innerHTML = rows.map((item, index) => `<div class="target-role-row" data-index="${index}">
+        <input class="target-role-name" list="targetRoleSuggestions" maxlength="500" placeholder="z. B. Machine Learning Engineer" value="${escapeHtml(item.role || "")}">
+        <select class="target-role-level">${TARGET_LEVELS.map(level => `<option value="${level}" ${level === (item.level || "") ? "selected" : ""}>${level || "Unbekannt"}</option>`).join("")}</select>
+        <select class="target-role-priority">${[1,2,3,4,5].map(priority => `<option value="${priority}" ${priority === Number(item.priority || 1) ? "selected" : ""}>${priority}</option>`).join("")}</select>
+        <button class="button secondary remove-target-role" type="button" aria-label="Zielrolle entfernen">×</button>
+        <button class="button save-target-role" type="button" aria-label="Zielrolle speichern" title="Zeile speichern">✓</button>
+      </div>`).join("");
+      $("targetRoleRows").querySelectorAll(".remove-target-role").forEach(button => button.onclick = () => {
+        const rows = readTargetRoleRows(); rows.splice(Number(button.closest(".target-role-row").dataset.index), 1); renderTargetRoleRows(rows);
+      });
+      $("targetRoleRows").querySelectorAll(".save-target-role").forEach(button => button.onclick = async () => {
+        if (!profile?.id) return;
+        try {
+          const saved = await request(`${API}/${profile.id}`, {method: "PATCH", body: JSON.stringify({target_roles: readTargetRoleRows().map(item => item.role), target_role_preferences: readTargetRoleRows(), change_reason: "Zielrolle direkt gespeichert"})});
+          profile = saved;
+          renderTargetRoleRows(saved.target_role_preferences || []);
+          toast("Zielrollen aktualisiert.");
+        } catch (error) { toast(error.message, true); }
+      });
+    }
+    function readTargetRoleRows() {
+      return Array.from($("targetRoleRows").querySelectorAll("#targetRoleRows > .target-role-row")).map(row => ({
+        role: row.querySelector(".target-role-name").value.trim(),
+        level: row.querySelector(".target-role-level").value || null,
+        priority: Number(row.querySelector(".target-role-priority").value)
+      })).filter(item => item.role);
+    }
+    $("addTargetRole").onclick = () => { const role = $("newTargetRoleName").value.trim(); if (!role) return; const rows = readTargetRoleRows(); if (rows.some(item => item.role.toLocaleLowerCase() === role.toLocaleLowerCase())) return; rows.push({role, level: $("newTargetRoleLevel").value || null, priority: Number($("newTargetRolePriority").value)}); renderTargetRoleRows(rows); $("newTargetRoleName").value = ""; $("newTargetRoleLevel").value = ""; $("newTargetRolePriority").value = "1"; };
 
     function openCvPdfDialog() {
       $("cvPdfLanguage").value = profile?.default_language || "de";
@@ -985,7 +1117,8 @@
         github_url: $("githubUrl").value.trim() || null,
         portfolio_url: $("portfolioUrl").value.trim() || null,
         career_goal: $("careerGoal").value.trim() || null,
-        target_roles: csv("targetRoles"),
+        target_roles: readTargetRoleRows().map(item => item.role),
+        target_role_preferences: readTargetRoleRows(),
         target_industries: csv("targetIndustries"),
         target_locations: csv("targetLocations"),
         preferred_work_models: selectedValues("preferredWorkModels"),

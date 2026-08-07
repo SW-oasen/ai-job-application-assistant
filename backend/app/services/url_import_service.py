@@ -7,6 +7,11 @@ from app.database.repositories.jobs import persist_imported_job
 from app.importers.http_importer import HttpImporter
 from app.importers.playwright_importer import PlaywrightImporter
 from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_seniority import (
+    ensure_seniority_requirement,
+    extract_job_seniority,
+)
+from app.parsers.job_role import extract_job_role
 from app.parsers.job_structure import extract_job_structure
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import UrlImportRequest, UrlImportResponse
@@ -100,7 +105,10 @@ def _build_response(
         title=document.title,
         minimum_length=settings.url_import_min_text_length,
     )
-    warnings = [*(extra_warnings or []), *quality.warnings]
+    quality_warnings = list(quality.warnings)
+    if document.related_jobs_removed and not quality.sufficient:
+        quality_warnings.append("job_description_not_found")
+    warnings = [*(extra_warnings or []), *quality_warnings]
     return UrlImportResponse(
         success=True,
         source_url=source_url,
@@ -131,12 +139,15 @@ async def _persist_response(
         source_url=response.source_url,
     )
     structure = extract_job_structure(response.markdown)
+    seniority = extract_job_seniority(response.markdown)
+    job_role = extract_job_role(semantic.metadata.get("title") or response.title, response.markdown)
     reviewed = await review_job_extraction_if_configured(
         content=response.markdown,
         metadata=semantic.metadata,
         activities=structure.activities,
         requirements=structure.requirements,
     )
+    requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -154,10 +165,12 @@ async def _persist_response(
         extracted_json={
             "semantic_metadata": semantic.details,
             "activities": reviewed.activities,
-            "requirements": reviewed.requirements,
+            "requirements": requirements,
+            "seniority": seniority,
+            "role": job_role,
         },
         activities=reviewed.activities,
-        requirements=reviewed.requirements,
+        requirements=requirements,
         replace_existing=replace_job_id is not None,
         replace_job_id=replace_job_id,
     )

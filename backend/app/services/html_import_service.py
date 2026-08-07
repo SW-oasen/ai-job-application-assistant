@@ -8,6 +8,11 @@ from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.database.repositories.jobs import persist_imported_job
 from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_seniority import (
+    ensure_seniority_requirement,
+    extract_job_seniority,
+)
+from app.parsers.job_role import extract_job_role
 from app.parsers.job_structure import extract_job_structure
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import HtmlImportResponse
@@ -82,6 +87,9 @@ async def import_html_content(
         title=document.title,
         minimum_length=settings.url_import_min_text_length,
     )
+    warnings = list(quality.warnings)
+    if document.related_jobs_removed and not quality.sufficient:
+        warnings.append("job_description_not_found")
     response = HtmlImportResponse(
         success=quality.sufficient,
         filename=filename,
@@ -89,7 +97,7 @@ async def import_html_content(
         markdown=document.markdown,
         text_length=quality.text_length,
         content_hash=content_hash or hashlib.sha256(encoded).hexdigest(),
-        warnings=quality.warnings,
+        warnings=warnings,
     )
     if not quality.sufficient:
         return response
@@ -100,12 +108,15 @@ async def import_html_content(
         source_filename=filename,
     )
     structure = extract_job_structure(document.markdown)
+    seniority = extract_job_seniority(document.markdown)
+    job_role = extract_job_role(semantic.metadata.get("title") or document.title, document.markdown)
     reviewed = await review_job_extraction_if_configured(
         content=document.markdown,
         metadata=semantic.metadata,
         activities=structure.activities,
         requirements=structure.requirements,
     )
+    requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     response.warnings.extend(
         warning for warning in semantic.warnings if warning not in response.warnings
     )
@@ -123,10 +134,12 @@ async def import_html_content(
         extracted_json={
             "semantic_metadata": semantic.details,
             "activities": reviewed.activities,
-            "requirements": reviewed.requirements,
+            "requirements": requirements,
+            "seniority": seniority,
+            "role": job_role,
         },
         activities=reviewed.activities,
-        requirements=reviewed.requirements,
+        requirements=requirements,
     )
     response.job_id = persisted.job_id
     response.duplicate = persisted.duplicate

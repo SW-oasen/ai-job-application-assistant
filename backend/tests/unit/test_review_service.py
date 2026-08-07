@@ -1,8 +1,16 @@
+import json
+from datetime import datetime, timezone
+from uuid import uuid4
+
 import pytest
 
 from app.core.config import ReviewWorkflowSettings
 from app.core.errors import ApplicationError
-from app.services.review_service import ReviewService
+from app.services.review_service import (
+    ReviewService,
+    _normalize_review_confidences,
+    _serialize_workflow_input,
+)
 
 
 def _workflow() -> ReviewWorkflowSettings:
@@ -12,6 +20,28 @@ def _workflow() -> ReviewWorkflowSettings:
         workflow_version="workflow-v1",
         prompt_version="prompt-v1",
     )
+
+
+def test_serialize_workflow_input_normalizes_datetime_and_uuid() -> None:
+    identifier = uuid4()
+    timestamp = datetime(2026, 8, 2, 15, 44, 52, tzinfo=timezone.utc)
+
+    result = json.loads(
+        _serialize_workflow_input({"id": identifier, "updated_at": timestamp})
+    )
+
+    assert result == {"id": str(identifier), "updated_at": "2026-08-02T15:44:52+00:00"}
+
+
+def test_normalize_review_confidences_converts_percentages_to_fractions() -> None:
+    result = _normalize_review_confidences(
+        {"overall_confidence": 85, "field_confidence": {"matches": 90, "fit": 0.8}}
+    )
+
+    assert result == {
+        "overall_confidence": 0.85,
+        "field_confidence": {"matches": 0.9, "fit": 0.8},
+    }
 
 
 def test_normalize_review_result_adds_configured_metadata() -> None:

@@ -375,6 +375,7 @@ class Profile(TimestampMixin, Base):
     portfolio_url: Mapped[str | None] = mapped_column(String(2048))
     career_goal: Mapped[str | None] = mapped_column(Text)
     target_roles: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    target_role_preferences: Mapped[list[dict]] = mapped_column(JSONB, default=list)
     target_industries: Mapped[list[str]] = mapped_column(JSONB, default=list)
     target_locations: Mapped[list[str]] = mapped_column(JSONB, default=list)
     preferred_work_models: Mapped[list[str]] = mapped_column(JSONB, default=list)
@@ -411,6 +412,9 @@ class Skill(TimestampMixin, Base):
     localizations: Mapped[list["SkillLocalization"]] = relationship(
         cascade="all, delete-orphan"
     )
+    evidence_links: Mapped[list["SkillEvidence"]] = relationship(
+        back_populates="skill", cascade="all, delete-orphan"
+    )
 
 
 class SkillLocalization(LocalizedTextMixin, Base):
@@ -419,6 +423,33 @@ class SkillLocalization(LocalizedTextMixin, Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     skill_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"))
+
+
+class SkillEvidence(TimestampMixin, Base):
+    """A concrete, auditable use of one skill in a profile resource.
+
+    ``source_resource_id`` intentionally is polymorphic: it may point to a work
+    experience, portfolio project, certificate, education entry, or be empty
+    for a manually documented training item.
+    """
+
+    __tablename__ = "skill_evidence"
+    __table_args__ = (
+        UniqueConstraint(
+            "skill_id", "source_resource_type", "source_resource_id",
+            name="uq_skill_evidence_source",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    skill_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
+    source_resource_type: Mapped[str] = mapped_column(String(30))
+    source_resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    experience_context: Mapped[str] = mapped_column(String(30))
+    evidence_text: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+
+    skill: Mapped["Skill"] = relationship(back_populates="evidence_links")
 
 
 class WorkExperience(TimestampMixin, Base):

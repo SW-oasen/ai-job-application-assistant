@@ -67,6 +67,42 @@ def test_target_fit_detects_structured_freelance_conflict() -> None:
     assert result["exclusions"][0]["status"] == "conflict"
 
 
+def test_target_fit_uses_activity_concepts_and_seniority() -> None:
+    job = SimpleNamespace(
+        title="Data Science & Machine Learning Engineer",
+        location="Berlin",
+        work_model=None,
+        employment_type="Angestellte/r",
+        normalized_content="Machine Learning und Datenanalyse",
+        extracted_json={
+            "seniority": {
+                "level": "junior",
+                "confidence": 0.95,
+                "years_required": None,
+                "signals": ["erste Berufserfahrung"],
+            }
+        },
+    )
+    profile = SimpleNamespace(
+        career_goal="Machine Learning, Datenanalyse, Prozessautomatisierung und KI-Anwendungsentwicklung",
+        target_roles=["Data Scientist", "Machine Learning Engineer"],
+        target_industries=[],
+        target_locations=["Berlin"],
+        preferred_work_models=[],
+        preferred_employment_types=["permanent"],
+        deal_breakers=[],
+    )
+    activities = [
+        SimpleNamespace(activity_text="Data Science, Machine Learning und Softwareentwicklung von Prototypen")
+    ]
+
+    result = _evaluate_target_fit(job, None, profile, activities, profile_seniority_years=4)
+
+    assert result["level"] == "strong"
+    assert next(item for item in result["criteria"] if item["key"] == "seniority")["status"] == "unknown"
+    assert next(item for item in result["criteria"] if item["key"] == "employment_type")["status"] == "unknown"
+
+
 def test_qualification_fit_weights_must_requirements_more_strongly() -> None:
     result = _qualification_fit(
         [
@@ -111,7 +147,7 @@ def test_qualification_fit_without_requirements_is_unknown() -> None:
     assert result["level"] == "unknown"
 
 
-def test_seniority_requirement_matches_skill_years() -> None:
+def test_seniority_requirement_does_not_use_unlinked_skill_years() -> None:
     result = _evaluate(
         "seniority-1",
         "Mindestens 3 Jahre Berufserfahrung",
@@ -134,25 +170,24 @@ def test_seniority_requirement_matches_skill_years() -> None:
         normalized_value="min_years:3",
     )
 
-    assert result.match_level == "strong_match"
-    assert "4 Jahre" in result.explanation
+    assert result.match_level == "unknown"
 
 
-def test_seniority_requirement_reports_gap_for_insufficient_skill_years() -> None:
+def test_seniority_requirement_without_skill_scope_remains_unknown() -> None:
     result = _evaluate(
         "seniority-2",
-        "Mindestens 5 Jahre Berufserfahrung",
+        "Mindestens 5 Jahre Python Berufserfahrung",
         set(),
         [
             StoredEvidence(
                 evidence_id="skill-2",
                 item=EvidenceInput(
-                    source_name="profile:skill:2",
+                    source_name="profile:skill-evidence:2",
                     source_type="manual",
                     source_content='{"canonical_name":"Python","years_experience":2}',
                     label="Python",
                     evidence_text="Skill: Python; Jahre: 2",
-                    experience_context="other",
+                    experience_context="professional",
                     keywords=["Python"],
                 ),
             )
@@ -161,8 +196,7 @@ def test_seniority_requirement_reports_gap_for_insufficient_skill_years() -> Non
         normalized_value="min_years:5",
     )
 
-    assert result.match_level == "gap"
-    assert "2 Jahre" in result.explanation
+    assert result.match_level == "unknown"
 
 
 def test_seniority_requirement_is_detected_in_english_legacy_text() -> None:

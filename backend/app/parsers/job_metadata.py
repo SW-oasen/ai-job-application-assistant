@@ -71,14 +71,38 @@ def _clean_line(line: str) -> str:
 def _clean_title(title: str | None) -> str | None:
     if not title:
         return None
-    value = _clean_line(title)
+    value = _clean_line(title).lstrip("#").strip()
     value = re.sub(
         r"^Al(?=\s+(?:Engineer|Scientist|Developer|Researcher)\b)",
         "AI",
         value,
         flags=re.IGNORECASE,
     )
+    # Portal badge, not part of the actual job title. Only strip it at the
+    # title boundaries so a legitimate internal word remains untouched.
+    value = re.sub(r"^(?:\[?NEU\]?\s*[-|·:]?\s+)|(?:\s*[-|·:]?\s*\[?NEU\]?)$", "", value, flags=re.IGNORECASE)
     return value or None
+
+
+def _main_heading(content: str) -> str | None:
+    match = re.search(r"(?m)^\s*#\s+(.+?)\s*$", content)
+    return _clean_title(match.group(1)) if match else None
+
+
+def _join_company(content: str, source_url: str | None) -> str | None:
+    if not source_url or not re.search(
+        r"https?://(?:www\.)?join\.com/",
+        source_url,
+        re.IGNORECASE,
+    ):
+        return None
+    match = re.search(
+        r"(?is)\[\s*(?:!\[[^\]]*\]\([^)]+\)\s*)*"
+        r"([^\[\]\r\n]{2,200}?)\s*\]"
+        r"\(https?://(?:www\.)?join\.com/companies/[^)]+\)",
+        content,
+    )
+    return _clean_line(match.group(1)) if match else None
 
 
 def _normalized_heading(line: str) -> str:
@@ -127,6 +151,16 @@ def _value_before_heading(content: str, headings: set[str]) -> str | None:
             if value and not value.startswith("#") and value != "&nbsp;":
                 return value
     return None
+
+
+def _map_link_location(content: str) -> str | None:
+    """Extract a location label from job portals' Google Maps links."""
+    match = re.search(
+        r"\[([^\]\r\n]{2,150})\]\(https?://(?:www\.)?google\.[^/\s]+/maps/[^)\r\n]+\)",
+        content,
+        re.IGNORECASE,
+    )
+    return _clean_line(match.group(1)) if match else None
 
 
 def _plain_pdf_header(content: str) -> tuple[str | None, str | None]:
@@ -252,10 +286,24 @@ def _company_below_main_title(content: str) -> str | None:
                 break
             if _normalized_heading(value) in non_company_values:
                 continue
+            if "," in value or re.fullmatch(r"[A-Z][A-Za-z .'-]{2,40}", value) and value.casefold() in {"berlin", "munich", "münchen", "hamburg", "cologne", "köln"}:
+                continue
             if len(value) <= 200 and not re.match(r"^(https?://|www\.)", value):
                 return value
         break
     return None
+
+
+def _company_from_brand_link(content: str) -> str | None:
+    """Extract a company name from a logo/brand link near the job header."""
+    match = re.search(
+        r"(?im)^\s*\[!\[([^\]\r\n]+?)\]\([^)]*\)\]\([^)]*\)\s*$",
+        content,
+    )
+    if not match:
+        return None
+    label = re.sub(r"\s+logo\s*$", "", match.group(1), flags=re.IGNORECASE).strip()
+    return label if label and len(label) <= 120 else None
 
 
 def _instaffo_metadata(content: str) -> dict[str, str | None]:
@@ -326,8 +374,9 @@ def extract_job_metadata(
     else:
         work_model = None
     plain_title, plain_company = _plain_pdf_header(content)
-    company = instaffo.get("company") or (
+    company = instaffo.get("company") or _join_company(content, source_url) or (
         first_metadata_match(content, COMPANY_PATTERNS)
+        or _company_from_brand_link(content)
         or _company_below_main_title(content)
         or _section_value(content, {"informationen", "information", "company information"})
         or compact["company"]
@@ -345,7 +394,7 @@ def extract_job_metadata(
     ) or _value_before_heading(
         content,
         {"bürostandorte", "standorte", "office locations"},
-    ) or compact["location"]
+    ) or compact["location"] or _map_link_location(content)
     if location and re.match(
         r"^\d+\s*(?:min(?:ute)?n?|stunden?|hours?)\s+ab\b",
         location,
@@ -388,7 +437,10 @@ def extract_job_metadata(
     )
     return {
         "title": _clean_title(
-            instaffo.get("title") or compact["title"] or plain_title
+            instaffo.get("title")
+            or compact["title"]
+            or plain_title
+            or _main_heading(content)
         ),
         "company": company,
         "published_text": first_metadata_match(content, PUBLISHED_TEXT_PATTERNS),

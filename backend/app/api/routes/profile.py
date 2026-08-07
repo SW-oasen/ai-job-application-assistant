@@ -3,7 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 
 from app.core.config import get_settings
 from app.core.errors import ApplicationError
@@ -27,6 +27,8 @@ from app.schemas.profile import (
     ReferenceCreate,
     ReferenceUpdate,
     SkillCreate,
+    SkillEvidenceCreate,
+    SkillEvidenceUpdate,
     SkillUpdate,
     WorkExperienceCreate,
     WorkExperienceUpdate,
@@ -44,22 +46,24 @@ from app.services.dify_cv_service import import_cv_pdf_with_dify
 from app.services.profile_service import (
     create_profile,
     create_resource,
+    create_skill_evidence,
     delete_resource,
+    delete_skill_evidence,
     get_profile,
     list_profiles,
     list_resources,
     list_revisions,
+    list_skill_evidence,
     update_profile,
     update_resource,
+    update_skill_evidence,
 )
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
-ADMIN_PAGE = Path(__file__).resolve().parents[2] / "static" / "profile-admin.html"
-
-
 @router.get("/admin", include_in_schema=False)
-async def profile_admin() -> FileResponse:
-    return FileResponse(ADMIN_PAGE)
+async def profile_admin() -> RedirectResponse:
+    """Retire the former standalone editor in favour of /manage."""
+    return RedirectResponse(url="/manage", status_code=308)
 
 
 @router.get("")
@@ -195,6 +199,29 @@ async def create_skill(profile_id: UUID, payload: SkillCreate) -> dict:
 @router.patch("/{profile_id}/skills/{item_id}")
 async def update_skill(profile_id: UUID, item_id: UUID, payload: SkillUpdate) -> dict:
     return await update_resource(profile_id, "skills", item_id, payload)
+
+
+@router.get("/{profile_id}/skill-evidence")
+async def get_skill_evidence(profile_id: UUID) -> list[dict]:
+    return await list_skill_evidence(profile_id)
+
+
+@router.post("/{profile_id}/skill-evidence")
+async def create_profile_skill_evidence(profile_id: UUID, payload: SkillEvidenceCreate) -> dict:
+    return await create_skill_evidence(profile_id, payload)
+
+
+@router.patch("/{profile_id}/skill-evidence/{item_id}")
+async def update_profile_skill_evidence(
+    profile_id: UUID, item_id: UUID, payload: SkillEvidenceUpdate
+) -> dict:
+    return await update_skill_evidence(profile_id, item_id, payload)
+
+
+@router.delete("/{profile_id}/skill-evidence/{item_id}", status_code=204)
+async def delete_profile_skill_evidence(profile_id: UUID, item_id: UUID) -> Response:
+    await delete_skill_evidence(profile_id, item_id)
+    return Response(status_code=204)
 
 
 @router.get("/{profile_id}/experiences")
