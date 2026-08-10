@@ -1,4 +1,12 @@
 services:
+  chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma-data:/data
+    networks:
+      - ai-services
+    restart: unless-stopped
+
   application-assistant-backend:
     build:
       context: ./backend
@@ -11,6 +19,8 @@ services:
       APP_PORT: 8080
       DATABASE_URL: "${DATABASE_URL:-}"
       APPLICATION_DOCUMENTS_PATH: /app/data/application-documents
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
     volumes:
@@ -36,3 +46,4 @@ networks:
 
 volumes:
   application-documents:
+  chroma-data:

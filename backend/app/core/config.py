@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     mineru_backend: Literal["pipeline", "hybrid-engine"] = "pipeline"
 
     database_url: str | None = None
+    embedding_provider: str = "disabled"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimension: int = Field(default=1536, ge=1, le=8192)
+    embedding_base_url: str = "https://api.openai.com/v1"
+    embedding_api_key: SecretStr | None = None
+    chroma_host: str = "chromadb"
+    chroma_port: int = Field(default=8000, ge=1, le=65535)
+    chroma_collection: str = "profile-evidence"
     redis_url: RedisDsn | None = None
 
     url_import_timeout_seconds: float = 30

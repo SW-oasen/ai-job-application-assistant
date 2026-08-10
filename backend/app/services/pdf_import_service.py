@@ -21,6 +21,7 @@ from app.parsers.job_seniority import (
 )
 from app.parsers.job_role import extract_job_role
 from app.parsers.job_structure import extract_job_structure
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.schemas.imports import PdfImportResponse
 from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
@@ -129,7 +130,7 @@ async def _persist_response(
         response.markdown,
         source_filename=response.filename,
     )
-    structure = extract_job_structure(response.markdown)
+    structure = await extract_job_structure_hybrid(response.markdown)
     seniority = extract_job_seniority(response.markdown)
     job_role = extract_job_role(semantic.metadata.get("title"), response.markdown)
     reviewed = await review_job_extraction_if_configured(

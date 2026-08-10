@@ -14,6 +14,7 @@ from app.parsers.job_seniority import (
 )
 from app.parsers.job_role import extract_job_role
 from app.parsers.job_structure import extract_job_structure
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import HtmlImportResponse
 from app.services.job_extraction_review_integration import (
@@ -107,7 +108,7 @@ async def import_html_content(
         source_url=source_url,
         source_filename=filename,
     )
-    structure = extract_job_structure(document.markdown)
+    structure = await extract_job_structure_hybrid(document.markdown)
     seniority = extract_job_seniority(document.markdown)
     job_role = extract_job_role(semantic.metadata.get("title") or document.title, document.markdown)
     reviewed = await review_job_extraction_if_configured(

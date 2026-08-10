@@ -11,6 +11,7 @@ pydantic-settings>=2.7,<3
 psycopg[binary]>=3.2,<4
 pymupdf>=1.26,<2
 pypdf>=5.4,<7
+chromadb>=1,<2
 python-multipart>=0.0.20,<1
 sqlalchemy>=2.0,<3
 uvicorn[standard]>=0.34,<1

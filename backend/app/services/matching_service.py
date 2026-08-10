@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -27,6 +28,13 @@ from app.database.models import (
     WorkExperience,
 )
 from app.database.session import get_session_factory
+from app.core.config import get_settings
+from app.services.embedding_service import (
+    build_evidence_embedding_text,
+    build_requirement_embedding_text,
+    create_embedding_provider,
+)
+from app.services.hybrid_search import ChromaEvidenceStore
 from app.parsers.job_metadata import (
     COMPANY_PATTERNS,
     extract_job_metadata,
@@ -524,6 +532,7 @@ def _evaluate(
     category: str = "",
     keyword_terms: set[str] | None = None,
     normalized_value: str | None = None,
+    semantic_candidate_ids: set[str] | None = None,
 ) -> RequirementMatchResponse:
     keyword_terms = keyword_terms or set()
     minimum_years = _minimum_years(requirement, normalized_value)
@@ -554,6 +563,10 @@ def _evaluate(
         overlap = requirement_terms & evidence_terms
         if overlap:
             scored.append((len(overlap) / len(requirement_terms), stored, overlap))
+        elif semantic_candidate_ids and stored.evidence_id in semantic_candidate_ids:
+            # Retrieval only establishes relevance; with no lexical proof this
+            # candidate can never become a direct/strong match.
+            scored.append((0.0, stored, set()))
     scored.sort(
         key=lambda pair: (pair[0] * _evidence_weight(pair[1]), _evidence_weight(pair[1])),
         reverse=True,
@@ -596,6 +609,7 @@ def _evaluate(
     has_direct_keyword = any(
         bool(overlap & keyword_terms) for _, _, overlap in scored
     )
+    has_semantic_candidate = any(not overlap for _, _, overlap in scored)
     has_alternatives = bool(re.search(r"\b(or|oder)\b", requirement, re.IGNORECASE))
     alternative_anchors = _alternative_anchor_terms(requirement)
     has_professional_alternative = has_alternatives and any(
@@ -606,6 +620,7 @@ def _evaluate(
     if (
         not relevant
         and not has_professional_alternative
+        and not has_semantic_candidate
         and aggregate_score < 0.35
     ):
         if is_soft_skill:
@@ -640,6 +655,26 @@ def _evaluate(
         )
     if not relevant:
         relevant = [stored for _, stored, _ in scored]
+    if has_semantic_candidate and aggregate_score == 0:
+        cited = [
+            MatchEvidence(
+                evidence_id=stored.evidence_id,
+                source_name=stored.item.source_name,
+                label=stored.item.label,
+                evidence_text=stored.item.evidence_text,
+                experience_context=stored.item.experience_context,
+            )
+            for stored in relevant[:3]
+        ]
+        return RequirementMatchResponse(
+            requirement_id=requirement_id,
+            requirement=requirement,
+            match_level="transferable",
+            evidence=cited,
+            explanation="Semantisch verwandte Evidence wurde gefunden, belegt die konkrete Anforderung aber nicht explizit.",
+            recommended_action="Nur als übertragbare Erfahrung darstellen; die konkrete Kompetenz separat nachweisen.",
+            confidence=0.45,
+        )
     has_professional = any(
         stored.item.experience_context == "professional" for stored in relevant
     )
@@ -739,6 +774,11 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
         )
 
     async with session_factory() as session:
+        embedding_provider = create_embedding_provider(get_settings())
+        chroma_store = None
+        if embedding_provider is not None:
+            settings = get_settings()
+            chroma_store = ChromaEvidenceStore(host=settings.chroma_host, port=settings.chroma_port, collection_name=settings.chroma_collection)
         job = await session.scalar(select(Job).where(Job.id == payload.job_id))
         if job is None:
             raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
@@ -785,6 +825,7 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                     source_type=item.source_type,
                     content=item.source_content,
                     content_hash=content_hash,
+                    source_metadata={"profile_id": str(payload.profile_id)} if payload.profile_id else None,
                 )
                 session.add(source)
                 await session.flush()
@@ -805,6 +846,14 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                 )
                 session.add(evidence_row)
                 await session.flush()
+            if embedding_provider is not None and chroma_store is not None:
+                text = build_evidence_embedding_text(
+                    label=item.label,
+                    evidence_text=item.evidence_text,
+                    source_name=item.source_name,
+                )
+                vector = await asyncio.to_thread(embedding_provider.embed_text, text)
+                await asyncio.to_thread(chroma_store.upsert, evidence_id=str(evidence_row.id), profile_id=str(payload.profile_id), embedding=vector, document=text, model=embedding_provider.model)
             stored_evidence.append(StoredEvidence(item=item, evidence_id=str(evidence_row.id)))
 
         # A fresh extraction may intentionally omit requirements that an older
@@ -838,6 +887,15 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                 session.add(requirement)
                 await session.flush()
 
+            semantic_candidate_ids: set[str] = set()
+            if embedding_provider is not None and chroma_store is not None and payload.profile_id:
+                requirement_vector = await asyncio.to_thread(
+                    embedding_provider.embed_text,
+                    build_requirement_embedding_text(item.requirement),
+                )
+                semantic_candidates = await asyncio.to_thread(chroma_store.query, profile_id=str(payload.profile_id), embedding=requirement_vector, top_k=10)
+                semantic_candidate_ids = {str(candidate.evidence_id) for candidate in semantic_candidates}
+
             result = _evaluate(
                 str(requirement.id),
                 item.requirement,
@@ -846,6 +904,7 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                 category=item.category,
                 keyword_terms=_terms("", item.keywords),
                 normalized_value=item.normalized_value,
+                semantic_candidate_ids=semantic_candidate_ids,
             )
             session.add(
                 RequirementMatch(
@@ -1006,6 +1065,19 @@ async def get_matching_job(job_id) -> dict:
             "content": job.normalized_content,
             "content_html": render_safe_markdown(job.normalized_content),
         }
+
+
+async def get_original_job_html(job_id) -> dict:
+    session_factory = get_session_factory()
+    if session_factory is None:
+        raise ApplicationError("Database is not configured.", code="database_not_configured", status_code=503)
+    async with session_factory() as session:
+        job = await session.scalar(select(Job).where(Job.id == job_id))
+        if job is None:
+            raise ApplicationError("Job not found.", code="job_not_found", status_code=404)
+        if job.source_type not in {"html", "url"}:
+            raise ApplicationError("Original HTML is only available for HTML and URL imports.", code="original_html_not_available", status_code=404)
+        return {"source_type": job.source_type, "raw_content": job.raw_content or ""}
 
 
 async def update_job_metadata(job_id, payload: JobMetadataUpdate) -> dict:

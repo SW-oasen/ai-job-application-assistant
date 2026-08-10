@@ -20,13 +20,22 @@ ACTIVITY_CONTEXT_HEADINGS = re.compile(
     r"\bdeine aufgaben\b|\?bernehmen sie\b|\bdu wirst\b|\bsie werden\b)",
     re.IGNORECASE,
 )
+INLINE_ACTIVITY_CONTEXT = re.compile(
+    r"\b(?:zu\s+(?:ihren|deinen)\s+aufgaben\s+(?:z[aä]hlen|geh[oö]ren)|"
+    r"sie\s+sind\s+verantwortlich\s+f[uü]r)\b",
+    re.IGNORECASE,
+)
+INLINE_REQUIREMENT_CONTEXT = re.compile(
+    r"^\s*(?:sie\s+(?:verf[uü]gen|haben|besitzen)|weiterhin\s+verf[uü]gen)\b",
+    re.IGNORECASE,
+)
 REQUIREMENT_HEADINGS = re.compile(
     r"\b("
-    r"anforderungen|qualifikationen|kompetenz\w*|profil|das bringst du mit|"
+    r"anforderungen|qualifikation(?:en)?|kompetenz\w*|profil|das bringst du mit|"
     r"das zeichnet dich aus|ihr profil|"
     r"requirements|qualifications|what you bring|your profile|"
     r"skills?\s*[+&]\s*education|skills?|education"
-    r"what we(?:'|’)re looking for|about you|who you are|"
+    r"what we(?:'|’)re looking for|what you need to be successful|about you|who you are|"
     r"what you(?:'|’)ll bring|must[- ]haves?|skills (?:and|&) experience"
     r")\b",
     re.IGNORECASE,
@@ -112,6 +121,10 @@ def _clean_item(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip(" \t:;,.")
 
 
+def _clean_heading(value: str) -> str:
+    return _clean_item(re.sub(r"(?:\*\*|__)", "", value))
+
+
 def _join_list_continuations(content: str) -> list[str]:
     """Join indented Markdown continuation lines with their list item.
 
@@ -194,9 +207,12 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
     seen: dict[str, set[str]] = {"activity": set(), "requirement": set(), "benefit": set()}
 
     for raw_line in _join_list_continuations(content):
+        # Some HTML-to-Markdown converters render section headings and list
+        # items inside blockquotes (e.g. ``> ## Qualifikation``).
+        raw_line = re.sub(r"^\s*>\s?", "", raw_line)
         heading_match = HEADING_PATTERN.match(raw_line)
         if heading_match:
-            heading = _clean_item(heading_match.group(1))
+            heading = _clean_heading(heading_match.group(1))
             # Benefits win for combined headings such as "Aufgaben & Benefits".
             if BENEFIT_HEADINGS.search(heading):
                 section = "benefit"
@@ -209,7 +225,7 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
             continue
         bold_heading_match = BOLD_HEADING_PATTERN.match(raw_line)
         if bold_heading_match:
-            candidate_heading = _clean_item(bold_heading_match.group("heading"))
+            candidate_heading = _clean_heading(bold_heading_match.group("heading"))
             if BENEFIT_HEADINGS.search(candidate_heading):
                 heading = candidate_heading
                 section = "benefit"
@@ -227,6 +243,21 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
             section = None
             heading = candidate_heading
         if section is None:
+            if INLINE_ACTIVITY_CONTEXT.search(raw_line):
+                section = "activity"
+                heading = _clean_item(raw_line)
+                continue
+            if INLINE_REQUIREMENT_CONTEXT.search(raw_line):
+                section = "requirement"
+                heading = _clean_item(raw_line)
+            elif (item_match := LIST_ITEM_PATTERN.match(raw_line)) and INLINE_REQUIREMENT_CONTEXT.search(item_match.group(1)):
+                section = "requirement"
+                heading = ""
+            else:
+                continue
+        elif INLINE_REQUIREMENT_CONTEXT.search(raw_line):
+            section = "requirement"
+            heading = _clean_item(raw_line)
             continue
         item_match = LIST_ITEM_PATTERN.match(raw_line)
         if not item_match:

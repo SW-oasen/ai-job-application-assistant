@@ -6,6 +6,15 @@ Die Kernanwendung läuft unabhängig von Dify und MinerU: Dify übernimmt
 ausgewählte LLM-Workflows, MinerU dient als OCR- und Layout-Fallback für
 schwierige PDFs.
 
+## Hybrid Search
+
+Das Requirement–Evidence-Matching kann zusätzlich semantische Kandidaten über
+ChromaDB finden. PostgreSQL bleibt für Profildaten und Matching-Ergebnisse
+zuständig; die Embeddings liegen separat im persistenten Volume `chroma-data`.
+
+Details zu Konfiguration, Betrieb und Datenfluss stehen in
+[`docs/chroma-hybrid-search.md`](docs/chroma-hybrid-search.md).
+
 ## Warum dieses Projekt entstanden ist
 
 Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen bewerbe. Sie wird täglich im realen Bewerbungsprozess eingesetzt und kontinuierlich anhand praktischer Erfahrungen erweitert. Neue Funktionen entstehen aus konkreten Anforderungen während der Nutzung – beispielsweise die Browser-Bridge für den direkten Import von Stellenanzeigen oder die Verwaltung des Bewerbungsverlaufs inklusive Archivierung der tatsächlich versendeten Unterlagen.

@@ -13,6 +13,7 @@ from app.parsers.job_seniority import (
 )
 from app.parsers.job_role import extract_job_role
 from app.parsers.job_structure import extract_job_structure
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import UrlImportRequest, UrlImportResponse
 from app.services.job_extraction_review_integration import (
@@ -138,7 +139,7 @@ async def _persist_response(
         response.markdown,
         source_url=response.source_url,
     )
-    structure = extract_job_structure(response.markdown)
+    structure = await extract_job_structure_hybrid(response.markdown)
     seniority = extract_job_seniority(response.markdown)
     job_role = extract_job_role(semantic.metadata.get("title") or response.title, response.markdown)
     reviewed = await review_job_extraction_if_configured(

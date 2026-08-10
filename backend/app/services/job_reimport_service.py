@@ -10,6 +10,7 @@ from app.parsers.job_seniority import (
     extract_job_seniority,
 )
 from app.parsers.job_structure import extract_job_structure
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.schemas.imports import JobReimportResponse, UrlImportRequest
 from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
@@ -65,7 +66,7 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         source_filename=source.source_filename,
         source_url=source.source_url,
     )
-    structure = extract_job_structure(source.normalized_content)
+    structure = await extract_job_structure_hybrid(source.normalized_content)
     seniority = extract_job_seniority(source.normalized_content)
     reviewed = await review_job_extraction_if_configured(
         content=source.normalized_content,

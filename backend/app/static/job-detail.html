@@ -145,6 +145,12 @@
       <p class="reference-hint">Dieser geparste Text dient als Referenz für die erkannten strukturierten Daten.</p>
       <div class="content" id="content"></div>
     </details>
+    <details class="panel section reference-details hidden" id="originalHtmlSection">
+      <summary>Urspr&uuml;ngliche Jobanzeige in HTML</summary>
+      <p class="reference-hint">Die beim Import gespeicherte Originalversion der Jobanzeige.</p>
+      <p class="warning" id="originalHtmlStatus" role="status" aria-live="polite"></p>
+      <iframe id="originalHtml" title="Urspr&uuml;ngliche Jobanzeige in HTML" sandbox="allow-same-origin" style="width:100%;min-height:600px;border:1px solid var(--line);border-radius:8px;background:#fff"></iframe>
+    </details>
   </main>
   <script>
     const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
@@ -161,6 +167,7 @@
     const reviewStatusLabels={pending:"Ausstehend",accepted:"Freigegeben",corrected:"Korrigiert",retry_requested:"Wiederholung angefordert",manual_review_required:"Manuelle Prüfung erforderlich",failed:"Fehlgeschlagen"};
     const reviewDecisionLabels={accept:"Original übernommen",correct:"Korrektur übernommen",retry:"Wiederholung",manual_review:"Manuelle Prüfung"};
     let currentJob=null,currentApplication=null,editingEventId=null,currentEvents=[],currentFiles=[];
+    let originalLoaded=false,originalLoading=false,originalHtml="",originalError="";
     async function request(url,options={}){
       const response=await fetch(url,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
       const data=await response.json().catch(()=>({}));
@@ -169,6 +176,14 @@
     }
     function localNow(){const date=new Date(),offset=date.getTimezoneOffset()*60000;return new Date(date-offset).toISOString().slice(0,16)}
     function localDateTime(value){if(!value)return localNow();const date=new Date(value),offset=date.getTimezoneOffset()*60000;return new Date(date-offset).toISOString().slice(0,16)}
+    async function loadOriginalHtml(){
+      if(originalLoaded||originalLoading)return;
+      originalLoading=true;originalError="";
+      document.getElementById("originalHtmlStatus").textContent="Originalanzeige wird geladen …";
+      try{const data=await request(`/jobs/${encodeURIComponent(jobId)}/original-html`);originalHtml=data.raw_content||"";originalLoaded=true;document.getElementById("originalHtml").srcdoc=originalHtml;document.getElementById("originalHtmlStatus").textContent=""}
+      catch(error){originalError=error.message;document.getElementById("originalHtmlStatus").textContent=`Fehler beim Laden: ${error.message}`}
+      finally{originalLoading=false}
+    }
     function syncPortalName(){
       const isJobPortal=document.getElementById("channel").value==="job_portal";
       document.getElementById("portalNameField").classList.toggle("hidden",!isJobPortal);
@@ -490,6 +505,10 @@
         document.getElementById("metadataPublishedAt").value=data.published_at||"";
         document.getElementById("metadataDeadline").value=data.deadline||"";
         document.getElementById("content").innerHTML=data.content_html||"<p>Kein Inhalt gespeichert.</p>";
+        const originalHtmlSection=document.getElementById("originalHtmlSection");
+        const hasOriginalHtml=data.source_type==="html"||data.source_type==="url";
+        document.getElementById("referenceSection").classList.toggle("hidden",data.source_type==="html"||data.source_type==="url");
+        originalHtmlSection.classList.toggle("hidden",!hasOriginalHtml);
         renderStructuredDetails(data);
         document.querySelectorAll("#content a").forEach(link=>{link.target="_blank";link.rel="noopener noreferrer"});
         document.getElementById("profile").innerHTML=profiles.map(profile=>`<option value="${profile.id}">${esc(profile.display_name)}</option>`).join("");
@@ -502,6 +521,7 @@
         document.getElementById("content").innerHTML=`<p class="error">${esc(error.message)}</p>`;
       }
     }
+    document.getElementById("originalHtmlSection").addEventListener("toggle",event=>{if(event.target.open)loadOriginalHtml()});
     document.getElementById("applicationForm").onsubmit=async event=>{
       event.preventDefault();
       const eventType=document.getElementById("eventType").value,changesStatus=eventType==="status_change";

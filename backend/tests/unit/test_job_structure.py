@@ -56,7 +56,7 @@ def test_extracts_benefits_separately() -> None:
 
     assert result.activities == []
     assert result.requirements == []
-    assert [item["benefit"] for item in result.benefits] == ["Firmenwagen", "GetrÃ¤nke"]
+    assert [item["benefit"] for item in result.benefits] == ["Firmenwagen", "Getränke"]
 
 
 def test_keeps_benefits_out_of_activities_for_combined_heading() -> None:
@@ -129,6 +129,62 @@ def test_extracts_activities_and_requirements_from_indeed_style_headings() -> No
         "**Own production reliability** by investigating incidents end-to-end",
     ]
     assert len(result.requirements) == 2
+
+
+def test_extracts_requirements_from_what_you_need_to_be_successful_heading() -> None:
+    result = extract_job_structure(
+        "## What you need to be successful\n"
+        "- Experience building data products\n"
+        "- Strong communication skills\n"
+    )
+
+    assert [item["requirement"] for item in result.requirements] == [
+        "Experience building data products",
+        "Strong communication skills",
+    ]
+
+
+def test_extracts_charite_style_inline_activity_and_requirement_sections() -> None:
+    result = extract_job_structure(
+        "Zu Ihren Aufgaben zählen die\n"
+        "- Entwicklung von Data-Science-Modellen\n"
+        "- Durchführung wissenschaftlicher Analysen\n"
+        "Sie verfügen über\n"
+        "- Sehr gute Kenntnisse in Python\n"
+        "- Erfahrung mit Machine Learning\n"
+    )
+
+    assert [item["activity"] for item in result.activities] == [
+        "Entwicklung von Data-Science-Modellen",
+        "Durchführung wissenschaftlicher Analysen",
+    ]
+    assert [item["requirement"] for item in result.requirements] == [
+        "Sehr gute Kenntnisse in Python",
+        "Erfahrung mit Machine Learning",
+    ]
+
+
+def test_extracts_requirements_from_blockquoted_heading() -> None:
+    result = extract_job_structure(
+        "> ## **Qualifikation**\n"
+        "> - Erfahrung mit Python\n"
+        "> - Kenntnisse in Docker\n"
+    )
+    assert [item["requirement"] for item in result.requirements] == [
+        "Erfahrung mit Python",
+        "Kenntnisse in Docker",
+    ]
+
+
+def test_classifies_bold_markdown_headings() -> None:
+    result = extract_job_structure(
+        "## **Tätigkeiten**\n- Entwicklung von APIs\n"
+        "## **Anforderungen**\n- Erfahrung mit Python\n"
+        "## **Benefits**\n- Flexible Arbeitszeiten\n"
+    )
+    assert [item["activity"] for item in result.activities] == ["Entwicklung von APIs"]
+    assert [item["requirement"] for item in result.requirements] == ["Erfahrung mit Python"]
+    assert [item["benefit"] for item in result.benefits] == ["Flexible Arbeitszeiten"]
 
 
 def test_extracts_activities_from_bold_inline_subheading() -> None:

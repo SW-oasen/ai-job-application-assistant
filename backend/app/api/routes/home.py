@@ -2,6 +2,9 @@ from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
+from uuid import UUID
+
+from app.services.matching_service import get_original_job_html
 
 router = APIRouter(tags=["home"])
 HOME_PAGE = Path(__file__).resolve().parents[2] / "static" / "home.html"
@@ -33,6 +36,11 @@ async def manage_profile() -> FileResponse:
 @router.get("/jobs/{job_id}", include_in_schema=False)
 async def job_detail(job_id: str) -> FileResponse:
     return FileResponse(JOB_PAGE)
+
+
+@router.get("/jobs/{job_id}/original-html")
+async def original_job_html(job_id: UUID) -> dict:
+    return await get_original_job_html(job_id)
 
 
 @router.get("/browser-import", include_in_schema=False)
