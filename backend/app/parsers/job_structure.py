@@ -8,7 +8,7 @@ BOLD_HEADING_PATTERN = re.compile(r"^\s*\*\*(?P<heading>[^*]{2,60})\*\*\s*.{0,80
 LIST_ITEM_PATTERN = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.+?)\s*$")
 ACTIVITY_HEADINGS = re.compile(
     r"\b("
-    r"aufgaben|tätigkeiten|verantwortung|verantwortlichkeiten|"
+    r"aufgaben|tätigkeiten|verantwortung|verantwortlichkeiten|mission|"
     r"(?:deine|ihre) rolle|rolle|ihr aufgabengebiet|das erwartet dich|"
     r"responsibilities|your role|what you(?:'|’)ll do|what you(?:'|’)ll be doing|"
     r"the role|in this (?:position|role)|key responsibilities|day[- ]to[- ]day|what you need to make a difference"
@@ -31,10 +31,10 @@ INLINE_REQUIREMENT_CONTEXT = re.compile(
 )
 REQUIREMENT_HEADINGS = re.compile(
     r"\b("
-    r"anforderungen|qualifikation(?:en)?|kompetenz\w*|profil|das bringst du mit|"
+    r"anforderungen|qualifikation(?:en)?|kompetenz\w*|profil|das bringst du(?:\s+.{0,80})?\s+mit|"
     r"das zeichnet dich aus|ihr profil|"
     r"requirements|qualifications|what you bring|your profile|"
-    r"skills?\s*[+&]\s*education|skills?|education"
+    r"skills?\s*[+&]\s*education|skills?|education|"
     r"what we(?:'|’)re looking for|what you need to be successful|about you|who you are|"
     r"what you(?:'|’)ll bring|must[- ]haves?|skills (?:and|&) experience"
     r")\b",
@@ -122,7 +122,17 @@ def _clean_item(value: str) -> str:
 
 
 def _clean_heading(value: str) -> str:
-    return _clean_item(re.sub(r"(?:\*\*|__)", "", value))
+    value = _clean_item(re.sub(r"(?:\*\*|__)", "", value))
+    # Browser captures can contain UTF-8 decoded once too few (e.g. ``fÃ¼r``).
+    # Repair the heading before applying the language-specific section rules.
+    if any(marker in value for marker in ("Ã", "Â", "â")):
+        try:
+            repaired = value.encode("latin1").decode("utf-8")
+            if repaired:
+                value = repaired
+        except UnicodeError:
+            pass
+    return value
 
 
 def _join_list_continuations(content: str) -> list[str]:

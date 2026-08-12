@@ -437,7 +437,8 @@ def extract_job_metadata(
     )
     return {
         "title": _clean_title(
-            instaffo.get("title")
+            _main_heading(content)
+            or instaffo.get("title")
             or compact["title"]
             or plain_title
             or _main_heading(content)

@@ -15,6 +15,21 @@ zuständig; die Embeddings liegen separat im persistenten Volume `chroma-data`.
 Details zu Konfiguration, Betrieb und Datenfluss stehen in
 [`docs/chroma-hybrid-search.md`](docs/chroma-hybrid-search.md).
 
+Für lokale Embeddings über Ollama werden im `.env` mindestens folgende Werte
+benötigt:
+
+```env
+EMBEDDING_PROVIDER=openai_compatible
+EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1
+EMBEDDING_API_KEY=ollama
+EMBEDDING_MODEL=bge-m3:latest
+EMBEDDING_DIMENSION=1024
+```
+
+`host.docker.internal` ist erforderlich, wenn das Backend in Docker läuft und
+Ollama auf dem Host ausgeführt wird. Ohne aktivierten Provider bleibt das
+lexikalische Matching aktiv.
+
 ## Warum dieses Projekt entstanden ist
 
 Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen bewerbe. Sie wird täglich im realen Bewerbungsprozess eingesetzt und kontinuierlich anhand praktischer Erfahrungen erweitert. Neue Funktionen entstehen aus konkreten Anforderungen während der Nutzung – beispielsweise die Browser-Bridge für den direkten Import von Stellenanzeigen oder die Verwaltung des Bewerbungsverlaufs inklusive Archivierung der tatsächlich versendeten Unterlagen.
@@ -78,7 +93,9 @@ Dokumente gehören nicht in das Repository.
    Copy-Item .env.example .env
    ```
 
-2. In `.env` mindestens `DATABASE_URL` eintragen. Für CV-Import, Matching und
+2. In `.env` mindestens `DATABASE_URL` eintragen. Für lokale semantische
+   Suche zusätzlich Ollama starten, ein Embedding-Modell laden und die
+   `EMBEDDING_*`-Variablen wie oben konfigurieren. Für CV-Import, Matching und
    semantische Job-Metadaten zusätzlich die jeweiligen Dify-API-Schlüssel
    hinterlegen.
 

@@ -249,3 +249,19 @@ def test_keeps_indented_list_item_continuation() -> None:
         "*(z. B. Data Science, Informatik, Mathematik oder vergleichbar)* oder "
         "vergleichbare praktische Erfahrung"
     )
+
+
+def test_repairs_mojibake_in_german_requirement_heading() -> None:
+    result = extract_job_structure(
+        "## Das bringst du im Bereich Functional Test mit\n"
+        "- Abgeschlossenes IT-Studium oder vergleichbare Qualifikation\n"
+    )
+    assert len(result.requirements) == 1
+
+
+def test_extracts_activities_from_mission_heading() -> None:
+    result = extract_job_structure(
+        "### Deine Mission bei uns\n"
+        "- Du konzipierst die Datenplattform\n"
+    )
+    assert result.activities[0]["activity"] == "Du konzipierst die Datenplattform"

@@ -25,6 +25,11 @@ async def extract_job_structure_hybrid(content: str):
     if provider is None:
         return structure
 
+    # A missing or suspiciously small core section usually means that the
+    # deterministic heading parser missed a section boundary. In that case
+    # semantic extraction must reconsider the complete list-item corpus, not
+    # merely the few items left over by the parser.
+    needs_full_semantic_pass = len(structure.activities) <= 2 or len(structure.requirements) <= 2
     known = {
         item.get("evidence") or item.get("activity") or item.get("requirement") or item.get("benefit")
         for items in (structure.activities, structure.requirements, structure.benefits)
@@ -33,7 +38,11 @@ async def extract_job_structure_hybrid(content: str):
     candidates = [
         match.group(1).strip()
         for line in content.splitlines()
-        if (match := LIST_ITEM_PATTERN.match(line)) and match.group(1).strip() not in known
+        if (match := LIST_ITEM_PATTERN.match(line))
+        and (
+            needs_full_semantic_pass
+            or match.group(1).strip() not in known
+        )
     ]
     if not candidates:
         return structure
@@ -53,8 +62,18 @@ async def extract_job_structure_hybrid(content: str):
             additions[category].append({"requirement": text, "category": "other", "priority": "should", "keywords": [], "confidence": round(score, 2), "evidence": text})
         else:
             additions[category].append({"benefit": text, "evidence": text, "confidence": round(score, 2)})
+    def merge(kind: str, existing: list[dict], added: list[dict], key: str) -> list[dict]:
+        result = []
+        seen: set[str] = set()
+        for item in [*existing, *added]:
+            value = str(item.get(key) or item.get("evidence") or "").strip().casefold()
+            if value and value not in seen:
+                seen.add(value)
+                result.append(item)
+        return result
+
     return type(structure)(
-        activities=[*structure.activities, *additions["activity"]][:100],
-        requirements=[*structure.requirements, *additions["requirement"]][:200],
-        benefits=[*structure.benefits, *additions["benefit"]][:100],
+        activities=merge("activity", structure.activities, additions["activity"], "activity")[:100],
+        requirements=merge("requirement", structure.requirements, additions["requirement"], "requirement")[:200],
+        benefits=merge("benefit", structure.benefits, additions["benefit"], "benefit")[:100],
     )

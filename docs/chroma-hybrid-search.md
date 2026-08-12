@@ -10,15 +10,42 @@ Die relevanten Einstellungen sind:
 
 ```env
 EMBEDDING_PROVIDER=openai_compatible
-EMBEDDING_API_KEY=...
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSION=1536
+EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1
+EMBEDDING_API_KEY=ollama
+EMBEDDING_MODEL=bge-m3:latest
+EMBEDDING_DIMENSION=1024
 CHROMA_HOST=chromadb
 CHROMA_PORT=8000
 CHROMA_COLLECTION=profile-evidence
 ```
 
 Ist `EMBEDDING_PROVIDER` deaktiviert oder kein API-Key gesetzt, bleibt das bestehende lexikalische Matching aktiv.
+
+## Lokale Embeddings mit Ollama
+
+Ollama stellt einen OpenAI-kompatiblen Embeddings-Endpunkt bereit. Für den
+lokalen Betrieb mit Docker läuft Ollama normalerweise auf dem Host; deshalb
+verwendet das Backend `host.docker.internal` statt `localhost`:
+
+```env
+EMBEDDING_PROVIDER=openai_compatible
+EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1
+EMBEDDING_API_KEY=ollama
+EMBEDDING_MODEL=bge-m3:latest
+EMBEDDING_DIMENSION=1024
+```
+
+Der API-Key wird vom aktuellen OpenAI-kompatiblen Client technisch erwartet,
+aber von Ollama nicht geprüft. Der Wert `ollama` ist daher ausreichend.
+Für deutsche Stellenanzeigen ist `bge-m3` ein geeigneter lokaler Startpunkt.
+Alternativ können `nomic-embed-text:latest` (typischerweise Dimension 768)
+oder `nomic-embed-text-v2-moe:latest` verwendet werden. Die Dimension muss
+immer der tatsächlichen Modellantwort entsprechen. Sie kann mit einem Test
+gegen `http://localhost:11434/v1/embeddings` ermittelt werden.
+
+Nach Änderungen an Modell oder Dimension müssen Backend und gegebenenfalls
+die gespeicherten Profil-Evidence-Embeddings neu aufgebaut werden. Eine
+Chroma-Collection darf nicht Embeddings verschiedener Dimensionen mischen.
 
 ## Datenfluss
 
