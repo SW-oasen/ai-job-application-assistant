@@ -19,6 +19,18 @@ CHROMA_PORT=8000
 CHROMA_COLLECTION=profile-evidence
 ```
 
+`CHROMA_COLLECTION` bezeichnet die persistente Collection, in der die
+Profil-Evidence-Embeddings gespeichert werden. Der Name gehört zur gewählten
+Embedding-Konfiguration. Bei einem Wechsel von Modell oder Dimension sollte
+eine neue Collection verwendet werden, zum Beispiel:
+
+```env
+CHROMA_COLLECTION=profile-evidence-bge-m3
+```
+
+So werden alte und neue Embeddings getrennt gehalten. Bereits gespeicherte
+Profil-Evidence muss anschließend mit dem neuen Modell neu eingebettet werden.
+
 Ist `EMBEDDING_PROVIDER` deaktiviert oder kein API-Key gesetzt, bleibt das bestehende lexikalische Matching aktiv.
 
 ## Lokale Embeddings mit Ollama

@@ -40,6 +40,20 @@ REQUIREMENT_HEADINGS = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+# Some portals put responsibilities and candidate qualifications in one list
+# without a heading between them. A blank line is only a potential boundary;
+# it becomes meaningful when the next item unmistakably describes a candidate
+# qualification. This deliberately excludes generic verbs such as "build" or
+# "use", which commonly appear in responsibility lists.
+IMPLICIT_REQUIREMENT_START = re.compile(
+    r"^\s*(?:"
+    r"(?:bachelor'?s|master'?s|ph\.?d\.?|university)\s+(?:degree|education)|"
+    r"(?:abgeschlossen(?:es|e)?\s+(?:studium|ausbildung)|studium)\b|"
+    r"(?:proficiency|familiarity|basic understanding|demonstrated hands-on experience|"
+    r"exposure to|ability to|experience with)\b"
+    r")",
+    re.IGNORECASE,
+)
 BENEFIT_HEADINGS = re.compile(
     r"\b(benefits?|vorteile|wir bieten|was wir bieten|unser angebot|"
     r"das bieten wir|deine benefits|ihre benefits|perks|fringe benefits|"
@@ -48,6 +62,10 @@ BENEFIT_HEADINGS = re.compile(
 )
 OPTIONAL_MARKERS = re.compile(
     r"\b(von vorteil|wünschenswert|idealerweise|nice to have|preferred|plus)\b",
+    re.IGNORECASE,
+)
+OPTIONAL_ITEM_PREFIX = re.compile(
+    r"^\s*(?:von vorteil|wÃ¼nschenswert|idealerweise|nice to have|preferred|plus)\b",
     re.IGNORECASE,
 )
 MUST_MARKERS = re.compile(
@@ -173,10 +191,14 @@ def _keywords(value: str) -> list[str]:
 
 
 def _priority(value: str, heading: str) -> str:
-    combined = f"{heading} {value}"
-    if OPTIONAL_MARKERS.search(combined):
+    # An optional qualifier inside a larger requirement must not downgrade
+    # the whole requirement. For example, AWS may be desirable while cloud
+    # experience itself remains a normal qualification. Optional priority is
+    # reserved for explicitly optional headings or items beginning with the
+    # optional marker.
+    if OPTIONAL_MARKERS.search(heading) or OPTIONAL_ITEM_PREFIX.search(value):
         return "nice_to_have"
-    if MUST_MARKERS.search(combined):
+    if MUST_MARKERS.search(f"{heading} {value}"):
         return "must"
     return "should"
 
@@ -215,11 +237,15 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
     section: str | None = None
     heading = ""
     seen: dict[str, set[str]] = {"activity": set(), "requirement": set(), "benefit": set()}
+    blank_line_after_list = False
 
     for raw_line in _join_list_continuations(content):
         # Some HTML-to-Markdown converters render section headings and list
         # items inside blockquotes (e.g. ``> ## Qualifikation``).
         raw_line = re.sub(r"^\s*>\s?", "", raw_line)
+        if not raw_line.strip():
+            blank_line_after_list = True
+            continue
         heading_match = HEADING_PATTERN.match(raw_line)
         if heading_match:
             heading = _clean_heading(heading_match.group(1))
@@ -232,6 +258,7 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
                 section = "requirement"
             else:
                 section = None
+            blank_line_after_list = False
             continue
         bold_heading_match = BOLD_HEADING_PATTERN.match(raw_line)
         if bold_heading_match:
@@ -273,6 +300,17 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
         if not item_match:
             continue
         text = _clean_item(item_match.group(1))
+        if (
+            section == "activity"
+            and blank_line_after_list
+            and IMPLICIT_REQUIREMENT_START.search(text)
+        ):
+            # The qualification block has no own heading. Do not treat the
+            # whitespace alone as a section change: it is merely supporting
+            # evidence for the explicit qualification signal in this item.
+            section = "requirement"
+            heading = ""
+        blank_line_after_list = False
         normalized = text.casefold()
         if len(text) < 8 or normalized in seen[section]:
             continue

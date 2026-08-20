@@ -103,6 +103,42 @@ def test_target_fit_uses_activity_concepts_and_seniority() -> None:
     assert next(item for item in result["criteria"] if item["key"] == "employment_type")["status"] == "unknown"
 
 
+def test_target_fit_uses_role_context_for_short_activity_headings() -> None:
+    job = SimpleNamespace(
+        title="Junior AI/ML Engineer, Data and Evaluation",
+        location="Berlin",
+        work_model="Hybrid",
+        employment_type=None,
+        normalized_content="",
+        extracted_json={"seniority": {"level": "junior"}},
+    )
+    profile = SimpleNamespace(
+        career_goal="Machine Learning, Datenanalyse, Prozessautomatisierung und KI-Anwendungsentwicklung",
+        target_roles=["Machine Learning Engineer", "AI Engineer"],
+        target_role_preferences=[
+            {"role": "Machine Learning Engineer", "level": "Mid", "priority": 1},
+            {"role": "AI Engineer", "level": "Mid", "priority": 1},
+        ],
+        target_industries=[],
+        target_locations=["Berlin"],
+        preferred_work_models=["hybrid"],
+        preferred_employment_types=[],
+        deal_breakers=[],
+    )
+    activities = [
+        SimpleNamespace(activity_text="Curate Security Datasets"),
+        SimpleNamespace(activity_text="Automate Benchmarks"),
+        SimpleNamespace(activity_text="Run Experiments and Error Analysis"),
+    ]
+
+    result = _evaluate_target_fit(job, None, profile, activities)
+
+    assert next(item for item in result["criteria"] if item["key"] == "activities")["status"] == "match"
+    seniority = next(item for item in result["criteria"] if item["key"] == "seniority")
+    assert seniority["actual"] == "Junior"
+    assert seniority["status"] == "partial"
+
+
 def test_qualification_fit_weights_must_requirements_more_strongly() -> None:
     result = _qualification_fit(
         [
@@ -428,6 +464,38 @@ def test_multiple_components_without_professional_context_are_partial() -> None:
 
     assert result.match_level == "partial_match"
     assert "professional context is not fully documented" in result.explanation
+
+
+def test_general_professional_experience_does_not_satisfy_required_role() -> None:
+    result = _evaluate(
+        "requirement-1",
+        "Mehrere Jahre praktische Erfahrung als Data Engineer",
+        {"mehrere", "jahre", "praktische", "data", "engineer"},
+        [evidence("professional", ["Mehrere Jahre Berufserfahrung als Projektmanager"])],
+    )
+    assert result.match_level == "partial_match"
+    assert "role or domain context" in result.explanation
+
+
+def test_missing_cloud_evidence_is_a_gap_even_with_related_technical_evidence() -> None:
+    result = _evaluate(
+        "requirement-1",
+        "Experience working with cloud platforms such as AWS",
+        {"working", "cloud", "platforms", "aws"},
+        [evidence("professional", ["Python backend services and SQL databases"])],
+    )
+    assert result.match_level == "gap"
+
+
+def test_missing_financial_services_context_is_only_partial() -> None:
+    result = _evaluate(
+        "requirement-1",
+        "Professional experience developing applications using Python in the financial services industry",
+        {"professional", "developing", "applications", "python", "financial", "services", "industry"},
+        [evidence("professional", ["Python backend applications in retail"])],
+    )
+    assert result.match_level == "partial_match"
+    assert "industry or domain context" in result.explanation
 
 
 def test_professional_evidence_for_one_explicit_alternative_is_strong() -> None:

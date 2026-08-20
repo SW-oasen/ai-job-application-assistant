@@ -24,11 +24,17 @@ EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1
 EMBEDDING_API_KEY=ollama
 EMBEDDING_MODEL=bge-m3:latest
 EMBEDDING_DIMENSION=1024
+CHROMA_COLLECTION=profile-evidence
 ```
 
 `host.docker.internal` ist erforderlich, wenn das Backend in Docker läuft und
 Ollama auf dem Host ausgeführt wird. Ohne aktivierten Provider bleibt das
 lexikalische Matching aktiv.
+
+`CHROMA_COLLECTION` ist der Name der ChromaDB-Collection für Profilevidence.
+Bei einem Wechsel des Embedding-Modells oder der Dimension sollte eine neue
+Collection verwendet werden, zum Beispiel `profile-evidence-bge-m3`, damit
+keine Embeddings mit inkompatiblen Dimensionen vermischt werden.
 
 ## Warum dieses Projekt entstanden ist
 

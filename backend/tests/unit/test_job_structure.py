@@ -265,3 +265,43 @@ def test_extracts_activities_from_mission_heading() -> None:
         "- Du konzipierst die Datenplattform\n"
     )
     assert result.activities[0]["activity"] == "Du konzipierst die Datenplattform"
+
+
+def test_optional_subclause_does_not_downgrade_main_requirement() -> None:
+    result = extract_job_structure(
+        "## Deine Erfahrung & Skills\n"
+        "- Du bringst Erfahrung mit Cloud-Plattformen (idealerweise AWS) sowie Tools wie Databricks mit\n"
+        "- Du verfügst über mehrere Jahre praktische Erfahrung als Data Engineer, idealerweise in einer Cloud-Umgebung\n"
+        "- Idealerweise Kenntnisse in Kubernetes\n"
+    )
+    assert [item["priority"] for item in result.requirements] == [
+        "should",
+        "should",
+        "nice_to_have",
+    ]
+
+
+def test_switches_from_responsibilities_to_unheaded_qualification_list() -> None:
+    result = extract_job_structure(
+        "## Key Responsibilities\n"
+        "- Build and integrate application layers and APIs\n"
+        "- Own delivery from design through production support\n"
+        "\n"
+        "- Bachelor's degree in Computer Science or a related field\n"
+        "- Proficiency in Python, Java, or TypeScript\n"
+        "- Familiarity with Docker and CI/CD pipelines\n"
+        "\n"
+        "## What We Offer\n"
+        "- Flexible working models\n"
+    )
+
+    assert [item["activity"] for item in result.activities] == [
+        "Build and integrate application layers and APIs",
+        "Own delivery from design through production support",
+    ]
+    assert [item["requirement"] for item in result.requirements] == [
+        "Bachelor's degree in Computer Science or a related field",
+        "Proficiency in Python, Java, or TypeScript",
+        "Familiarity with Docker and CI/CD pipelines",
+    ]
+    assert [item["benefit"] for item in result.benefits] == ["Flexible working models"]

@@ -56,6 +56,23 @@ def extract_job_seniority(content: str) -> JobSeniority | None:
     years = [float(match.group("years").replace(",", ".")) for match in YEAR_PATTERN.finditer(content)]
     signal_lines = [line.strip() for line in content.splitlines() if line.strip()]
 
+    # The job title describes the advertised role and takes precedence over
+    # seniority words referring to colleagues elsewhere in the description.
+    title_lines = [
+        line.lstrip("# ").strip()
+        for line in signal_lines
+        if re.match(r"^#\s+", line)
+    ]
+    for line in title_lines:
+        for level, pattern in LEVEL_PATTERNS:
+            if pattern.search(line):
+                return {
+                    "level": level,
+                    "confidence": 0.98,
+                    "years_required": max(years) if years else None,
+                    "signals": [line],
+                }
+
     for level, pattern in LEVEL_PATTERNS:
         matches = [line for line in signal_lines if pattern.search(line)]
         if matches:

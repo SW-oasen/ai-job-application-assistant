@@ -95,9 +95,9 @@ TERM_CONCEPTS = {
     },
 }
 TARGET_FIT_CONCEPTS = {
-    "data_science": {"data science", "data scientist", "datenanalyse", "data analysis", "statistik"},
-    "machine_learning": {"machine learning", "mlops", "scikit", "pytorch", "tensorflow"},
-    "automation": {"automatisierung", "automation", "workflow", "pipeline"},
+    "data_science": {"data science", "data scientist", "datenanalyse", "data analysis", "statistik", "dataset", "evaluation", "benchmark", "experiment"},
+    "machine_learning": {"machine learning", "ai ml", "mlops", "scikit", "pytorch", "tensorflow"},
+    "automation": {"automatisierung", "automation", "automate", "workflow", "pipeline"},
     "ai_development": {"ki", "ai", "künstliche intelligenz", "artificial intelligence", "machine learning", "prototyp", "softwaredevelopment", "softwareentwicklung"},
 }
 SENIORITY_RANK = {"entry": 0, "junior": 1, "professional": 2, "senior": 3, "lead": 4}
@@ -433,9 +433,17 @@ async def _linked_skill_evidence_inputs(session, profile_id) -> list[EvidenceInp
     for link in links:
         source = None
         if link.source_resource_type == "experience" and link.source_resource_id:
-            source = await session.get(WorkExperience, link.source_resource_id)
+            source = await session.scalar(
+                select(WorkExperience)
+                .where(WorkExperience.id == link.source_resource_id)
+                .options(selectinload(WorkExperience.localizations))
+            )
         elif link.source_resource_type == "project" and link.source_resource_id:
-            source = await session.get(PortfolioProject, link.source_resource_id)
+            source = await session.scalar(
+                select(PortfolioProject)
+                .where(PortfolioProject.id == link.source_resource_id)
+                .options(selectinload(PortfolioProject.localizations))
+            )
         elif link.source_resource_type == "certificate" and link.source_resource_id:
             source = await session.get(Certificate, link.source_resource_id)
         elif link.source_resource_type == "education" and link.source_resource_id:
@@ -447,18 +455,37 @@ async def _linked_skill_evidence_inputs(session, profile_id) -> list[EvidenceInp
         if isinstance(source, WorkExperience):
             label = source.company
             years = max(0.0, ((source.end_date or datetime.now(UTC).date()) - source.start_date).days / 365.25)
+            role_context = " ".join(
+                value for value in (
+                    *(localization.title for localization in source.localizations),
+                    getattr(source, "role", None),
+                )
+                if value
+            )
         elif isinstance(source, PortfolioProject): label = source.canonical_name
         elif isinstance(source, Certificate): label = source.official_name
         elif isinstance(source, EducationEntry): label = source.institution
-        content = {"skill": link.skill.canonical_name, "source_type": link.source_resource_type}
+        if isinstance(source, PortfolioProject):
+            role_context = " ".join(
+                value for value in (source.role, source.canonical_name, *source.technologies)
+                if value
+            )
+        elif not isinstance(source, WorkExperience):
+            role_context = ""
+        content = {
+            "skill": link.skill.canonical_name,
+            "source_type": link.source_resource_type,
+            "source_context": role_context,
+        }
         if years is not None: content["years_experience"] = round(years, 2)
+        context_text = f"Rollen- und Domänenkontext: {role_context}" if role_context else ""
         result.append(EvidenceInput(
             source_name=f"profile:{profile_id}:skill-evidence:{link.id}", source_type="manual",
             source_content=json.dumps(content, ensure_ascii=False, sort_keys=True),
             label=f"{link.skill.canonical_name} · {label}",
-            evidence_text="\n".join(value for value in (f"Skill: {link.skill.canonical_name}", f"Quelle: {label}", link.evidence_text) if value),
+            evidence_text="\n".join(value for value in (f"Skill: {link.skill.canonical_name}", f"Quelle: {label}", context_text, link.evidence_text) if value),
             experience_context=link.experience_context,
-            keywords=[link.skill.canonical_name, *link.skill.aliases],
+            keywords=[link.skill.canonical_name, *link.skill.aliases, *role_context.split()],
         ))
     return result
 
@@ -499,6 +526,33 @@ def _terms(text: str, keywords: list[str]) -> set[str]:
         if terms & aliases:
             terms.add(f"concept:{concept}")
     return terms
+
+
+def _role_context_terms(requirement: str) -> set[str]:
+    """Return role/domain anchors that generic experience must not replace."""
+    matches = re.findall(
+        r"\b(?:als|as)\s+([\w][\w -]{1,50})",
+        requirement,
+        re.IGNORECASE,
+    )
+    anchors: set[str] = set()
+    for match in matches:
+        phrase = re.split(r",|\b(?:idealerweise|preferably|with|in)\b", match, maxsplit=1, flags=re.IGNORECASE)[0]
+        anchors.update(_terms(phrase, []))
+    return anchors
+
+
+def _required_domain_terms(requirement: str) -> set[str]:
+    normalized = requirement.casefold()
+    groups = (
+        ("financial services", {"financial", "finance", "banking", "fintech", "trading", "hedge", "fund"}),
+        ("cloud", {"cloud", "aws", "azure", "gcp", "cloud-native", "cloudnative"}),
+    )
+    required: set[str] = set()
+    for marker, terms in groups:
+        if marker in normalized or any(re.search(rf"\b{re.escape(term)}\b", normalized) for term in terms):
+            required.update(terms)
+    return required
 
 
 def _alternative_anchor_terms(requirement: str) -> set[str]:
@@ -678,6 +732,22 @@ def _evaluate(
     has_professional = any(
         stored.item.experience_context == "professional" for stored in relevant
     )
+    role_context_terms = _role_context_terms(requirement)
+    has_role_context = bool(
+        role_context_terms
+        and any(
+            role_context_terms & _terms(stored.item.evidence_text, stored.item.keywords)
+            for stored in relevant
+        )
+    ) if role_context_terms else True
+    required_domain_terms = _required_domain_terms(requirement)
+    has_domain_context = bool(
+        required_domain_terms
+        and any(
+            required_domain_terms & _terms(stored.item.evidence_text, stored.item.keywords)
+            for stored in relevant
+        )
+    ) if required_domain_terms else True
     # Context words are deliberately excluded from the lexical term set because
     # they are not skills. Detect them in the original requirement instead.
     requires_professional_context = bool(
@@ -704,10 +774,30 @@ def _evaluate(
         level = "strong_match"
         explanation = "Documented profile data directly supports this nationality requirement."
         action = "Use the cited nationality only for eligibility verification."
-    elif has_professional_alternative or (has_professional and aggregate_score >= 0.6):
+    elif required_domain_terms and not has_domain_context:
+        if "cloud" in required_domain_terms and any(
+            term in required_domain_terms for term in ("aws", "azure", "gcp")
+        ):
+            level = "gap"
+            explanation = "Related technical evidence exists, but no documented cloud-platform evidence supports this requirement."
+            action = "Add verified AWS, Azure, GCP, or equivalent cloud-platform evidence before claiming this requirement."
+        else:
+            level = "partial_match"
+            explanation = "The technical capability is partly evidenced, but the required industry or domain context is not documented."
+            action = "Cite the technical evidence separately and do not imply experience in the required industry."
+    elif has_professional_alternative or (
+        has_professional and aggregate_score >= 0.6 and has_role_context and has_domain_context
+    ):
         level = "strong_match"
         explanation = "Documented professional evidence directly supports this requirement."
         action = "Use the cited professional evidence and keep the wording factual."
+    elif role_context_terms and not has_role_context and has_professional:
+        level = "partial_match"
+        explanation = (
+            "General professional experience is documented, but the required role "
+            "or domain context is not evidenced."
+        )
+        action = "Cite the general experience separately; do not present it as role-specific experience."
     elif requires_professional_context and not has_professional:
         if aggregate_score >= 0.2 and len(scored) >= 2:
             level = "partial_match"
@@ -1220,6 +1310,7 @@ def _preference_criterion(
     desired: list[str],
     actual: str | None,
     weight: int,
+    comparison_actual: str | None = None,
 ) -> dict:
     desired = [value for value in desired if value and value.strip()]
     if not desired:
@@ -1244,7 +1335,7 @@ def _preference_criterion(
             "weight": weight,
             "explanation": "Die Stellenanzeige enthält hierzu keine auswertbare Angabe.",
         }
-    best = max(_target_overlap(value, actual) for value in desired)
+    best = max(_target_overlap(value, comparison_actual or actual) for value in desired)
     if best >= 1:
         status, score = "match", 1.0
     elif best >= 0.5:
@@ -1406,6 +1497,10 @@ def _evaluate_target_fit(
             desired=activity_goals,
             actual=activity_text or None,
             weight=35,
+            # Imports can shorten an activity to its bold lead-in (for
+            # example "Automate Benchmarks"). The title supplies the domain
+            # context for comparison without changing the displayed list.
+            comparison_actual=f"{job.title} {activity_text}".strip() or None,
         ),
             _target_role_seniority_criterion(job_seniority, role_preferences, (getattr(job, "extracted_json", None) or {}).get("role") or job.title),
         _preference_criterion(

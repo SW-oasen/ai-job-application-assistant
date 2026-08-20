@@ -33,3 +33,14 @@ def test_does_not_infer_seniority_from_other_team_members() -> None:
 
     assert seniority is not None
     assert seniority["level"] == "junior"
+
+
+def test_title_seniority_beats_senior_colleague_mention() -> None:
+    seniority = extract_job_seniority(
+        "# Junior AI/ML Engineer\n\n"
+        "You will work closely with the Senior AI/ML Engineer."
+    )
+
+    assert seniority is not None
+    assert seniority["level"] == "junior"
+    assert seniority["signals"] == ["Junior AI/ML Engineer"]
