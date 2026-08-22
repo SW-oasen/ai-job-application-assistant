@@ -59,6 +59,20 @@ Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen
 - getrennte Erfassung von Quellportal und Bewerbungsweg
 - Dashboard mit Statusfiltern und Stichwortsuche (nun auf der Hauptseite)
 
+## Ziel-Fit und Beschäftigungsarten
+
+Der Ziel-Fit ist vom Qualifikations-Fit getrennt und bewertet nur die im
+Profil gepflegten Zielpräferenzen. Beschäftigungsarten können mehrfach gewählt
+werden. Wird `Befristete Anstellung` gewählt, ist zusätzlich eine
+Mindestlaufzeit in Monaten erforderlich. Eine Stelle erfüllt dieses Kriterium,
+wenn sie unbefristet ausgewiesen ist oder – bei erlaubter Befristung – die
+Mindestlaufzeit erreicht.
+
+Die Teilkriterien werden gewichtet: Tätigkeits-Fit 35, Beschäftigungsarten 30,
+Seniorität 20, Zielort 15, Zielbranche 10, Arbeitsmodell 10 und Zielrolle 2
+bis 10 (abhängig von ihrer Priorität). Nicht auswertbare Kriterien werden nicht
+in den Nenner der Ziel-Fit-Berechnung aufgenommen.
+
 Der aktuelle Arbeitsplan steht in der [Roadmap](docs/roadmap.md).
 
 ## Datenschutz und Netzwerk

@@ -576,6 +576,24 @@ SOFT_SKILL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+AGENTIC_CODING_REQUIREMENT_PATTERN = re.compile(
+    r"\b(?:agentic|agent[- ]?based|ai[- ]?assisted)\s+coding\s+tools?\b",
+    re.IGNORECASE,
+)
+DAILY_USE_PATTERN = re.compile(
+    r"\b(?:daily|every day|täglich|taeglich)\b", re.IGNORECASE
+)
+AGENTIC_CODING_TOOL_PATTERN = re.compile(
+    r"\b(?:codex|claude code|cursor|copilot|aider|coding agent)\b",
+    re.IGNORECASE,
+)
+
+
+def _documents_daily_agentic_coding_use(stored: StoredEvidence) -> bool:
+    """Check a factual use claim, not a generic AI-tool skill label."""
+    text = f"{stored.item.label}\n{stored.item.evidence_text}"
+    return bool(DAILY_USE_PATTERN.search(text) and AGENTIC_CODING_TOOL_PATTERN.search(text))
+
 
 def _evaluate(
     requirement_id: str,
@@ -709,6 +727,30 @@ def _evaluate(
         )
     if not relevant:
         relevant = [stored for _, stored, _ in scored]
+    if AGENTIC_CODING_REQUIREMENT_PATTERN.search(requirement):
+        daily_use_evidence = [
+            stored for stored in relevant if _documents_daily_agentic_coding_use(stored)
+        ]
+        if daily_use_evidence:
+            cited = [
+                MatchEvidence(
+                    evidence_id=stored.evidence_id,
+                    source_name=stored.item.source_name,
+                    label=stored.item.label,
+                    evidence_text=stored.item.evidence_text,
+                    experience_context=stored.item.experience_context,
+                )
+                for stored in daily_use_evidence[:3]
+            ]
+            return RequirementMatchResponse(
+                requirement_id=requirement_id,
+                requirement=requirement,
+                match_level="strong_match",
+                evidence=cited,
+                explanation="Documented evidence explicitly confirms daily use of agentic coding tools.",
+                recommended_action="Cite the concrete daily-use example and the tool names factually.",
+                confidence=0.9,
+            )
     if has_semantic_candidate and aggregate_score == 0:
         cited = [
             MatchEvidence(
@@ -1409,6 +1451,67 @@ def _canonical_employment_type(value: str | None) -> str | None:
     return normalized or None
 
 
+def _contract_duration_months(value: str | None) -> int | None:
+    """Convert a stated fixed-term duration to whole months when possible."""
+    if not value:
+        return None
+    match = re.search(
+        r"\b(\d+(?:[.,]\d+)?)\s*(years?|months?|jahre?|monate?)\b",
+        value,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    amount = float(match.group(1).replace(",", "."))
+    unit = match.group(2).casefold()
+    return round(amount * 12) if unit.startswith(("year", "jahr")) else round(amount)
+
+
+def _employment_type_criterion(job: Job, profile: Profile) -> dict:
+    preferences = set(profile.preferred_employment_types or [])
+    minimum_months = getattr(profile, "minimum_contract_duration_months", None)
+    contract_term = getattr(job, "contract_term", None)
+    if not preferences:
+        return {
+            "key": "employment_type", "label": "Beschäftigungsarten", "status": "unknown",
+            "desired": [], "actual": None, "score": None, "weight": 30,
+            "explanation": "Im Profil sind keine Beschäftigungsarten hinterlegt.",
+        }
+    actual = (
+        "temporary" if contract_term and re.search(r"\b(?:befristet|temporary|fixed[- ]term)\b", contract_term, re.IGNORECASE)
+        else "permanent" if contract_term and re.search(r"\b(?:unbefristet|permanent)\b", contract_term, re.IGNORECASE)
+        else _canonical_employment_type(job.employment_type)
+    )
+    desired = list(preferences)
+    if actual is None:
+        return _preference_criterion(
+            key="employment_type", label="Beschäftigungsarten", desired=desired, actual=None, weight=30
+        )
+    months = _contract_duration_months(contract_term)
+    permanent_match = actual == "permanent" and "permanent" in preferences
+    temporary_match = (
+        actual == "temporary" and "temporary" in preferences
+        and months is not None
+        and minimum_months is not None
+        and months >= minimum_months
+    )
+    if permanent_match or temporary_match:
+        status, score = "match", 1.0
+        explanation = "Die Vertragslaufzeit entspricht einer hinterlegten Präferenz."
+    elif actual == "temporary" and "temporary" in preferences and months is None:
+        status, score = "partial", 0.6
+        explanation = "Die Stelle ist befristet, aber die Laufzeit ist nicht eindeutig angegeben."
+    else:
+        status, score = "mismatch", 0.0
+        explanation = "Die Vertragslaufzeit entspricht keiner hinterlegten Präferenz."
+    return {
+        "key": "employment_type", "label": "Beschäftigungsarten", "status": status,
+        "desired": desired, "actual": contract_term or job.employment_type,
+        "score": score, "weight": 30,
+        "explanation": explanation,
+    }
+
+
 def _profile_seniority_years(experiences: list[WorkExperience]) -> float:
     if not experiences:
         return 0.0
@@ -1475,6 +1578,15 @@ def _evaluate_target_fit(
     activity_text = " ".join(
         item.activity_text for item in activities or [] if item.activity_text
     )
+    # Job imports occasionally classify a growth/benefits section as an
+    # activity.  Keep that text visible in the result, but use the complete
+    # advert as an additional comparison source so the target fit is not
+    # determined by that extraction artefact alone.
+    target_fit_context = " ".join(
+        value
+        for value in (job.title, activity_text, getattr(job, "normalized_content", ""))
+        if value
+    )
     career_goal = getattr(profile, "career_goal", "") or ""
     activity_goals = [career_goal.strip()] if career_goal.strip() else []
     job_seniority = (getattr(job, "extracted_json", None) or {}).get("seniority")
@@ -1500,7 +1612,7 @@ def _evaluate_target_fit(
             # Imports can shorten an activity to its bold lead-in (for
             # example "Automate Benchmarks"). The title supplies the domain
             # context for comparison without changing the displayed list.
-            comparison_actual=f"{job.title} {activity_text}".strip() or None,
+            comparison_actual=target_fit_context or None,
         ),
             _target_role_seniority_criterion(job_seniority, role_preferences, (getattr(job, "extracted_json", None) or {}).get("role") or job.title),
         _preference_criterion(
@@ -1524,13 +1636,7 @@ def _evaluate_target_fit(
             actual=_canonical_work_model(job.work_model),
             weight=10,
         ),
-        _preference_criterion(
-            key="employment_type",
-            label="Beschäftigungsart",
-            desired=profile.preferred_employment_types or [],
-            actual=_canonical_employment_type(job.employment_type),
-            weight=10,
-        ),
+        _employment_type_criterion(job, profile),
     ]
     if criteria[0]["desired"]:
         actual_role = (getattr(job, "extracted_json", None) or {}).get("role") or job.title

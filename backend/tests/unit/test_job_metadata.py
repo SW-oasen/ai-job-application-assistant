@@ -1,6 +1,23 @@
 from app.parsers.job_metadata import extract_job_metadata
 
 
+def test_extracts_contract_term_from_english_role_scope() -> None:
+    metadata = extract_job_metadata(
+        """
+**Scope of the role:**
+**Temporary (1 Year),** focused on execution and delivery.
+"""
+    )
+
+    assert metadata["contract_term"] == "Temporary (1 Year)"
+
+
+def test_extracts_fixed_term_duration_from_english_prose() -> None:
+    metadata = extract_job_metadata("This is a fixed-term for 12 months position.")
+
+    assert metadata["contract_term"] == "fixed-term for 12 months"
+
+
 def test_extracts_labeled_job_metadata_and_remote_option() -> None:
     content = """
 > #### Arbeitsort

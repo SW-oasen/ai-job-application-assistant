@@ -14,9 +14,25 @@ wird erst mit mehreren importierten Stellen schrittweise ergänzt.
 
 Der Ziel-Fit bewertet Rollen, Branchen, Orte, Arbeitsmodelle und
 Beschäftigungsarten ausschließlich gegen die strukturierten Profilpräferenzen.
+Bei befristeten Stellen wird die strukturierte Mindestlaufzeit aus dem Profil
+in Monaten berücksichtigt. Unbefristete und befristete Anstellungen können
+gleichzeitig als zulässige Beschäftigungsarten hinterlegt werden.
 Freie Ausschlusskriterien werden nur bei eindeutig strukturierten Treffern
 automatisch als Konflikt gewertet; textlich ähnliche Fälle bleiben manuell zu
 prüfen.
+
+Die Ziel-Fit-Gewichtung lautet:
+
+- Tätigkeits-Fit: 35
+- Beschäftigungsarten einschließlich Mindestlaufzeit bei Befristung: 30
+- Seniorität: 20
+- Zielort: 15
+- Zielbranche: 10
+- Arbeitsmodell: 10
+- Zielrolle: 2 bis 10, abhängig von der hinterlegten Priorität
+
+Unbekannte Stellenmerkmale werden nicht in die gewichtete Ziel-Fit-Quote
+einbezogen.
 
 Der Qualifikations-Fit wird zusätzlich als gewichtete Gesamtprozentzahl
 ausgegeben:

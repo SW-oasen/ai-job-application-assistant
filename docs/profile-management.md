@@ -42,13 +42,19 @@ Zusätzlich enthält es ein strukturiertes berufliches Zielprofil:
 
 - übergeordnetes berufliches Ziel,
 - Zielrollen, Zielbranchen und Zielorte,
-- bevorzugte Arbeitsmodelle und Beschäftigungsarten,
+- bevorzugte Arbeitsmodelle und Beschäftigungsarten; bei befristeter
+  Anstellung zusätzlich eine Mindestlaufzeit in Monaten,
 - echte Ausschlusskriterien.
 
 Diese Angaben beschreiben Wünsche und werden nicht als belegte Qualifikationen
 verwendet. Sie bilden die Grundlage für einen späteren, vom
 Qualifikations-Fit getrennten Ziel-Fit. Das Zielprofil wird manuell gepflegt
 und nicht aus einem CV abgeleitet.
+
+Beschäftigungsarten sind eine Mehrfachauswahl: Unbefristete und befristete
+Anstellungen können gleichzeitig zulässig sein. Die Mindestlaufzeit wird nur
+für die befristete Auswahl ausgewertet; sie ersetzt kein separates
+Befristungs-Ausschlusskriterium.
 
 Stellenbezogene Profilzusammenfassungen und Berufsbezeichnungen aus einem
 angepassten CV werden nicht als Stammdaten übernommen.

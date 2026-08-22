@@ -66,6 +66,21 @@ workflow:
             ein vollständiges corrected_result mit metadata, activities und requirements. Nutze retry
             bei strukturell unzureichender Extraktion und konkrete retry_instructions. Nutze
             manual_review bei widersprüchlicher oder nicht sicher korrigierbarer Lage.
+
+            Wichtige Vollständigkeitsregel: Jede Anforderung aus der gelieferten Extraktion, deren
+            evidence wörtlich oder sinngleich im Stellentext belegt ist, muss im corrected_result
+            erhalten bleiben. Du darfst solche Anforderungen nur entfernen, wenn sie nachweislich
+            keine Bewerberanforderung, sondern zum Beispiel ein Benefit oder eine Tätigkeit ist.
+            Dokumentiere dafür pro entfernten oder geänderten Eintrag ein issue mit Feld,
+            Begründung und Textbeleg. Ohne mindestens ein konkretes issue ist ausschließlich
+            decision=accept zulässig. Kürze Listen niemals aus Relevanzgründen.
+            Contract duration is mandatory metadata when the source advert states a
+            fixed term. Check English prose headings such as "Scope of the role",
+            including wording such as "Temporary (1 Year)", "fixed-term for 12
+            months", and "parental leave cover". Never replace a source-backed
+            contract_term with null or an empty value. If it is missing from the
+            extraction, issue a correction with the exact source-backed wording
+            and an issue containing the text evidence.
         - id: user
           role: user
           text: |

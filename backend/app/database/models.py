@@ -380,6 +380,7 @@ class Profile(TimestampMixin, Base):
     target_locations: Mapped[list[str]] = mapped_column(JSONB, default=list)
     preferred_work_models: Mapped[list[str]] = mapped_column(JSONB, default=list)
     preferred_employment_types: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    minimum_contract_duration_months: Mapped[int | None] = mapped_column(Integer)
     deal_breakers: Mapped[list[str]] = mapped_column(JSONB, default=list)
     default_language: Mapped[str] = mapped_column(String(5), default="de")
     status: Mapped[str] = mapped_column(String(30), default="active")

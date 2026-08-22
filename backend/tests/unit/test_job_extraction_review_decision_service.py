@@ -59,6 +59,52 @@ def test_correct_replaces_only_with_complete_valid_extraction() -> None:
     assert result.requires_manual_review is False
 
 
+def test_correct_keeps_source_backed_requirements_omitted_by_reviewer() -> None:
+    source = _source_extraction()
+    source["requirements"].append({"requirement": "SQL"})
+
+    result = apply_job_extraction_review(
+        metadata=source["metadata"],
+        activities=source["activities"],
+        requirements=source["requirements"],
+        review_result=ReviewResult(
+            review_type="job_extraction",
+            status="corrected",
+            decision="correct",
+            corrected_result={
+                "metadata": source["metadata"],
+                "activities": source["activities"],
+                "requirements": [{"requirement": "Python"}],
+            },
+        ),
+    )
+
+    assert [item["requirement"] for item in result.requirements] == ["Python", "SQL"]
+
+
+def test_correct_keeps_source_backed_contract_term_omitted_by_reviewer() -> None:
+    source = _source_extraction()
+    source["metadata"]["contract_term"] = "Temporary (1 Year)"
+
+    result = apply_job_extraction_review(
+        metadata=source["metadata"],
+        activities=source["activities"],
+        requirements=source["requirements"],
+        review_result=ReviewResult(
+            review_type="job_extraction",
+            status="corrected",
+            decision="correct",
+            corrected_result={
+                "metadata": {"title": "Data Engineer", "contract_term": None},
+                "activities": source["activities"],
+                "requirements": source["requirements"],
+            },
+        ),
+    )
+
+    assert result.metadata["contract_term"] == "Temporary (1 Year)"
+
+
 def test_manual_review_preserves_original_job_extraction() -> None:
     source = _source_extraction()
 

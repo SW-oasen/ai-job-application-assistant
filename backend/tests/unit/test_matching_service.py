@@ -67,6 +67,70 @@ def test_target_fit_detects_structured_freelance_conflict() -> None:
     assert result["exclusions"][0]["status"] == "conflict"
 
 
+def test_target_fit_matches_temporary_contract_with_minimum_duration() -> None:
+    job = SimpleNamespace(
+        title="Data Engineer",
+        location="Berlin",
+        work_model="Hybrid",
+        employment_type="Vollzeit",
+        contract_term="Temporary (2 Years)",
+        normalized_content="",
+    )
+    profile = SimpleNamespace(
+        career_goal="Data Engineering",
+        target_roles=[], target_industries=[], target_locations=[],
+        preferred_work_models=[], preferred_employment_types=["temporary"], deal_breakers=[],
+        minimum_contract_duration_months=24,
+    )
+
+    result = _evaluate_target_fit(job, None, profile)
+
+    employment = next(item for item in result["criteria"] if item["key"] == "employment_type")
+    assert employment["status"] == "match"
+    assert employment["actual"] == "Temporary (2 Years)"
+
+
+def test_target_fit_rejects_temporary_contract_shorter_than_minimum() -> None:
+    job = SimpleNamespace(
+        title="Data Engineer",
+        location="Berlin",
+        work_model="Hybrid",
+        employment_type="Vollzeit",
+        contract_term="Temporary (1 Year)",
+        normalized_content="",
+    )
+    profile = SimpleNamespace(
+        career_goal="Data Engineering",
+        target_roles=[], target_industries=[], target_locations=[],
+        preferred_work_models=[], preferred_employment_types=["temporary"], deal_breakers=[],
+        minimum_contract_duration_months=24,
+    )
+
+    result = _evaluate_target_fit(job, None, profile)
+
+    employment = next(item for item in result["criteria"] if item["key"] == "employment_type")
+    assert employment["status"] == "mismatch"
+    assert employment["score"] == 0.0
+
+
+def test_target_fit_accepts_permanent_when_both_contract_preferences_are_selected() -> None:
+    job = SimpleNamespace(
+        title="Data Engineer", location="Berlin", work_model="Hybrid",
+        employment_type="Vollzeit", contract_term="unbefristet", normalized_content="",
+    )
+    profile = SimpleNamespace(
+        career_goal="Data Engineering", target_roles=[], target_industries=[],
+        target_locations=[], preferred_work_models=[],
+        deal_breakers=[], preferred_employment_types=["permanent", "temporary"],
+        minimum_contract_duration_months=24,
+    )
+
+    result = _evaluate_target_fit(job, None, profile)
+
+    employment = next(item for item in result["criteria"] if item["key"] == "employment_type")
+    assert employment["status"] == "match"
+
+
 def test_target_fit_uses_activity_concepts_and_seniority() -> None:
     job = SimpleNamespace(
         title="Data Science & Machine Learning Engineer",
@@ -137,6 +201,37 @@ def test_target_fit_uses_role_context_for_short_activity_headings() -> None:
     seniority = next(item for item in result["criteria"] if item["key"] == "seniority")
     assert seniority["actual"] == "Junior"
     assert seniority["status"] == "partial"
+
+
+def test_target_fit_uses_full_advert_when_extracted_activities_are_noisy() -> None:
+    job = SimpleNamespace(
+        title="Software Engineer, Foundation",
+        location="Berlin",
+        work_model=None,
+        employment_type="Vollzeit",
+        normalized_content=(
+            "Build agentic and AI infrastructure, including MCP servers, "
+            "agent platforms, automated workflows, evaluation feedback loops "
+            "and developer tooling."
+        ),
+        extracted_json={},
+    )
+    profile = SimpleNamespace(
+        career_goal="KI-Anwendungsentwicklung und Prozessautomatisierung",
+        target_roles=["AI Engineer"],
+        target_industries=[],
+        target_locations=["Berlin"],
+        preferred_work_models=[],
+        preferred_employment_types=["permanent"],
+        deal_breakers=[],
+    )
+    activities = [
+        SimpleNamespace(activity_text="Learning architecture by doing it"),
+    ]
+
+    result = _evaluate_target_fit(job, None, profile, activities)
+
+    assert next(item for item in result["criteria"] if item["key"] == "activities")["status"] == "match"
 
 
 def test_qualification_fit_weights_must_requirements_more_strongly() -> None:
@@ -303,6 +398,30 @@ def test_professional_evidence_can_produce_strong_match() -> None:
 
     assert result.match_level == "strong_match"
     assert result.evidence[0].experience_context == "professional"
+
+
+def test_documented_daily_agentic_coding_use_is_a_strong_match() -> None:
+    result = _evaluate(
+        "requirement-1",
+        "Daily use of agentic coding tools (Claude Code, Codex, or similar)",
+        {"daily", "agentic", "coding", "tools", "claude", "code", "codex"},
+        [
+            StoredEvidence(
+                evidence_id="evidence-1",
+                item=EvidenceInput(
+                    source_name="profile:project:1",
+                    source_type="manual",
+                    source_content="Project evidence",
+                    label="AI Job Application Assistant",
+                    evidence_text="Daily use of Codex and Claude Code for implementation and review.",
+                    experience_context="project",
+                    keywords=["Codex", "Claude Code", "agentic coding"],
+                ),
+            )
+        ],
+    )
+
+    assert result.match_level == "strong_match"
 
 
 def test_extracts_company_from_indeed_company_link() -> None:

@@ -48,9 +48,16 @@ def apply_job_extraction_review(
                 status_code=422,
             )
         return ReviewedJobExtraction(
-            metadata=corrected_metadata,
+            metadata=_preserve_source_backed_contract_term(metadata, corrected_metadata),
             activities=corrected_activities,
-            requirements=corrected_requirements,
+            # A review may add or refine requirements, but it must not silently
+            # discard parser output that is already directly grounded in the
+            # source advert.  The review workflow is probabilistic; losing a
+            # must-have is materially worse than retaining a duplicate-free,
+            # source-backed item for subsequent matching.
+            requirements=_merge_source_backed_requirements(
+                requirements, corrected_requirements
+            ),
             requires_manual_review=False,
         )
     raise ApplicationError(
@@ -58,6 +65,16 @@ def apply_job_extraction_review(
         code="unsupported_extraction_review_decision",
         status_code=422,
     )
+
+
+def _preserve_source_backed_contract_term(
+    original: dict[str, str | None], corrected: dict[str, str | None]
+) -> dict[str, str | None]:
+    """Do not let an uncertain review erase a parser-backed contract duration."""
+    result = dict(corrected)
+    if original.get("contract_term") and not result.get("contract_term"):
+        result["contract_term"] = original["contract_term"]
+    return result
 
 
 def _is_list_of_objects(value: object) -> bool:
@@ -76,3 +93,21 @@ def _is_list_of_requirements(value: object) -> bool:
         isinstance(item.get("requirement"), str) and item["requirement"].strip()
         for item in value
     )
+
+
+def _merge_source_backed_requirements(
+    original: list[dict[str, Any]], corrected: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Keep corrections while making a review correction non-destructive."""
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in [*corrected, *original]:
+        requirement = item.get("requirement")
+        if not isinstance(requirement, str) or not requirement.strip():
+            continue
+        key = " ".join(requirement.casefold().split())
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(item)
+    return merged

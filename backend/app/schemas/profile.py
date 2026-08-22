@@ -93,13 +93,22 @@ class ProfileCreate(BaseModel):
     target_locations: list[str] = Field(default_factory=list, max_length=50)
     preferred_work_models: list[WorkModel] = Field(default_factory=list, max_length=3)
     preferred_employment_types: list[EmploymentType] = Field(default_factory=list, max_length=5)
+    minimum_contract_duration_months: int | None = Field(default=None, ge=1, le=600)
     deal_breakers: list[str] = Field(default_factory=list, max_length=50)
     default_language: Language = "de"
     change_reason: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def normalize_goal_lists(self):
-        return _normalize_profile_lists(self)
+        _normalize_profile_lists(self)
+        if (
+            "temporary" in self.preferred_employment_types
+            and self.minimum_contract_duration_months is None
+        ):
+            raise ValueError("Temporary contract preference requires a minimum duration in months.")
+        if "temporary" not in self.preferred_employment_types:
+            self.minimum_contract_duration_months = None
+        return self
 
 
 class ProfileUpdate(BaseModel):
@@ -120,6 +129,7 @@ class ProfileUpdate(BaseModel):
     target_locations: list[str] | None = Field(default=None, max_length=50)
     preferred_work_models: list[WorkModel] | None = Field(default=None, max_length=3)
     preferred_employment_types: list[EmploymentType] | None = Field(default=None, max_length=5)
+    minimum_contract_duration_months: int | None = Field(default=None, ge=1, le=600)
     deal_breakers: list[str] | None = Field(default=None, max_length=50)
     default_language: Language | None = None
     status: Literal["active", "inactive"] | None = None
@@ -135,6 +145,17 @@ class ProfileUpdate(BaseModel):
                 if key in seen:
                     raise ValueError("Each target role may occur only once.")
                 seen.add(key)
+        if (
+            self.preferred_employment_types is not None
+            and "temporary" in self.preferred_employment_types
+            and self.minimum_contract_duration_months is None
+        ):
+            raise ValueError("Temporary contract preference requires a minimum duration in months.")
+        if (
+            "preferred_employment_types" in self.model_fields_set
+            and "temporary" not in (self.preferred_employment_types or [])
+        ):
+            self.minimum_contract_duration_months = None
         return self
 
 

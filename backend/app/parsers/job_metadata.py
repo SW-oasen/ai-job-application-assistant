@@ -264,6 +264,42 @@ def _split_employment_contract(value: str | None) -> tuple[str | None, str | Non
     )
 
 
+def _contract_term_from_role_scope(content: str) -> str | None:
+    """Find a fixed duration stated in prose or a role-scope section."""
+    lines = content.splitlines()
+    scope_start = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if _normalized_heading(line) in {
+                "scope of the role",
+                "role scope",
+                "contract details",
+            }
+        ),
+        None,
+    )
+    candidates = lines[scope_start + 1 : scope_start + 6] if scope_start is not None else lines
+    duration = r"\d+\s*(?:years?|months?|weeks?|jahre?|monate?|wochen?)"
+    patterns = (
+        re.compile(
+            rf"\b(?:temporary|fixed[- ]term)\b\s*(?:\(\s*)?(?:for|für)?\s*{duration}\s*\)?",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            rf"\bbefristet\b\s*(?:für|for)?\s*{duration}",
+            re.IGNORECASE,
+        ),
+    )
+    for line in candidates:
+        value = re.sub(r"[*_]", "", _clean_line(line))
+        for pattern in patterns:
+            match = pattern.search(value)
+            if match:
+                return match.group(0).strip().rstrip(",;:.")
+    return None
+
+
 def _company_below_main_title(content: str) -> str | None:
     lines = content.splitlines()
     non_company_values = {
@@ -435,6 +471,7 @@ def extract_job_metadata(
         content,
         {"befristung", "vertragsdauer", "contract term", "contract duration"},
     )
+    contract_term = contract_term or _contract_term_from_role_scope(content)
     return {
         "title": _clean_title(
             _main_heading(content)

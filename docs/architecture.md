@@ -183,6 +183,11 @@ Matching-Evidenz an Dify übergeben. Seniority-Anforderungen aus der
 Stellenanzeige werden separat gegen die Berufserfahrung im Profil bewertet und
 fließen als eigener Teilbefund in das Ergebnis ein.
 
+Der davon getrennte Ziel-Fit verwendet die strukturierten Zielpräferenzen des
+Profils. Beschäftigungsarten haben dabei Gewicht 30 und berücksichtigen bei
+einer befristeten Anstellung zusätzlich die hinterlegte Mindestlaufzeit in
+Monaten.
+
 Jeder erneute Import derselben Stelle (Reimport, PDF-Ersatz) schreibt einen
 Änderungssatz in den Job-Aktivitätsverlauf. Archivierte Jobs bleiben erhalten,
 werden aber standardmäßig aus aktiven Listen ausgeblendet und können

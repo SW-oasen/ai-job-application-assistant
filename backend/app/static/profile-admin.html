@@ -249,7 +249,8 @@
       .workspace { grid-template-columns: 1fr; }
       .list { height: auto; max-height: 320px; }
     }
-  </style>
+label[for="contractPreferences"],label[for="contractPreferences"]~*{display:none}
+</style>
 </head>
 <body>
   <div class="layout">
@@ -371,6 +372,19 @@
             <option value="working_student">Werkstudententätigkeit</option>
           </select>
           <span class="hint">Mehrfachauswahl ist möglich.</span>
+        </div>
+        <div>
+          <label for="minimumContractDurationMonths" style="margin-top:8px">Mindestlaufzeit bei Befristung (Monate)</label>
+          <input id="minimumContractDurationMonths" type="number" min="1" max="600" step="1" placeholder="z. B. 24">
+          <span class="hint">Wird nur bei „Befristete Anstellung“ berücksichtigt.</span>
+          <label for="contractPreferences">Befristung</label>
+          <select id="contractPreferences" multiple size="2">
+            <option value="permanent">Unbefristet</option>
+            <option value="temporary">Befristet</option>
+          </select>
+          <label for="minimumContractDurationMonths" style="margin-top:8px">Mindestlaufzeit (Monate)</label>
+          <input id="minimumContractDurationMonths" type="number" min="1" max="600" step="1" placeholder="z. B. 24">
+          <span class="hint">Mehrfachauswahl ist möglich. Bei „befristet“ werden kürzere Laufzeiten im Ziel-Fit abgewertet.</span>
         </div>
         <div class="field full">
           <label for="dealBreakers">Ausschlusskriterien</label>
@@ -1056,6 +1070,8 @@
       $("targetLocations").value = edit ? (profile.target_locations || []).join(", ") : "";
       setSelected("preferredWorkModels", edit ? profile.preferred_work_models : []);
       setSelected("preferredEmploymentTypes", edit ? profile.preferred_employment_types : []);
+      $("minimumContractDurationMonths").value = edit ? profile.minimum_contract_duration_months || "" : "";
+      syncContractDurationInput();
       $("dealBreakers").value = edit ? (profile.deal_breakers || []).join("\n") : "";
       $("defaultLanguage").value = edit ? profile.default_language : "de";
       $("profileStatus").value = edit ? profile.status : "active";
@@ -1095,6 +1111,14 @@
         priority: Number(row.querySelector(".target-role-priority").value)
       })).filter(item => item.role);
     }
+    function syncContractDurationInput() {
+      const temporary = Array.from($("preferredEmploymentTypes").selectedOptions)
+        .some(option => option.value === "temporary");
+      $("minimumContractDurationMonths").disabled = !temporary;
+      $("minimumContractDurationMonths").required = temporary;
+      if (!temporary) $("minimumContractDurationMonths").value = "";
+    }
+    $("preferredEmploymentTypes").onchange = syncContractDurationInput;
     $("addTargetRole").onclick = () => { const role = $("newTargetRoleName").value.trim(); if (!role) return; const rows = readTargetRoleRows(); if (rows.some(item => item.role.toLocaleLowerCase() === role.toLocaleLowerCase())) return; rows.push({role, level: $("newTargetRoleLevel").value || null, priority: Number($("newTargetRolePriority").value)}); renderTargetRoleRows(rows); $("newTargetRoleName").value = ""; $("newTargetRoleLevel").value = ""; $("newTargetRolePriority").value = "1"; };
 
     function openCvPdfDialog() {
@@ -1123,6 +1147,8 @@
         target_locations: csv("targetLocations"),
         preferred_work_models: selectedValues("preferredWorkModels"),
         preferred_employment_types: selectedValues("preferredEmploymentTypes"),
+        minimum_contract_duration_months: selectedValues("preferredEmploymentTypes").includes("temporary")
+          ? Number($("minimumContractDurationMonths").value) || null : null,
         deal_breakers: $("dealBreakers").value.split("\n").map(value => value.trim()).filter(Boolean),
         default_language: $("defaultLanguage").value,
         change_reason: $("profileReason").value || null
