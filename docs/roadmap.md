@@ -21,6 +21,12 @@ der [README](../README.md), technische Grundlagen im
 
 ## Erledigt
 
+- DE-/EN-Master-Profile importierbar und versioniert.
+- CV-Recommender mit verÃ¶ffentlichtem Dify-Workflow, evidenzgebundener
+  Validierung und versioniertem CV-Markdown umgesetzt.
+- CV-Auswahl als vorausgewÃ¤hlte, abwÃ¤hlbare Buttons auf der Jobdetailseite;
+  Referenzen bleiben optional.
+
 - Profil, CV-Import, Jobimport und evidenzbasiertes Matching umgesetzt.
 - Berufliche Ziele im Profil strukturiert erfassbar gemacht.
 - Portfolio-Projekte mit geprüftem JSON-Import als eigene Evidenzquelle

@@ -129,4 +129,10 @@ als Text/String (nicht numerisch). Fehler oder fehlende API-Keys führen
 zu protokollierten Review-Fehlern, blockieren jedoch nicht den Importvorgang.
 # CV-Recommender
 
+Aktueller Betriebsstand: Der LLM-Knoten verwendet fÃ¼r die textuelle CV-Erzeugung ein Mistral-Modell (aktuell `ministral-3:14b-instruct-2512-q4_K_M` in Ollama), kein Vision-Modell. Nach jeder Workflow-Ã„nderung muss der Workflow erneut verÃ¶ffentlicht werden; ein gespeicherter Entwurf ist Ã¼ber die Workflow-API nicht ausfÃ¼hrbar (`Workflow not published`).
+
+Profiltexte mÃ¼ssen kompakt, stellenbezogen und belegbar sein. Ein Zeitraum mit abgeschlossenem Enddatum darf nicht als laufende Ausbildung oder Weiterbildung formuliert werden. Der Backend-Service validiert Auswahl-IDs und verwirft nicht belegte Inhalte vor der deterministischen Markdown-Erzeugung.
+
+Die CV-Auswahl befindet sich auf der Job-/Bewerbungsdetailseite unter â€žLebenslauf-Vorlage generierenâ€œ. Skills werden nach Gruppen angezeigt; Gruppen und einzelne Skills sind auswÃ¤hlbar. Berufserfahrung, Projekte, Ausbildung und Zertifikate werden als vorausgewÃ¤hlte Ein-Zeilen-Optionen dargestellt. Referenzen sind optional und werden Ã¼ber die Auswahl einzelner Referenzen gesteuert. AktivitÃ¤ts-Bullets werden in der Verwaltung gepflegt und erscheinen nicht als separate CV-Auswahlliste.
+
 Importiere `workflow/dify/03-cv-recommender-v1.yml` als Workflow und veröffentliche ihn. Hinterlege den API-Key anschließend ausschließlich in `.env` als `DIFY_CV_RECOMMENDER_WORKFLOW_API_KEY`. Der Workflow erhält das Master-Profil und eine Auswahl-Inventarliste vom Backend; er muss die IDs aus dieser Liste unverändert zurückgeben. Ohne konfigurierten Key ist die Aktion „CV-Empfehlung erstellen“ absichtlich nicht verfügbar.

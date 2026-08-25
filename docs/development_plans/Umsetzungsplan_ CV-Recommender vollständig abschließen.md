@@ -510,6 +510,10 @@ Besonders prüfen:
 
 ## Akzeptanzkriterien
 
+### Umsetzungsstand
+
+Die fachliche Umsetzung ist abgeschlossen. Die Empfehlung wird Ã¼ber den Dify-Workflow erzeugt, vor dem Speichern gegen das Master-Profil validiert und anschlieÃŸend deterministisch als versioniertes CV-Markdown gerendert. Die Jobdetailseite verwendet eine vorausgewÃ¤hlte Button-Auswahl fÃ¼r Skills, Berufserfahrung, Projekte, Ausbildung und Zertifikate; Referenzen sind optional. Die Pflege der AktivitÃ¤ts-Bullets bleibt in der Verwaltung.
+
 Der CV-Recommender ist fachlich abgeschlossen, wenn:
 
 1. Recommendation aus Job + Masterprofil erzeugt wird.

@@ -75,6 +75,16 @@ in den Nenner der Ziel-Fit-Berechnung aufgenommen.
 
 Der aktuelle Arbeitsplan steht in der [Roadmap](docs/roadmap.md).
 
+## CV-Recommender
+
+Auf der Job-/Bewerbungsdetailseite steht unter „Lebenslauf-Vorlage generieren“
+eine stellenbezogene CV-Erzeugung zur Verfügung. DE-/EN-Master-Profile werden
+versioniert verwaltet und dienen als Kandidatenquelle. Der veröffentlichte
+Dify-Workflow erzeugt die strukturierte Empfehlung; das Backend validiert die
+Auswahl und rendert versioniertes CV-Markdown. Skills, Berufserfahrung,
+Projekte, Ausbildung und Zertifikate sind vorausgewählt und abwählbar,
+Referenzen optional. Aktivitäts-Bullets werden in der Verwaltung gepflegt.
+
 ## Datenschutz und Netzwerk
 
 Die Anwendung ist für den privaten lokalen Betrieb vorgesehen. Sie besitzt

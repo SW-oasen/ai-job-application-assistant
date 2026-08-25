@@ -17,7 +17,7 @@ Browser
 Application Assistant (FastAPI)
   |-- PostgreSQL: kanonische Daten und Ergebnisse
   |-- Redis: konfigurierter Infrastrukturanschluss
-  |-- Dify API: CV-Extraktion, Job-Metadaten und Matching
+  |-- Dify API: CV-Import, CV-Recommender, Job-Metadaten und Matching
   `-- MinerU: OCR- und Layout-Fallback für PDFs
 ```
 
@@ -91,7 +91,8 @@ Wichtige Variablen:
 | `DATABASE_URL` | leer | Datenbankverbindung der Kernanwendung |
 | `REDIS_URL` | leer | Redis-Verbindung |
 | `DIFY_BASE_URL` | `http://api:5001` | interne Dify-API |
-| `DIFY_CV_WORKFLOW_API_KEY` | leer | CV-Workflow |
+| `DIFY_CV_WORKFLOW_API_KEY` | leer | Legacy-CV-Import-Workflow |
+| `DIFY_CV_RECOMMENDER_WORKFLOW_API_KEY` | leer | verÃ¶ffentlichter CV-Recommender |
 | `DIFY_MATCHING_WORKFLOW_API_KEY` | leer | Matching-Workflow |
 | `DIFY_METADATA_WORKFLOW_API_KEY` | leer | Metadaten-Fallback |
 | `MINERU_BASE_URL` | `http://mineru-api:8000` | MinerU-API |
@@ -133,6 +134,7 @@ docker compose run --rm application-assistant-backend alembic upgrade head
 Kanonisch gespeichert werden unter anderem:
 
 - Profile, Skills, Berufserfahrung, Ausbildung und Zertifikate
+- versionierte Master-Profile, CV-Empfehlungen und generierte CV-Dokumente
 - Stellen, Anforderungen und strukturierte Metadaten
 - profilspezifische Matchings und Evidenzzuordnungen
 - Bewerbungen und Verlaufsereignisse
@@ -199,6 +201,13 @@ die Evaluationsstrategie stehen in der
 [Roadmap](roadmap.md) und in [Evaluation](evaluation.md).
 
 ## Bewerbungsverlauf und Dokumente
+
+Die CV-Vorlage wird auf der Job-/Bewerbungsdetailseite aus Jobkontext und
+Master-Profil erzeugt. Dify liefert nur die strukturierte Empfehlung; die
+Auswahl-IDs werden im Backend gegen das Master-Profil geprüft. Das Backend
+rendert das CV-Markdown deterministisch und speichert Neugenerierungen als
+neue Version mit Master-Profil- und Empfehlungs-Provenienz. Referenzen sind
+optional; Aktivitäts-Bullets werden in der Verwaltung gepflegt.
 
 Eine Bewerbung gehört zu genau einem Job und Profil. Statuswechsel und
 Kommunikation werden als Ereignisse gespeichert. Ereignisse können bearbeitet

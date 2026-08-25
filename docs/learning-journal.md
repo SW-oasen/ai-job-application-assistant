@@ -32,3 +32,13 @@ zu geplanten Arbeiten stehen in der [Roadmap](roadmap.md).
   Keys sind entscheidend; Migration der Review-Tabellen ist nach Workflow-
   Import erforderlich.
 
+## 2026-08 – CV-Recommender und Master-Profile
+
+- DE-/EN-Master-Profile werden importiert, versioniert und als einzige
+  Kandidatenquelle für die CV-Empfehlung verwendet.
+- Der veröffentlichte Dify-Workflow erzeugt eine strukturierte, belegbare
+  Empfehlung; das Backend validiert IDs und rendert versioniertes CV-Markdown.
+- Die Jobdetailseite verwendet vorausgewählte Button-Auswahlen; Referenzen
+  sind optional, Aktivitäts-Bullets bleiben in der Verwaltung.
+- Workflow-Änderungen müssen in Dify nach dem Import veröffentlicht werden;
+  ein Entwurf ist über die Workflow-API nicht ausführbar.
