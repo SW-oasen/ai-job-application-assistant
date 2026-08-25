@@ -10,8 +10,9 @@ ACTIVITY_HEADINGS = re.compile(
     r"\b("
     r"aufgaben|tätigkeiten|verantwortung|verantwortlichkeiten|mission|"
     r"(?:deine|ihre) rolle|rolle|ihr aufgabengebiet|das erwartet dich|"
+    r"wie sie etwas bewirken können|"
     r"responsibilities|your role|what you(?:'|’)ll do|what you(?:'|’)ll be doing|"
-    r"the role|in this (?:position|role)|key responsibilities|day[- ]to[- ]day|what you need to make a difference"
+    r"the role|you(?:'|’)ll build|in this (?:position|role)|key responsibilities|day[- ]to[- ]day|what you need to make a difference"
     r")\b",
     re.IGNORECASE,
 )
@@ -32,11 +33,11 @@ INLINE_REQUIREMENT_CONTEXT = re.compile(
 REQUIREMENT_HEADINGS = re.compile(
     r"\b("
     r"anforderungen|qualifikation(?:en)?|kompetenz\w*|profil|das bringst du(?:\s+.{0,80})?\s+mit|"
-    r"das zeichnet dich aus|ihr profil|"
+    r"das zeichnet dich aus|ihr profil|was sie mitbringen|"
     r"requirements|qualifications|what you bring|your profile|"
     r"skills?\s*[+&]\s*education|skills?|education|"
     r"what we(?:'|’)re looking for|what you need to be successful|about you|who you are|"
-    r"what you(?:'|’)ll bring|must[- ]haves?|skills (?:and|&) experience"
+    r"what you(?:'|’)ll bring|you likely|must[- ]haves?|skills (?:and|&) experience"
     r")\b",
     re.IGNORECASE,
 )
@@ -153,6 +154,26 @@ def _clean_heading(value: str) -> str:
     return value
 
 
+def _section_for_heading(value: str) -> str | None:
+    """Classify a section label, including unformatted labels from HTML captures."""
+    # Benefits win for combined labels such as "Aufgaben & Benefits".
+    if BENEFIT_HEADINGS.search(value):
+        return "benefit"
+    if ACTIVITY_HEADINGS.search(value) or ACTIVITY_CONTEXT_HEADINGS.search(value):
+        return "activity"
+    if REQUIREMENT_HEADINGS.search(value):
+        return "requirement"
+    return None
+
+
+def _plain_section_heading(value: str) -> str | None:
+    """Classify a short standalone prose label flattened from an HTML heading."""
+    heading = _clean_heading(value)
+    if len(heading) > 80 or re.search(r"[.!?]", heading):
+        return None
+    return _section_for_heading(heading)
+
+
 def _join_list_continuations(content: str) -> list[str]:
     """Join indented Markdown continuation lines with their list item.
 
@@ -219,8 +240,14 @@ def _seniority_requirement(value: str, heading: str) -> dict | None:
             years = float(raw_years.replace(",", "."))
         years_text = f"{years:g}"
         normalized_value = f"min_years:{years:g}"
+    scope = _clean_item(SENIORITY_PATTERN.sub("", value, count=1))
+    requirement = (
+        _clean_item(value)
+        if scope and len(scope) >= 3 and re.search(r"berufs?\s*erfahrung", value, re.IGNORECASE)
+        else f"Mindestens {years_text} Jahre Berufserfahrung"
+    )
     return {
-        "requirement": f"Mindestens {years_text} Jahre Berufserfahrung",
+        "requirement": requirement,
         "category": "experience",
         "priority": _priority(value, heading),
         "keywords": ["Berufserfahrung", "years_experience"],
@@ -249,36 +276,28 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
         heading_match = HEADING_PATTERN.match(raw_line)
         if heading_match:
             heading = _clean_heading(heading_match.group(1))
-            # Benefits win for combined headings such as "Aufgaben & Benefits".
-            if BENEFIT_HEADINGS.search(heading):
-                section = "benefit"
-            elif ACTIVITY_HEADINGS.search(heading) or ACTIVITY_CONTEXT_HEADINGS.search(heading):
-                section = "activity"
-            elif REQUIREMENT_HEADINGS.search(heading):
-                section = "requirement"
-            else:
-                section = None
+            section = _section_for_heading(heading)
             blank_line_after_list = False
             continue
         bold_heading_match = BOLD_HEADING_PATTERN.match(raw_line)
         if bold_heading_match:
             candidate_heading = _clean_heading(bold_heading_match.group("heading"))
-            if BENEFIT_HEADINGS.search(candidate_heading):
+            candidate_section = _section_for_heading(candidate_heading)
+            if candidate_section is not None:
                 heading = candidate_heading
-                section = "benefit"
-                continue
-            if ACTIVITY_HEADINGS.search(candidate_heading) or ACTIVITY_CONTEXT_HEADINGS.search(candidate_heading):
-                heading = candidate_heading
-                section = "activity"
-                continue
-            if REQUIREMENT_HEADINGS.search(candidate_heading):
-                heading = candidate_heading
-                section = "requirement"
+                section = candidate_section
                 continue
             # A new bold standalone heading must not inherit the previous
             # section (e.g. "Meine Kompetenzen" after an activity section).
             section = None
             heading = candidate_heading
+        elif not LIST_ITEM_PATTERN.match(raw_line):
+            plain_heading_section = _plain_section_heading(raw_line)
+            if plain_heading_section is not None:
+                heading = _clean_heading(raw_line)
+                section = plain_heading_section
+                blank_line_after_list = False
+                continue
         if section is None:
             if INLINE_ACTIVITY_CONTEXT.search(raw_line):
                 section = "activity"
@@ -337,6 +356,8 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
             seniority = _seniority_requirement(text, heading)
             if seniority is not None:
                 requirements.append(seniority)
+                if seniority["requirement"] == text:
+                    continue
                 residual = SENIORITY_PATTERN.sub("", text, count=1)
                 residual = re.sub(
                     r"^\s*(?:with|of|in|and|oder|mit|sowie|für)\s+",

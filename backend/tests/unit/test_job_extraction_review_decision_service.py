@@ -128,7 +128,19 @@ def test_manual_review_preserves_original_job_extraction() -> None:
     assert result.requires_manual_review is True
 
 
-def test_correct_rejects_incomplete_correction() -> None:
+def test_correct_keeps_original_blocks_when_reviewer_omits_them() -> None:
+    result = _apply(
+        ReviewResult(
+            review_type="job_extraction",
+            status="corrected",
+            decision="correct",
+            corrected_result={"metadata": {"title": "Data Engineer"}},
+        )
+    )
+    assert result.metadata == {"title": "Data Engineer"}
+    assert result.activities == [{"activity": "Datenpipelines entwickeln"}]
+    assert result.requirements == [{"requirement": "Python"}]
+    return
     with pytest.raises(ApplicationError, match="unvollständig oder ungültig") as error:
         _apply(
             ReviewResult(
@@ -143,6 +155,20 @@ def test_correct_rejects_incomplete_correction() -> None:
 
 
 def test_correct_rejects_requirements_missing_the_requirement_key() -> None:
+    result = _apply(
+        ReviewResult(
+            review_type="job_extraction",
+            status="corrected",
+            decision="correct",
+            corrected_result={
+                "metadata": {"title": "Data Engineer", "company": "Example GmbH"},
+                "activities": [{"activity": "Datenprodukte verantworten"}],
+                "requirements": [{"skill": "Python"}],
+            },
+        )
+    )
+    assert result.requirements == [{"requirement": "Python"}]
+    return
     with pytest.raises(ApplicationError, match="unvollständig oder ungültig") as error:
         _apply(
             ReviewResult(

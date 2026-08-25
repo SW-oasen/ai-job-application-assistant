@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -17,7 +17,9 @@ Language = Literal["de", "en"]
 ContentStatus = Literal["draft", "approved", "inactive"]
 WorkModel = Literal["remote", "hybrid", "onsite"]
 EmploymentType = Literal["permanent", "temporary", "freelance", "internship", "working_student"]
-TargetRoleLevel = Literal["Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Lead", "Manager"]
+TargetRoleLevel = Literal[
+    "Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Lead", "Manager"
+]
 
 
 class TargetRolePreference(BaseModel):
@@ -34,6 +36,7 @@ class TargetRolePreference(BaseModel):
         if not value:
             raise ValueError("role must not be empty")
         return value
+
 
 PROFILE_LIST_FIELDS = (
     "target_roles",
@@ -73,6 +76,22 @@ class LocalizationInput(BaseModel):
     summary: str | None = Field(default=None, max_length=20_000)
     bullets: list[str] = Field(default_factory=list, max_length=100)
     status: ContentStatus = "draft"
+
+
+class MasterProfileVersionResponse(BaseModel):
+    id: UUID
+    language: Language
+    version: int
+    is_current: bool
+    original_filename: str
+    content_hash: str
+    file_size: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class MasterProfileResponse(MasterProfileVersionResponse):
+    content: str
 
 
 class ProfileCreate(BaseModel):
@@ -151,9 +170,8 @@ class ProfileUpdate(BaseModel):
             and self.minimum_contract_duration_months is None
         ):
             raise ValueError("Temporary contract preference requires a minimum duration in months.")
-        if (
-            "preferred_employment_types" in self.model_fields_set
-            and "temporary" not in (self.preferred_employment_types or [])
+        if "preferred_employment_types" in self.model_fields_set and "temporary" not in (
+            self.preferred_employment_types or []
         ):
             self.minimum_contract_duration_months = None
         return self
@@ -200,7 +218,9 @@ class SkillEvidenceCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     skill_id: UUID
-    source_resource_type: Literal["experience", "project", "certificate", "education", "manual_training"]
+    source_resource_type: Literal[
+        "experience", "project", "certificate", "education", "manual_training"
+    ]
     source_resource_id: UUID | None = None
     experience_context: Literal["professional", "project", "training"]
     evidence_text: str | None = Field(default=None, max_length=10_000)
@@ -211,7 +231,9 @@ class SkillEvidenceUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     skill_id: UUID | None = None
-    source_resource_type: Literal["experience", "project", "certificate", "education", "manual_training"] | None = None
+    source_resource_type: (
+        Literal["experience", "project", "certificate", "education", "manual_training"] | None
+    ) = None
     source_resource_id: UUID | None = None
     experience_context: Literal["professional", "project", "training"] | None = None
     evidence_text: str | None = Field(default=None, max_length=10_000)

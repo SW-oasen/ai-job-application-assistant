@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -136,9 +137,7 @@ class JobActivity(Base):
 
 class Application(TimestampMixin, Base):
     __tablename__ = "applications"
-    __table_args__ = (
-        UniqueConstraint("job_id", "profile_id", name="uq_application_job_profile"),
-    )
+    __table_args__ = (UniqueConstraint("job_id", "profile_id", name="uq_application_job_profile"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"))
@@ -215,12 +214,38 @@ class GeneratedDocument(Base):
     version: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
     prompt_version: Mapped[str | None] = mapped_column(String(100))
+    source_master_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    source_master_profile_version: Mapped[int | None] = mapped_column(Integer)
+    source_recommendation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    generation_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    is_current: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
     )
 
     application: Mapped[Application] = relationship(back_populates="documents")
+
+
+class CvRecommendation(TimestampMixin, Base):
+    """A reviewable, source-bound CV selection for one application."""
+
+    __tablename__ = "cv_recommendations"
+    __table_args__ = (Index("ix_cv_recommendations_application", "application_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+    )
+    master_profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("master_profiles.id"), nullable=False
+    )
+    master_profile_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    language: Mapped[str] = mapped_column(String(5), nullable=False)
+    recommendation: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    validation_warnings: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    workflow_run_id: Mapped[str | None] = mapped_column(String(200))
+    is_current: Mapped[bool] = mapped_column(default=True)
 
 
 class ApplicationFile(Base):
@@ -387,6 +412,30 @@ class Profile(TimestampMixin, Base):
     revision: Mapped[int] = mapped_column(Integer, default=1)
 
 
+class MasterProfile(TimestampMixin, Base):
+    __tablename__ = "master_profiles"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "language", "version", name="uq_master_profile_version"),
+        Index(
+            "uq_master_profile_current_language",
+            "profile_id",
+            "language",
+            unique=True,
+            postgresql_where=text("is_current"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
+    language: Mapped[str] = mapped_column(String(5))
+    content: Mapped[str] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer)
+    is_current: Mapped[bool] = mapped_column(default=True, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(500))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    file_size: Mapped[int] = mapped_column(Integer)
+
+
 class LocalizedTextMixin:
     language: Mapped[str] = mapped_column(String(5))
     title: Mapped[str] = mapped_column(String(500))
@@ -410,9 +459,7 @@ class Skill(TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(default=True)
     status: Mapped[str] = mapped_column(String(30), default="draft")
     revision: Mapped[int] = mapped_column(Integer, default=1)
-    localizations: Mapped[list["SkillLocalization"]] = relationship(
-        cascade="all, delete-orphan"
-    )
+    localizations: Mapped[list["SkillLocalization"]] = relationship(cascade="all, delete-orphan")
     evidence_links: Mapped[list["SkillEvidence"]] = relationship(
         back_populates="skill", cascade="all, delete-orphan"
     )
@@ -437,13 +484,17 @@ class SkillEvidence(TimestampMixin, Base):
     __tablename__ = "skill_evidence"
     __table_args__ = (
         UniqueConstraint(
-            "skill_id", "source_resource_type", "source_resource_id",
+            "skill_id",
+            "source_resource_type",
+            "source_resource_id",
             name="uq_skill_evidence_source",
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    skill_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
+    skill_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("skills.id", ondelete="CASCADE"), index=True
+    )
     source_resource_type: Mapped[str] = mapped_column(String(30))
     source_resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     experience_context: Mapped[str] = mapped_column(String(30))

@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     dify_base_url: AnyHttpUrl = "http://api:5001"
     dify_cv_workflow_api_key: SecretStr | None = None
     dify_cv_workflow_timeout_seconds: int = 300
+    dify_cv_recommender_workflow_api_key: SecretStr | None = None
+    dify_cv_recommender_workflow_timeout_seconds: int = 300
     dify_matching_workflow_api_key: SecretStr | None = None
     dify_matching_workflow_timeout_seconds: int = 300
     dify_metadata_workflow_api_key: SecretStr | None = None

@@ -20,6 +20,7 @@
     .summary-card h2{margin:0 0 14px;font-size:22px}.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.summary-grid>div{padding:11px;border-radius:9px;background:#f6f8fb}.summary-grid strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.summary-grid select{margin-top:0}
     details.section>summary{cursor:pointer;font-weight:700;font-size:18px;list-style:revert}details.section .section-body{margin-top:16px}
     .review-history{display:grid;gap:10px}.review-run{padding:12px;border:1px solid var(--line);border-radius:8px;background:#f6f8fb}.review-run h3{margin:0;font-size:15px}.review-run p{margin:7px 0 0;color:var(--muted);font-size:13px}.review-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.review-meta .tag{background:#fff}.review-issues{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}.review-issues li{padding:8px;background:#fff;border-radius:6px;font-size:13px}.review-issues strong{display:block}.review-error{color:#8a4b08}
+    .cv-flow-group{margin:0 0 14px}.cv-flow-group h4{margin:0 0 7px;text-transform:capitalize}.cv-flow{display:flex;flex-wrap:wrap;gap:7px;margin-left:24px}.cv-choice{display:inline-flex;cursor:pointer}.cv-choice input{position:absolute;opacity:0;pointer-events:none}.cv-choice span{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#34445b;font-size:13px;font-weight:650;line-height:1.2}.cv-choice-group{display:flex;margin:0 0 7px}.cv-choice-group span{width:100%;min-height:38px;border-radius:7px;font-size:16px;font-weight:800;background:#f6f8fb}.cv-choice-row{display:flex;width:100%;margin:0 0 7px}.cv-choice-row span{width:100%;border-radius:8px}.cv-choice:hover span{border-color:#91b4ff;background:#edf3ff}.cv-choice input:checked+span{border-color:var(--blue);background:#e8f0ff;color:#0f3d98}.cv-choice input:focus-visible+span{outline:3px solid #91b4ff;outline-offset:2px}
     @media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid,.structured-fields,.summary-grid{grid-template-columns:1fr}.full{grid-column:auto}}
   </style>
 </head>
@@ -131,6 +132,10 @@
           <p><button class="button strong" id="uploadDocument" type="submit">PDF hochladen</button></p>
         </form>
       </div>
+    </details>
+    <details class="panel section" id="cvSection">
+      <summary>Lebenslauf-Vorlage generieren</summary>
+      <div class="section-body" id="cvWorkspace"><p class="warning">Profil auswählen, um eine CV-Empfehlung zu erstellen.</p></div>
     </details>
     <details class="panel section" id="structuredSection">
       <summary>Erkannte Stellendetails</summary>
@@ -340,6 +345,66 @@
       if(!currentApplication){renderDocuments([]);return}
       renderDocuments(await request(`/applications/${encodeURIComponent(currentApplication.id)}/files`));
     }
+    const cvLabel=value=>String(value||"").replace(/^(skill|experience|project|education|certificate|reference):/,"").replaceAll(":"," · ");
+    const cvGroupLabel=value=>String(value||"").replaceAll("_"," ").split(" ").map(word=>({ai:"AI",ml:"ML",api:"API",sql:"SQL",rag:"RAG"}[word.toLowerCase()]||word.charAt(0).toUpperCase()+word.slice(1))).join(" ");
+    function cvChecklist(title,items,key,selected){
+      if(key==="selected_skills"||key==="selected_references"){
+        const groups=key==="selected_skills"?items.reduce((result,item)=>{(result[item.category||"Other"]??=[]).push(item);return result},{}):{[title]:items};
+        if(key==="selected_references")return `<div class="cv-flow-group"><h4>${esc(title)} (optional)</h4><div class="cv-flow">${items.map(item=>`<label class="cv-choice"><input type="checkbox" data-cv-key="${esc(key)}" value="${esc(item.id)}" ${selected.includes(item.id)?"checked":""}><span>${esc(item.name||item.label||cvLabel(item.id))}</span></label>`).join("")}</div></div>`;
+        return `<div class="cv-flow-group"><h4>${esc(title)}</h4>${Object.entries(groups).map(([group,groupItems])=>`<div class="cv-flow-group"><label class="cv-choice cv-choice-group"><input type="checkbox" data-cv-skill-group="${esc(group)}" checked><span>${esc(cvGroupLabel(group))}</span></label><div class="cv-flow">${groupItems.map(item=>`<label class="cv-choice"><input type="checkbox" data-cv-key="${esc(key)}" data-cv-skill-group-member="${esc(group)}" value="${esc(item.id)}" ${selected.includes(item.id)?"checked":""}><span>${esc(item.name||item.label||cvLabel(item.id))}</span></label>`).join("")}</div></div>`).join("")}</div>`;
+      }
+      if(["selected_experience_entries","selected_projects","selected_education","selected_certificates"].includes(key)){
+        return `<div class="cv-flow-group"><h4>${esc(title)}</h4>${items.map(item=>`<label class="cv-choice cv-choice-row"><input type="checkbox" data-cv-key="${esc(key)}" value="${esc(item.id)}" ${selected.includes(item.id)?"checked":""}><span>${esc(item.name||item.label||cvLabel(item.id))}</span></label>`).join("")}</div>`;
+      }
+      return `<div class="requirement-group"><h4>${esc(title)}</h4><ul class="requirement-list">${items.map(item=>`<li><label><input type="checkbox" data-cv-key="${esc(key)}" value="${esc(item.id)}" ${selected.includes(item.id)?"checked":""}> ${esc(item.name||item.label||cvLabel(item.id))}</label></li>`).join("")}</ul></div>`;
+    }
+    async function loadCvWorkspace(){
+      const node=document.getElementById("cvWorkspace"),profileId=document.getElementById("profile").value;
+      if(!profileId){node.innerHTML='<p class="warning">Profil auswählen, um eine CV-Empfehlung zu erstellen.</p>';return}
+      if(!currentApplication){node.innerHTML='<p>Für diese Stelle besteht noch keine Bewerbung.</p><button class="button" id="createCvRecommendation">CV-Empfehlung erstellen</button>';document.getElementById("createCvRecommendation").onclick=createCvRecommendation;return}
+      const [recommendation,documents]=await Promise.all([request(`/cv/applications/${encodeURIComponent(currentApplication.id)}/recommendation`),request(`/cv/applications/${encodeURIComponent(currentApplication.id)}/documents`)]);
+      if(!recommendation){node.innerHTML='<p>Noch keine CV-Empfehlung vorhanden.</p><button class="button" id="createCvRecommendation">CV-Empfehlung erstellen</button>';document.getElementById("createCvRecommendation").onclick=createCvRecommendation;return}
+      const r=recommendation.recommendation||{},inv=recommendation.inventory||{};
+      ["skills","experience_entries","projects","education","certificates","references"].forEach(kind=>r[`selected_${kind}`]=(inv[kind.replace("_entries","")]||[]).map(item=>item.id));
+      node.innerHTML=`<p><strong>Master-Profil:</strong> ${esc(recommendation.language.toUpperCase())} v${esc(recommendation.master_profile_version)} · <strong>CV-Versionen:</strong> ${esc(documents.length)}</p>
+        <label>Zieljobtitel<input id="cvJobTitle" value="${esc(r.recommended_job_title)}"></label>
+        <label>Profiltext<textarea id="cvProfileText" rows="5">${esc(r.recommended_profile_text)}</textarea></label>
+        <p class="reference-hint">Auswahl-IDs werden gegen das gespeicherte Master-Profil validiert. Nicht belegte Inhalte werden nicht übernommen.</p>
+        <div id="cvSelections">${cvChecklist("Skills",(inv.skills||[]),"selected_skills",r.selected_skills||[])}${cvChecklist("Berufserfahrung",(inv.experience||[]),"selected_experience_entries",r.selected_experience_entries||[])}${(inv.experience||[]).filter(item=>(r.selected_experience_entries||[]).includes(item.id)).map(item=>`<div class="requirement-group"><h4>Bullets · ${esc(item.job_title||item.label)}</h4>${(item.bullets||[]).map(bullet=>`<label><input type="checkbox" data-cv-bullet="${esc(item.id)}" value="${esc(bullet)}" ${(r.selected_experience_bullets?.[item.id]||[]).includes(bullet)?"checked":""}> ${esc(bullet)}</label><br>`).join("")}</div>`).join("")}${cvChecklist("Projekte",(inv.projects||[]),"selected_projects",r.selected_projects||[])}${cvChecklist("Ausbildung",(inv.education||[]),"selected_education",r.selected_education||[])}${cvChecklist("Zertifikate",(inv.certificates||[]),"selected_certificates",r.selected_certificates||[])}${cvChecklist("Referenzen",(inv.references||[]),"selected_references",r.selected_references||[])}<p><label><input type="checkbox" id="cvIncludeReferences" ${r.include_references?"checked":""}> Referenzen aufnehmen</label></p></div>
+        <p><button class="button secondary" id="saveCvRecommendation">Empfehlung speichern</button> <button class="button" id="generateCvMarkdown">CV-Markdown erzeugen</button> <button class="button secondary" id="newCvRecommendation">Neue Empfehlung</button></p>
+        ${documents.length?`<details><summary>CV-Versionen anzeigen</summary>${documents.map(doc=>`<p><button class="button secondary" data-cv-version="${esc(doc.document_id)}">CV v${esc(doc.version)} öffnen</button></p>`).join("")}<textarea id="cvMarkdown" rows="18" class="hidden"></textarea><p><button class="button secondary hidden" id="saveCvMarkdown">Als neue Version speichern</button></p></details>`:""}`;
+      document.getElementById("cvIncludeReferences")?.closest("p")?.remove();
+      node.querySelectorAll(".requirement-group").forEach(group=>{if(group.querySelector("[data-cv-bullet]"))group.remove()});
+      document.getElementById("saveCvRecommendation").onclick=()=>saveCvRecommendation(recommendation,documents);
+      document.getElementById("generateCvMarkdown").onclick=()=>generateCvMarkdown(recommendation);
+      document.getElementById("newCvRecommendation").onclick=createCvRecommendation;
+      const updateSkillGroup=group=>{
+        const groupButton=node.querySelector(`[data-cv-skill-group="${group}"]`);
+        const members=[...node.querySelectorAll("[data-cv-skill-group-member]")].filter(input=>input.dataset.cvSkillGroupMember===group);
+        groupButton.checked=members.length>0&&members.every(input=>input.checked);
+        groupButton.indeterminate=members.some(input=>input.checked)&&!groupButton.checked;
+      };
+      node.querySelectorAll("[data-cv-skill-group]").forEach(groupButton=>{
+        const group=groupButton.dataset.cvSkillGroup;
+        groupButton.onchange=()=>{node.querySelectorAll("[data-cv-skill-group-member]").forEach(input=>{if(input.dataset.cvSkillGroupMember===group)input.checked=groupButton.checked});groupButton.indeterminate=false};
+        node.querySelectorAll("[data-cv-skill-group-member]").forEach(input=>{if(input.dataset.cvSkillGroupMember===group)input.onchange=()=>updateSkillGroup(group)});
+        updateSkillGroup(group);
+      });
+      node.querySelectorAll("[data-cv-version]").forEach(button=>button.onclick=()=>{const doc=documents.find(item=>item.document_id===button.dataset.cvVersion),editor=document.getElementById("cvMarkdown");editor.value=doc.content;editor.classList.remove("hidden");const save=document.getElementById("saveCvMarkdown");save.classList.remove("hidden");save.onclick=()=>saveCvMarkdown(recommendation.language,editor.value)});
+    }
+    async function createCvRecommendation(){
+      const profileId=document.getElementById("profile").value;
+      try{await request("/cv/recommendations",{method:"POST",body:JSON.stringify({job_id:jobId,profile_id:profileId,language:currentJob.language==="en"?"en":"de"})});await loadApplication()}catch(error){alert(error.message)}
+    }
+    async function saveCvRecommendation(recommendation){
+      const r={...recommendation.recommendation,recommended_job_title:document.getElementById("cvJobTitle").value.trim(),recommended_profile_text:document.getElementById("cvProfileText").value.trim()};
+      r.selected_skills=[...document.querySelectorAll('[data-cv-key="selected_skills"]:checked')].map(input=>input.value);
+      ["selected_experience_entries","selected_projects","selected_education","selected_certificates","selected_references"].forEach(key=>r[key]=[...document.querySelectorAll(`[data-cv-key="${key}"]:checked`)].map(input=>input.value));
+      r.selected_experience_bullets={};document.querySelectorAll("[data-cv-bullet]").forEach(input=>{if(input.checked)(r.selected_experience_bullets[input.dataset.cvBullet]??=[]).push(input.value)});r.include_references=r.selected_references.length>0;
+      try{await request(`/cv/recommendations/${encodeURIComponent(recommendation.id)}`,{method:"PUT",body:JSON.stringify(r)});await loadCvWorkspace()}catch(error){alert(error.message)}
+    }
+    async function generateCvMarkdown(recommendation){try{await saveCvRecommendation(recommendation);await request("/cv/documents",{method:"POST",body:JSON.stringify({recommendation_id:recommendation.id})});await loadCvWorkspace()}catch(error){alert(error.message)}}
+    async function saveCvMarkdown(language,content){try{await request(`/cv/applications/${encodeURIComponent(currentApplication.id)}/documents?language=${encodeURIComponent(language)}`,{method:"POST",body:JSON.stringify({content})});await loadCvWorkspace()}catch(error){alert(error.message)}}
     async function deleteDocument(fileId){
       if(!confirm("Diese archivierte PDF-Datei wirklich löschen?"))return;
       try{
@@ -367,7 +432,7 @@
       document.getElementById("summaryLastAction").textContent=lastEvent?formatDate(lastEvent.occurred_at):"keine Ereignisse";
       renderTimeline(events);
       resetEventEditor();
-      await loadDocuments();
+      await Promise.all([loadDocuments(),loadCvWorkspace()]);
     }
     async function loadMatchingSummary(){
       const node=document.getElementById("matchingSummary"),profileId=document.getElementById("profile").value;

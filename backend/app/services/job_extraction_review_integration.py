@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.errors import ApplicationError
+from app.parsers.job_metadata import _clean_title
 from app.schemas.review import ReviewResult
 from app.services.job_extraction_review_orchestrator import (
     JobExtractionCandidate,
@@ -46,8 +47,10 @@ async def review_job_extraction_if_configured(
         return JobExtractionReviewIntegrationResult(
             metadata, activities, requirements, (failed_review,)
         )
+    reviewed_metadata = dict(outcome.extraction.metadata)
+    reviewed_metadata["title"] = _clean_title(reviewed_metadata.get("title"))
     return JobExtractionReviewIntegrationResult(
-        metadata=outcome.extraction.metadata,
+        metadata=reviewed_metadata,
         activities=outcome.extraction.activities,
         requirements=outcome.extraction.requirements,
         review_results=outcome.review_results,

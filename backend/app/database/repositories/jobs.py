@@ -111,6 +111,10 @@ async def persist_imported_job(
                 )
             company = None
             company_name = (metadata.get("company") or "").strip()
+            # A malformed extraction must not abort the entire job import. The
+            # database column has the same 300-character limit.
+            if len(company_name) > 300:
+                company_name = ""
             if company_name:
                 company = await session.scalar(
                     select(Company).where(

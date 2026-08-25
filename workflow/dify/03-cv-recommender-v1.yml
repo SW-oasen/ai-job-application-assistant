@@ -1,0 +1,165 @@
+app:
+  description: Erstellt eine evidenzgebundene, reviewbare CV-Empfehlung aus Stellenkontext und Master-Profil.
+  icon: file_folder
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: CV recommender v1
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {enabled: false}
+    opening_statement: ''
+    retriever_resource: {enabled: false}
+    sensitive_word_avoidance: {enabled: false}
+    speech_to_text: {enabled: false}
+    suggested_questions: []
+    suggested_questions_after_answer: []
+    text_to_speech: {enabled: false}
+  graph:
+    edges:
+    - {data: {isInIteration: false, isInLoop: false, sourceType: start, targetType: llm}, id: start-source-extract-target, source: start, sourceHandle: source, target: extract, targetHandle: target, type: custom, zIndex: 0}
+    - {data: {isInIteration: false, isInLoop: false, sourceType: llm, targetType: code}, id: extract-source-serialize-target, source: extract, sourceHandle: source, target: serialize, targetHandle: target, type: custom, zIndex: 0}
+    - {data: {isInIteration: false, isInLoop: false, sourceType: code, targetType: end}, id: serialize-source-end-target, source: serialize, sourceHandle: source, target: end, targetHandle: target, type: custom, zIndex: 0}
+    nodes:
+    - data:
+        desc: Stellenkontext, Master-Profil und zulässige Auswahl-IDs kommen ausschließlich vom Backend.
+        selected: false
+        title: CV Recommendation Input
+        type: start
+        variables:
+        - {label: language, variable: language, type: text-input, required: true, default: '', max_length: 5, options: [], placeholder: 'de oder en'}
+        - {label: job_context, variable: job_context, type: paragraph, required: true, default: '', max_length: 50000, options: [], placeholder: ''}
+        - {label: master_profile, variable: master_profile, type: paragraph, required: true, default: '', max_length: 100000, options: [], placeholder: ''}
+        - {label: source_inventory, variable: source_inventory, type: paragraph, required: true, default: '', max_length: 100000, options: [], placeholder: ''}
+      height: 190
+      id: start
+      position: {x: 30, y: 220}
+      positionAbsolute: {x: 30, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context: {enabled: false, variable_selector: []}
+        model:
+          completion_params: {max_tokens: 3500, temperature: 0.1}
+          mode: chat
+          name: ministral-3:14b-instruct-2512-q4_K_M
+          provider: langgenius/ollama/ollama
+        prompt_template:
+        - id: system
+          role: system
+          text: |
+            Du erstellst eine strukturierte CV-Empfehlung. Die Masterprofil-Daten
+            sind die einzige Quelle für Kandidatenfakten. Wähle ausschließlich IDs
+            aus SOURCE_INVENTORY. Erfinde niemals Skills, Tools, Erfahrungen,
+            Projekte, Zahlen, Abschlüsse oder Referenzen. Übernimm Bullet-Texte nur
+            exakt aus den in der Inventory enthaltenen Experience-Bullets.
+            Der Profiltext darf kompakt (3–5 sachliche Sätze), stellenbezogen und
+            semantisch neu formuliert sein, aber keine neue oder stärkere Aussage
+            enthalten. Priorisiere Kernanforderungen, nachweisbare Praxis und dann
+            Projekte. Lasse nicht belegte Jobanforderungen weg. Antworte nur gemäß
+            dem JSON-Schema.
+            Beschreibe Aus- oder Weiterbildungen nur dann als laufend, wenn das
+            Master-Profil dies ausdrücklich sagt. Ein Zeitraum mit abgeschlossenem
+            Enddatum ist keine laufende Ausbildung; verwende dafür niemals
+            "currently pursuing", "ongoing", "enrolled" oder äquivalente Aussagen.
+            Do not frame a completed program as "currently enhancing expertise",
+            "through professional training", or any other ongoing learning claim.
+        - id: user
+          role: user
+          text: |
+            OUTPUT_LANGUAGE: {{#start.language#}}
+            JOB_CONTEXT:
+            {{#start.job_context#}}
+            MASTER_PROFILE:
+            {{#start.master_profile#}}
+            SOURCE_INVENTORY:
+            {{#start.source_inventory#}}
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              recommended_job_title: {type: string}
+              recommended_profile_text: {type: string}
+              selected_skill_categories: {type: array, items: {type: string}}
+              selected_skills: {type: array, items: {type: string}}
+              selected_experience_entries: {type: array, items: {type: string}}
+              selected_experience_bullets:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    experience_id: {type: string}
+                    bullets: {type: array, items: {type: string}}
+                  required: [experience_id, bullets]
+              selected_projects: {type: array, items: {type: string}}
+              selected_education: {type: array, items: {type: string}}
+              selected_certificates: {type: array, items: {type: string}}
+              selected_references: {type: array, items: {type: string}}
+              include_references: {type: boolean}
+            required: [recommended_job_title, recommended_profile_text, selected_skill_categories, selected_skills, selected_experience_entries, selected_experience_bullets, selected_projects, selected_education, selected_certificates, selected_references, include_references]
+            type: object
+        structured_output_enabled: true
+        title: Recommend CV
+        type: llm
+        vision: {enabled: false}
+      height: 120
+      id: extract
+      position: {x: 334, y: 220}
+      positionAbsolute: {x: 334, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          def main(recommendation: dict) -> dict:
+              return {"recommendation_json": json.dumps(recommendation, ensure_ascii=False)}
+        code_language: python3
+        desc: Übergibt den Structured Output als JSON an das Backend.
+        outputs:
+          recommendation_json: {type: string, children: null}
+        selected: false
+        title: Serialize Recommendation
+        type: code
+        variables:
+        - {value_selector: [extract, structured_output], value_type: object, variable: recommendation}
+      height: 90
+      id: serialize
+      position: {x: 638, y: 220}
+      positionAbsolute: {x: 638, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Evidenzgebundene Auswahlentscheidung.
+        outputs:
+        - {value_selector: [serialize, recommendation_json], value_type: string, variable: recommendation_json}
+        selected: false
+        title: CV Recommendation Output
+        type: end
+      height: 90
+      id: end
+      position: {x: 942, y: 220}
+      positionAbsolute: {x: 942, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport: {x: 0, y: 0, zoom: 0.8}
+  rag_pipeline_variables: []

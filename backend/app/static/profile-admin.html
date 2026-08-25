@@ -263,6 +263,7 @@ label[for="contractPreferences"],label[for="contractPreferences"]~*{display:none
       <button data-resource="education">Ausbildung</button>
       <button data-resource="certificates">Zertifikate</button>
       <button data-resource="references">Referenzen</button>
+      <button data-resource="master-profiles">Master-Profile</button>
       <button data-resource="cv-imports">Import-Vorschl&auml;ge</button>
     </nav>
     <main>
@@ -599,6 +600,11 @@ label[for="contractPreferences"],label[for="contractPreferences"]~*{display:none
           ["usage_consent","Nutzungsfreigabe erteilt","checkbox"]
         ]
       },
+      "master-profiles": {
+        title: "Master-Profile",
+        description: "Versionierte Markdown-Grundlagen für deutsche und englische Bewerbungsdokumente.",
+        fields: []
+      },
       "cv-imports": {
         title: "Import-Vorschl\u00e4ge",
         description: "Aus CV oder Portfolio importierte Fakten pr\u00fcfen. Erst \u00dcbernehmen schreibt in das kanonische Profil.",
@@ -665,6 +671,11 @@ label[for="contractPreferences"],label[for="contractPreferences"]~*{display:none
     }
 
     async function loadEntries(preferredId=null) {
+      if (resource === "master-profiles") {
+        entries = await request(`${API}/${profile.id}/master-profiles`);
+        renderMasterProfiles();
+        return;
+      }
       if (resource === "skill-evidence") await loadEvidenceOptions();
       entries = await request(`${API}/${profile.id}/${resource}`);
       if (resource === "cv-imports") {
@@ -884,6 +895,52 @@ label[for="contractPreferences"],label[for="contractPreferences"]~*{display:none
         $("applyProposal").onclick = () => reviewCvSuggestion("apply");
         $("rejectProposal").onclick = () => reviewCvSuggestion("reject");
       }
+    }
+
+    async function importMasterProfile(language, input) {
+      const file = input.files[0];
+      if (!file) { toast("Bitte eine Markdown-Datei auswählen.", true); return; }
+      try {
+        const body = new FormData();
+        body.append("language", language);
+        body.append("file", file);
+        const result = await request(`${API}/${profile.id}/master-profiles`, {method:"POST", body});
+        toast(`${language === "de" ? "Deutsches" : "Englisches"} Master-Profil als Version ${result.version} importiert.`);
+        await loadEntries();
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function showMasterProfile(language) {
+      try {
+        const item = await request(`${API}/${profile.id}/master-profiles/${language}`);
+        selected = item;
+        $("editorSummary").textContent = `${language === "de" ? "Deutsch" : "English"} · Version ${item.version}`;
+        $("editor").innerHTML = `<h3>${escapeHtml(item.original_filename)}</h3><pre style="white-space:pre-wrap;overflow:auto;max-height:620px">${escapeHtml(item.content)}</pre>`;
+        $("editorDetails").open = true;
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function showMasterVersions(language) {
+      try {
+        const versions = await request(`${API}/${profile.id}/master-profiles/${language}/versions`);
+        $("editorSummary").textContent = `${language === "de" ? "Deutsch" : "English"} · Versionen`;
+        $("editor").innerHTML = versions.map(item => `<div class="revision"><strong>Version ${item.version}${item.is_current ? " · aktuell" : ""}</strong><div>${escapeHtml(item.original_filename)} · ${new Date(item.created_at).toLocaleString("de-DE")}</div></div>`).join("");
+        $("editorDetails").open = true;
+      } catch (error) { toast(error.message, true); }
+    }
+
+    function renderMasterProfiles() {
+      const current = Object.fromEntries(entries.map(item => [item.language, item]));
+      $("entryList").innerHTML = ["de", "en"].map(language => {
+        const item = current[language];
+        const label = language === "de" ? "Deutsch" : "English";
+        return `<div class="revision"><strong>${label}</strong><div class="hint">${item ? `Aktuelle Version: ${item.version} · ${escapeHtml(item.original_filename)}` : "Status: nicht vorhanden"}</div><div class="right-actions" style="margin-top:10px"><input id="masterFile-${language}" type="file" accept=".md,text/markdown" style="max-width:260px"><button class="button small" data-master-import="${language}">${item ? "Neue Version importieren" : "Master-Profil importieren"}</button>${item ? `<button class="button ghost small" data-master-show="${language}">Anzeigen</button><button class="button ghost small" data-master-versions="${language}">Versionen</button>` : ""}</div></div>`;
+      }).join("");
+      $("editorSummary").textContent = "Master-Profile";
+      $("editor").innerHTML = `<div class="empty"><p>Wähle ein Master-Profil zum Anzeigen oder importiere eine Markdown-Datei.</p></div>`;
+      document.querySelectorAll("[data-master-import]").forEach(button => button.onclick = () => importMasterProfile(button.dataset.masterImport, $("masterFile-" + button.dataset.masterImport)));
+      document.querySelectorAll("[data-master-show]").forEach(button => button.onclick = () => showMasterProfile(button.dataset.masterShow));
+      document.querySelectorAll("[data-master-versions]").forEach(button => button.onclick = () => showMasterVersions(button.dataset.masterVersions));
     }
 
     async function reviewCvSuggestion(action) {
@@ -1273,7 +1330,7 @@ label[for="contractPreferences"],label[for="contractPreferences"]~*{display:none
       $("sectionTitle").textContent = CONFIG[res].title;
       $("sectionDescription").textContent = CONFIG[res].description;
       $("importPortfolio").hidden = res !== "projects";
-      $("newEntry").hidden = res === "profile";
+      $("newEntry").hidden = res === "profile" || res === "master-profiles";
       $("newProfileEntry").hidden = res !== "profile";
       $("newEntry").textContent = res === "cv-imports"
         ? "CV-PDF importieren" : "Eintrag hinzuf\u00fcgen";

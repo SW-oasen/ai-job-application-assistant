@@ -35,6 +35,21 @@ def apply_job_extraction_review(
         corrected_metadata = corrected.get("metadata")
         corrected_activities = corrected.get("activities")
         corrected_requirements = corrected.get("requirements")
+        # A reviewer can make a narrowly scoped correction (for example only
+        # activities). Preserve the deterministic extraction for omitted or
+        # malformed blocks instead of failing the complete import.
+        if not (
+            isinstance(corrected_metadata, dict)
+            and all(
+                isinstance(key, str) and (isinstance(value, str) or value is None)
+                for key, value in corrected_metadata.items()
+            )
+        ):
+            corrected_metadata = metadata
+        if not _is_list_of_activities(corrected_activities):
+            corrected_activities = activities
+        if not _is_list_of_requirements(corrected_requirements):
+            corrected_requirements = requirements
         if not (
             isinstance(corrected_metadata, dict)
             and all(isinstance(key, str) and (isinstance(value, str) or value is None)

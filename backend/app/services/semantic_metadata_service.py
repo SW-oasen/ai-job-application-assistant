@@ -19,10 +19,45 @@ SUPPORTED_FIELDS = (
     "language",
 )
 AUTO_ACCEPT_CONFIDENCE = 0.85
+MAX_METADATA_LENGTHS = {
+    "company": 300,
+}
 
 
 def _normalized_evidence_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip().casefold()
+
+
+def _has_verifiable_evidence(
+    *,
+    field: str,
+    value: str,
+    evidence: str | None,
+    content: str,
+) -> bool:
+    if not content:
+        return bool(evidence)
+    normalized_content = _normalized_evidence_text(content)
+    if evidence and _normalized_evidence_text(evidence) in normalized_content:
+        return True
+    # Company descriptions from career portals are often reformatted or
+    # truncated during HTML-to-Markdown conversion. The company name itself
+    # remains a concise, source-verifiable identifier in those cases.
+    return field == "company" and _normalized_evidence_text(value) in normalized_content
+
+
+def _is_usable_metadata_value(field: str, value: str | None) -> bool:
+    if not value or not value.strip():
+        return False
+    maximum_length = MAX_METADATA_LENGTHS.get(field)
+    return maximum_length is None or len(value.strip()) <= maximum_length
+
+
+def _sanitize_metadata(metadata: dict[str, str | None]) -> dict[str, str | None]:
+    return {
+        field: value if _is_usable_metadata_value(field, value) else None
+        for field, value in metadata.items()
+    }
 
 
 @dataclass(frozen=True)
@@ -33,7 +68,7 @@ class SemanticMetadataResult:
 
 
 def metadata_needs_semantic_fallback(metadata: dict[str, str | None]) -> bool:
-    if any(not metadata.get(field) for field in REQUIRED_FIELDS):
+    if any(not _is_usable_metadata_value(field, metadata.get(field)) for field in REQUIRED_FIELDS):
         return True
     location = metadata.get("location") or ""
     return len(location) > 120 or len(location.split()) > 12
@@ -84,13 +119,11 @@ def _accepted_metadata(
             "confidence": max(0.0, min(confidence, 1.0)),
             "evidence": evidence if isinstance(evidence, str) else None,
         }
-        evidence_is_verifiable = bool(
-            evidence
-            and (
-                not content
-                or _normalized_evidence_text(evidence)
-                in _normalized_evidence_text(content)
-            )
+        evidence_is_verifiable = _has_verifiable_evidence(
+            field=field,
+            value=value,
+            evidence=evidence if isinstance(evidence, str) else None,
+            content=content,
         )
         evidence_is_benefit = field == "work_model" and any(
             marker in (evidence or "").casefold()
@@ -103,7 +136,7 @@ def _accepted_metadata(
             )
         )
         if (
-            not merged.get(field)
+            not _is_usable_metadata_value(field, merged.get(field))
             and confidence >= AUTO_ACCEPT_CONFIDENCE
             and evidence_is_verifiable
             and not evidence_is_benefit
@@ -118,10 +151,12 @@ async def enrich_job_metadata(
     source_filename: str | None = None,
     source_url: str | None = None,
 ) -> SemanticMetadataResult:
-    rules = extract_job_metadata(
-        content,
-        source_filename=source_filename,
-        source_url=source_url,
+    rules = _sanitize_metadata(
+        extract_job_metadata(
+            content,
+            source_filename=source_filename,
+            source_url=source_url,
+        )
     )
     if not metadata_needs_semantic_fallback(rules):
         return SemanticMetadataResult(rules, {}, [])

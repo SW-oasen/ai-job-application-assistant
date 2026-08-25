@@ -43,6 +43,12 @@ from app.services.cv_import_service import (
     reject_cv_suggestion,
 )
 from app.services.dify_cv_service import import_cv_pdf_with_dify
+from app.services.master_profile_service import (
+    get_current_master_profile,
+    import_master_profile,
+    list_master_profile_versions,
+    list_master_profiles,
+)
 from app.services.profile_service import (
     create_profile,
     create_resource,
@@ -60,6 +66,8 @@ from app.services.profile_service import (
 )
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
+
+
 @router.get("/admin", include_in_schema=False)
 async def profile_admin() -> RedirectResponse:
     """Retire the former standalone editor in favour of /manage."""
@@ -97,6 +105,35 @@ async def update_profile_entry(profile_id: UUID, payload: ProfileUpdate) -> dict
 @router.get("/{profile_id}/cv-imports")
 async def get_cv_imports(profile_id: UUID) -> list[dict]:
     return await list_cv_imports(profile_id)
+
+
+@router.get("/{profile_id}/master-profiles")
+async def get_master_profiles(profile_id: UUID) -> list[dict]:
+    return await list_master_profiles(profile_id)
+
+
+@router.get("/{profile_id}/master-profiles/{language}")
+async def get_current_master_profile_entry(profile_id: UUID, language: str) -> dict:
+    return await get_current_master_profile(profile_id, language)
+
+
+@router.get("/{profile_id}/master-profiles/{language}/versions")
+async def get_master_profile_versions(profile_id: UUID, language: str) -> list[dict]:
+    return await list_master_profile_versions(profile_id, language)
+
+
+@router.post("/{profile_id}/master-profiles")
+async def import_master_profile_entry(
+    profile_id: UUID,
+    language: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+) -> dict:
+    return await import_master_profile(
+        profile_id=profile_id,
+        language=language,
+        filename=Path(file.filename or "master_profile.md").name,
+        content=await file.read(),
+    )
 
 
 @router.post("/{profile_id}/cv-imports")
@@ -235,9 +272,7 @@ async def create_experience(profile_id: UUID, payload: WorkExperienceCreate) -> 
 
 
 @router.patch("/{profile_id}/experiences/{item_id}")
-async def update_experience(
-    profile_id: UUID, item_id: UUID, payload: WorkExperienceUpdate
-) -> dict:
+async def update_experience(profile_id: UUID, item_id: UUID, payload: WorkExperienceUpdate) -> dict:
     return await update_resource(profile_id, "experiences", item_id, payload)
 
 
@@ -271,9 +306,7 @@ async def create_education(profile_id: UUID, payload: EducationCreate) -> dict:
 
 
 @router.patch("/{profile_id}/education/{item_id}")
-async def update_education(
-    profile_id: UUID, item_id: UUID, payload: EducationUpdate
-) -> dict:
+async def update_education(profile_id: UUID, item_id: UUID, payload: EducationUpdate) -> dict:
     return await update_resource(profile_id, "education", item_id, payload)
 
 
@@ -288,9 +321,7 @@ async def create_certificate(profile_id: UUID, payload: CertificateCreate) -> di
 
 
 @router.patch("/{profile_id}/certificates/{item_id}")
-async def update_certificate(
-    profile_id: UUID, item_id: UUID, payload: CertificateUpdate
-) -> dict:
+async def update_certificate(profile_id: UUID, item_id: UUID, payload: CertificateUpdate) -> dict:
     return await update_resource(profile_id, "certificates", item_id, payload)
 
 
@@ -305,9 +336,7 @@ async def create_reference(profile_id: UUID, payload: ReferenceCreate) -> dict:
 
 
 @router.patch("/{profile_id}/references/{item_id}")
-async def update_reference(
-    profile_id: UUID, item_id: UUID, payload: ReferenceUpdate
-) -> dict:
+async def update_reference(profile_id: UUID, item_id: UUID, payload: ReferenceUpdate) -> dict:
     return await update_resource(profile_id, "references", item_id, payload)
 
 

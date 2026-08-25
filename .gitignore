@@ -15,6 +15,7 @@ dist/
 build/
 *.egg-info/
 data/application-documents/
+data/private/
 *.db
 *.sqlite
 *.sqlite3

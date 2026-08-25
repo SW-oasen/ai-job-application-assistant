@@ -109,6 +109,18 @@ def test_keeps_seniority_range_complete() -> None:
     assert len(result.requirements) == 1
 
 
+def test_keeps_experience_requirement_with_its_skill_scope_together() -> None:
+    result = extract_job_structure(
+        "## Dein Profil\n"
+        "- Mindestens 3 Jahre Berufserfahrung in der Softwareentwicklung mit Python\n"
+    )
+
+    assert [item["requirement"] for item in result.requirements] == [
+        "Mindestens 3 Jahre Berufserfahrung in der Softwareentwicklung mit Python"
+    ]
+    assert result.requirements[0]["normalized_value"] == "min_years:3"
+
+
 def test_extracts_activities_and_requirements_from_indeed_style_headings() -> None:
     content = """
 ## **In this position, you'll**
@@ -267,6 +279,26 @@ def test_extracts_activities_from_mission_heading() -> None:
     assert result.activities[0]["activity"] == "Du konzipierst die Datenplattform"
 
 
+def test_extracts_siemens_energy_activity_and_requirement_sections() -> None:
+    result = extract_job_structure(
+        "**Wie Sie etwas bewirken können**\n"
+        "- Entwicklung von Daten- und KI-Lösungen für die Produktion\n"
+        "- Analyse von Produktionsdaten\n\n"
+        "**Was Sie mitbringen**\n"
+        "- Abgeschlossenes Studium der Informatik oder Data Science\n"
+        "- Sehr gute Programmierkenntnisse in Python und SQL\n"
+    )
+
+    assert [item["activity"] for item in result.activities] == [
+        "Entwicklung von Daten- und KI-Lösungen für die Produktion",
+        "Analyse von Produktionsdaten",
+    ]
+    assert [item["requirement"] for item in result.requirements] == [
+        "Abgeschlossenes Studium der Informatik oder Data Science",
+        "Sehr gute Programmierkenntnisse in Python und SQL",
+    ]
+
+
 def test_optional_subclause_does_not_downgrade_main_requirement() -> None:
     result = extract_job_structure(
         "## Deine Erfahrung & Skills\n"
@@ -305,3 +337,26 @@ def test_switches_from_responsibilities_to_unheaded_qualification_list() -> None
         "Familiarity with Docker and CI/CD pipelines",
     ]
     assert [item["benefit"] for item in result.benefits] == ["Flexible working models"]
+
+
+def test_classifies_plain_nested_headings_in_flattened_html_capture() -> None:
+    result = extract_job_structure(
+        "## What you bring\n"
+        "The Role\n"
+        "You'll Build\n"
+        "- Data pipelines and orchestrated automation workflows\n"
+        "- RAG systems grounded in company data\n"
+        "What We're Looking For\n"
+        "- Python and LLM API experience\n"
+        "You Likely...\n"
+        "- build things from scratch and care about reliability\n"
+    )
+
+    assert [item["activity"] for item in result.activities] == [
+        "Data pipelines and orchestrated automation workflows",
+        "RAG systems grounded in company data",
+    ]
+    assert [item["requirement"] for item in result.requirements] == [
+        "Python and LLM API experience",
+        "build things from scratch and care about reliability",
+    ]

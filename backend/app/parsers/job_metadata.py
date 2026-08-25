@@ -72,6 +72,11 @@ def _clean_title(title: str | None) -> str | None:
     if not title:
         return None
     value = _clean_line(title).lstrip("#").strip()
+    if any(marker in value for marker in ("Ã", "Â", "â")):
+        try:
+            value = value.encode("latin1").decode("utf-8")
+        except UnicodeError:
+            pass
     value = re.sub(
         r"^Al(?=\s+(?:Engineer|Scientist|Developer|Researcher)\b)",
         "AI",
@@ -86,7 +91,23 @@ def _clean_title(title: str | None) -> str | None:
 
 def _main_heading(content: str) -> str | None:
     match = re.search(r"(?m)^\s*#\s+(.+?)\s*$", content)
-    return _clean_title(match.group(1)) if match else None
+    title = _clean_title(match.group(1)) if match else None
+    return None if title and title.casefold() in {"einleitung", "introduction"} else title
+
+
+def _title_from_job_intro(content: str) -> str | None:
+    """Extract a title from the job-opening sentence when the page starts with chrome."""
+    patterns = (
+        r"(?:für|fÃ¼r)\s+(?:einen\s+)?einsatz\s+als\s+(.+?)\s+"
+        r"(?:\([wmd/]+\)|am\s+standort|in\s+[A-ZÄÖÜ])",
+        r"(?:suchen\s+wir\s+(?:dich|sie)|we\s+are\s+looking\s+for\s+you)\s+als\s+"
+        r"(.+?)\s+(?:\([wmd/]+\)|am\s+standort|in\s+[A-ZÄÖÜ])",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, content, re.IGNORECASE)
+        if match:
+            return _clean_title(match.group(1))
+    return None
 
 
 def _join_company(content: str, source_url: str | None) -> str | None:
@@ -161,6 +182,33 @@ def _map_link_location(content: str) -> str | None:
         re.IGNORECASE,
     )
     return _clean_line(match.group(1)) if match else None
+
+
+def _location_section_value(content: str, headings: set[str]) -> str | None:
+    """Return the useful location from a portal's stacked location fields."""
+    country_only = {
+        "deutschland", "germany", "österreich", "austria", "schweiz",
+        "switzerland", "usa", "united states", "vereinigte staaten",
+    }
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if _normalized_heading(line) not in headings:
+            continue
+        values: list[str] = []
+        for candidate in lines[index + 1 : index + 8]:
+            value = _clean_line(candidate)
+            if not value or value == "&nbsp;":
+                continue
+            if value.startswith("#"):
+                break
+            if _normalized_heading(value) not in headings:
+                values.append(value)
+        specific = [value for value in values if value.casefold() not in country_only]
+        if specific:
+            return specific[0]
+        if values:
+            return values[0]
+    return None
 
 
 def _plain_pdf_header(content: str) -> tuple[str | None, str | None]:
@@ -420,11 +468,13 @@ def extract_job_metadata(
         or plain_company
         or _standalone_legal_company(content)
     )
-    location_headings = {"arbeitsort", "arbeitsorte", "location", "locations"}
+    location_headings = {
+        "arbeitsort", "arbeitsorte", "standort", "standorte", "location", "locations"
+    }
     location = instaffo.get("location") or _inline_value(
         content,
         location_headings,
-    ) or _section_value(
+    ) or _location_section_value(
         content,
         location_headings,
     ) or _value_before_heading(
@@ -475,6 +525,7 @@ def extract_job_metadata(
     return {
         "title": _clean_title(
             _main_heading(content)
+            or _title_from_job_intro(content)
             or instaffo.get("title")
             or compact["title"]
             or plain_title

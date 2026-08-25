@@ -10,6 +10,37 @@ def test_semantic_fallback_is_triggered_for_missing_required_fields() -> None:
     assert semantic_metadata_service.metadata_needs_semantic_fallback(
         {"title": None, "company": None, "location": "Berlin"}
     )
+
+
+def test_extracts_siemens_energy_stacked_location_fields() -> None:
+    rules = semantic_metadata_service.extract_job_metadata(
+        "# Data & AI Engineer (w/m/d)\n\n"
+        "**Standort**\n\nDeutschland\n\nBerlin\n\nBerlin\n",
+        source_url="https://jobs.siemens-energy.com/de_DE/jobs/FolderDetail/Data-AI-Engineer-w-m-d/301905",
+    )
+
+    assert rules["location"] == "Berlin"
+
+
+def test_uses_job_opening_when_main_heading_is_generic() -> None:
+    rules = semantic_metadata_service.extract_job_metadata(
+        "# Einleitung\n\n"
+        "Zum nächstmöglichen Zeitpunkt suchen wir dich als Zeitarbeitnehmer:in "
+        "im Auftrag der DB System GmbH für einen Einsatz als Softwareentwickler:in "
+        "für die Echtzeit-Optimierung des Fahrplans (w/m/d) am Standort Berlin."
+    )
+
+    assert rules["title"] == "Softwareentwickler:in für die Echtzeit-Optimierung des Fahrplans"
+
+
+def test_repairs_mojibake_in_title_from_job_opening() -> None:
+    rules = semantic_metadata_service.extract_job_metadata(
+        "# Einleitung\n\n"
+        "Wir suchen dich für einen Einsatz als Softwareentwickler:in fÃ¼r "
+        "die Echtzeit-Optimierung des Fahrplans (w/m/d) am Standort Berlin."
+    )
+
+    assert rules["title"] == "Softwareentwickler:in für die Echtzeit-Optimierung des Fahrplans"
     assert not semantic_metadata_service.metadata_needs_semantic_fallback(
         {
             "title": "Data Engineer",
@@ -171,3 +202,48 @@ def test_semantic_language_only_accepts_supported_codes() -> None:
     )
 
     assert merged["language"] is None
+
+
+def test_semantic_fallback_replaces_an_overlong_rule_based_company() -> None:
+    overlong_company = "DB Zeitarbeit GmbH " + ("Einleitung " * 40)
+    rules = {
+        "title": "Einleitung",
+        "company": overlong_company,
+        "location": None,
+        "language": "de",
+    }
+
+    assert semantic_metadata_service.metadata_needs_semantic_fallback(rules)
+
+    merged, _ = semantic_metadata_service._accepted_metadata(
+        rules,
+        {
+            "company": {
+                "value": "DB Zeitarbeit GmbH",
+                "confidence": 1,
+                "evidence": "Wir, die DB Zeitarbeit GmbH, sind der interne Personaldienstleister.",
+            }
+        },
+        content="Wir, die DB Zeitarbeit GmbH, sind der interne Personaldienstleister.",
+    )
+
+    assert merged["company"] == "DB Zeitarbeit GmbH"
+
+
+def test_semantic_company_accepts_value_when_long_evidence_was_reformatted() -> None:
+    merged, _ = semantic_metadata_service._accepted_metadata(
+        {"company": None},
+        {
+            "company": {
+                "value": "DB Zeitarbeit GmbH",
+                "confidence": 1,
+                "evidence": (
+                    "Wir, die DB Zeitarbeit GmbH, sind der interne "
+                    "Personaldienstleister der Deutschen Bahn AG."
+                ),
+            }
+        },
+        content="DB Zeitarbeit GmbH\nDein Sprungbrett in den DB-Konzern.",
+    )
+
+    assert merged["company"] == "DB Zeitarbeit GmbH"
