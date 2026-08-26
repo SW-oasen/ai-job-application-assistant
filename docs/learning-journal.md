@@ -3,6 +3,18 @@
 Kurze Notizen zu Beobachtungen und daraus abgeleiteten Entscheidungen. Details
 zu geplanten Arbeiten stehen in der [Roadmap](roadmap.md).
 
+## 2026-08 – Profil-Sicherung und Wiederherstellung
+
+- Entscheidung: Persönliche Profile werden als lesbares Markdown mit einem
+  versionierten JSON-Block gesichert.
+- Der Import erzeugt stets neue IDs und überschreibt daher kein vorhandenes
+  Profil; doppelte Namen werden vor der Anlage explizit behandelt.
+- Der vollständige Ressourcenimport läuft in einer Transaktion. Damit bleibt
+  die Datenbank bei einer fehlerhaften Sicherungsdatei unverändert.
+- Profil-Löschung ist bewusst streng: Namensbestätigung, Löschung aller
+  profilbezogenen Bewerbungs- und Matching-Daten, aber Erhalt global
+  importierter Jobs.
+
 ## 2026-07 – Matching mit deutschen Anforderungen
 
 - Beobachtung: Vorhandene englische Skills wurden bei deutschen Anforderungen

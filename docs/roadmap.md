@@ -21,6 +21,14 @@ der [README](../README.md), technische Grundlagen im
 
 ## Erledigt
 
+- Vollständige Profil-Sicherung als Markdown umgesetzt: Export und Import von
+  Stammdaten sowie allen persönlichen Ressourcen, mit neuen IDs,
+  Namenskonflikt-Behandlung und transaktionalem Import.
+- Vorsichtiges Profil-Löschen mit Namensbestätigung ergänzt; profilbezogene
+  Bewerbungs- und Matching-Daten werden entfernt, globale Jobs bleiben.
+- Entwicklungsumgebung, Docker-Datenbankzugriff und Backup-Prozess in
+  `development-environment.md` dokumentiert.
+
 - Verwaltungsoberfläche auf `/manage` als kompakter Desktop-Arbeitsbereich
   umgesetzt: Profil, Erfahrung & Skills, Projekte & Nachweise, Master-Profile
   und Jobimport.

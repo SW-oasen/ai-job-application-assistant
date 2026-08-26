@@ -308,6 +308,29 @@ Version und Feldfehlern; erst eine ausdrückliche Bestätigung legt ein neues
 Profil in einer Transaktion an. Ein vorhandenes Profil wird nicht automatisch
 überschrieben.
 
+### Aktueller Stand der Profil-Sicherung
+
+Der Export unter `Verwaltung > Profil` erzeugt einen Markdown-Download mit dem
+Dateinamen `profile-export-<profilname>.md`. Er enthält die persönlichen
+Basisdaten, das Zielprofil und die Arbeitspräferenzen sowie Berufserfahrung,
+Ausbildung, Zertifikate, Skills, Projekte, Referenzen und Skill-Evidenzen.
+Jobs, Bewerbungen, Matching-Ergebnisse, generierte Dokumente und
+Master-Profile werden nicht exportiert.
+
+Der Import legt immer ein vollständig neues, unabhängiges Profil mit neuen
+IDs an. Die IDs aus der Sicherungsdatei werden nur zur Wiederherstellung der
+internen Evidenz-Verknüpfungen verwendet; ein vorhandenes Profil wird niemals
+überschrieben. Bei gleichem Profilnamen schlägt die Oberfläche einen Namen wie
+`Name (Import)` vor und verlangt dessen Bestätigung. Der Import erfolgt in
+einer Datenbanktransaktion: Scheitert ein Ressourceneintrag, wird kein neues
+Profil gespeichert.
+
+Das Löschen eines Profils erfordert die exakte Eingabe seines Namens. Es
+löscht nur die Daten der gewählten Profil-ID: alle Profilressourcen,
+Bewerbungen, Matching-Daten, Bewerbungsverlauf und zugehörige
+Dokumentmetadaten. Importierte Stellenanzeigen bleiben als globale Daten
+erhalten.
+
 ## Portfolio-Projekte
 
 Portfolio-Projekte können manuell gepflegt oder direkt aus der JavaScript-Datei

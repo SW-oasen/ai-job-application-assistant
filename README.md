@@ -42,6 +42,9 @@ Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen
 
 ## Funktionsumfang
 
+- vollständiger Profil-Export und -Import als Markdown-Sicherung mit
+  transaktionaler Wiederherstellung persönlicher Ressourcen
+
 - zentrale, kompakte Profilverwaltung in der Verwaltungsoberfläche
 - strukturiertes berufliches Zielprofil mit davon getrenntem Ziel-Fit
 - Portfolio-Projekte als eigene, prüfbare Evidenzquelle inklusive Import aus
