@@ -7,11 +7,11 @@
   <style>
     :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#155eef;--line:#dce3eb;--muted:#647084}
     *{box-sizing:border-box}body{margin:0}header{background:#132033;color:#fff;padding:22px 32px;display:flex;justify-content:space-between;align-items:center;gap:20px}
-    h1{margin:0 0 5px;font-size:28px}header p{margin:0;color:#c9d4e4}.actions{display:flex;gap:8px;flex-wrap:wrap}.nav-link{color:#d8e2f0;text-decoration:none;padding:8px 10px;border-radius:7px}.nav-link:hover,.nav-link.active{color:#fff;background:#ffffff18}.nav-link.active{font-weight:750}
-    .button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 15px;font-weight:700;text-decoration:none;display:inline-block}.button.secondary{background:#e9eef6;color:#27364a}
-    main{width:100%;margin:0;padding:22px 32px 48px}.toolbar{display:flex;justify-content:space-between;align-items:end;gap:14px;margin-bottom:14px;flex-wrap:wrap}.toolbar-fields{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.toolbar label{font-size:12px;font-weight:700;color:var(--muted)}select,input[type=search]{display:block;margin-top:5px;min-width:200px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit}
-    .panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:14px}.panel h2{margin:0 0 10px;font-size:19px}.panel h2 .count{font-size:14px;font-weight:600;color:var(--blue);margin-left:8px}.list{display:grid;gap:7px}.item{display:block;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:inherit;text-decoration:none}.item:hover{border-color:#9bb9f5}.item strong{display:block}.item span,.empty{color:var(--muted);font-size:12px}.status{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:999px;background:#e9eef6;color:#27364a;font-size:11px}
-    [hidden]{display:none!important}@media(max-width:850px){header,.toolbar{align-items:flex-start;flex-direction:column}}
+    h1{margin:0 0 5px;font-size:28px}header p{margin:0;color:#c9d4e4}.actions{display:flex;gap:8px;flex-wrap:wrap}.nav-link{color:#d8e2f0;text-decoration:none;padding:8px 10px;border-radius:7px;font-size:14px}.nav-link:hover,.nav-link.active{color:#fff;background:#ffffff18}.nav-link.active{font-weight:750}
+    .button{border:1px solid var(--blue);border-radius:8px;background:var(--blue);color:#fff;padding:9px 12px;font:700 13px/1.25 inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.button.secondary{background:#fff;border-color:var(--line);color:#34445b}
+    main{width:100%;margin:0;padding:18px 32px 48px}.dashboard-grid{display:grid;grid-template-columns:minmax(300px,.72fr) minmax(620px,1.8fr);gap:14px;align-items:start}.dashboard-column{display:grid;gap:14px;align-content:start}.toolbar{display:flex;justify-content:space-between;align-items:end;gap:14px;margin:0;flex-wrap:wrap}.toolbar-fields{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.toolbar label{font-size:12px;font-weight:700;color:var(--muted)}select,input[type=search]{display:block;margin-top:5px;min-width:200px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin:0}.panel h2{margin:0 0 10px;font-size:18px}.panel h2 .count{font-size:14px;font-weight:600;color:var(--blue);margin-left:8px}.list{display:grid;gap:7px}.item{display:block;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:inherit;text-decoration:none}.item:hover{border-color:#9bb9f5;background:#f8fbff}.item strong{display:block}.item span,.empty{color:var(--muted);font-size:12px}.status{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:999px;background:#e9eef6;color:#27364a;font-size:11px}.status-filter{display:flex;flex-wrap:wrap;gap:6px}.status-filter button{padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#34445b;font:650 12px/1.2 inherit;cursor:pointer}.status-filter button:hover,.status-filter button.active{border-color:#91b4f5;background:#edf3ff;color:#0f3d98}.status-filter button.active{font-weight:750}.stats{display:grid;gap:8px}.stat-row{display:grid;grid-template-columns:110px 1fr 30px;align-items:center;gap:8px;font-size:12px}.stat-bar{height:7px;border-radius:999px;background:#edf1f6;overflow:hidden}.stat-bar i{display:block;height:100%;border-radius:inherit;background:#9bb9f5}.stat-row strong{text-align:right;font-size:12px;color:#34445b}.list-toolbar{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}
+    [hidden]{display:none!important}.dashboard-links{display:flex;gap:8px;flex-wrap:wrap}.stats{display:grid;gap:8px}.stat-row{display:grid;grid-template-columns:135px minmax(0,1fr) 24px;align-items:center;gap:9px;font-size:12px}.stat-row>span{white-space:nowrap}.stat-bar{height:7px;border-radius:999px;background:#edf1f6;overflow:hidden}.stat-bar i{display:block;height:100%;border-radius:inherit;background:#9bb9f5}.stat-row strong{text-align:right;font-size:12px;color:#34445b}.status-filter{display:flex;flex-wrap:wrap;gap:6px}.status-filter button{padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#34445b;font:650 12px/1.2 inherit;cursor:pointer}.status-filter button:hover,.status-filter button.active{border-color:#91b4f5;background:#edf3ff;color:#0f3d98}.status-filter button.active{font-weight:750}.dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px;align-items:start}.dashboard-column{display:grid;gap:14px;align-content:start;min-width:0}.dashboard-column>.panel{margin:0}.toolbar{margin:0}.toolbar-fields label:has(#status){display:none}.list-toolbar{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}
   </style>
 </head>
 <body>
@@ -20,35 +20,47 @@
   <nav class="actions" aria-label="Hauptnavigation"><a class="nav-link active" aria-current="page" href="/">Jobs und Bewerbungen</a><a class="nav-link" href="/manage">Verwaltung</a></nav>
 </header>
 <main>
+  <div class="dashboard-grid">
+    <aside class="dashboard-column">
+      <section class="panel"><h2>Bewerbungsstatus</h2><div class="status-filter" id="statusFilters"><button type="button" data-status="open">Offen</button><button type="button" data-status="applied">Beworben</button><button type="button" data-status="followed_up">Nachgefragt</button><button type="button" data-status="interview">Gespräch</button><button type="button" data-status="rejected">Abgelehnt</button><button type="button" data-status="offer">Angebot</button><button type="button" data-status="accepted">Angenommen</button><button type="button" data-status="withdrawn">Zurückgezogen</button><button type="button" data-status="closed">Geschlossen</button><button type="button" data-status="archived">Archiv</button></div></section>
+      <section class="panel"><h2>Statusübersicht</h2><div class="stats" id="statusStats"></div></section>
+      <section class="panel dashboard-links"><a class="button secondary" href="/manage#panel-profile-new">Profil bearbeiten</a><a class="button" href="/manage#panel-import">Job importieren</a></section>
+    </aside>
+    <div class="dashboard-column" id="dashboardRight">
   <div class="toolbar"><div class="toolbar-fields"><label for="profile">Profil<select id="profile"></select></label><label for="search">Suche<input id="search" type="search" placeholder="Titel, Firma, Ort, Stichwort"></label><label for="status">Status<select id="status"><option value="">Alle</option><option value="open">Offen</option><option value="applied">Beworben</option><option value="followed_up">Nachgefragt</option><option value="interview">Gespräch</option><option value="rejected">Abgelehnt</option><option value="offer">Angebot</option><option value="accepted">Angenommen</option><option value="withdrawn">Zurückgezogen</option><option value="closed">Geschlossen</option><option disabled>---</option><option value="archived">Archiv</option></select></label><label for="matching">Matching<select id="matching"><option value="">Alle</option><option value="matched">Mit Matching</option><option value="unmatched">Ohne Matching</option></select></label></div></div>
   <section class="panel" id="applicationsPanel"><h2 id="applicationsTitle">Aktuelle Bewerbungen<span class="count" id="applicationsCount"></span></h2><div class="list" id="applications"></div></section>
+</div>
+  </div>
 </main>
 <script>
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const labels={draft:"Entwurf",applied:"Beworben",followed_up:"Nachgefragt",interview:"Vorstellungsgespräch",rejected:"Abgelehnt",offer:"Angebot",accepted:"Angenommen",withdrawn:"Zurückgezogen",closed:"Geschlossen"};
 const channels={email:"E-Mail",company_portal:"Arbeitgeberportal",job_portal:"Jobportal",phone:"Telefon",personal:"Persönlich",other:"Sonstiges"};
 const date=value=>value?new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).format(new Date(value)):"ohne Datum";
-let dashboardJobs=[],dashboardApps=[];
+$("status")?.closest("label")?.remove();
+let dashboardJobs=[],dashboardApps=[],selectedStatuses=new Set();
 async function req(url){const r=await fetch(url),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error?.message||`HTTP ${r.status}`);return d}
 function normalized(value){return String(value??"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLocaleLowerCase("de")}
 function jobKey(job){return `${job.title||""}\u0000${job.company||""}`.toLocaleLowerCase("de")}
 function searchable(job){return normalized([job.title,job.company,job.location,job.work_model,job.employment_type,job.source_portal].filter(Boolean).join(" "))}
+function renderStats(){const counts={open:dashboardJobs.filter(job=>!job.archived_at&&!dashboardApps.some(app=>app.job_id===job.id)).length,applied:0,followed_up:0,interview:0,rejected:0,offer:0,accepted:0,withdrawn:0,closed:0,archived:dashboardJobs.filter(job=>Boolean(job.archived_at)).length};dashboardApps.forEach(app=>{if(Object.prototype.hasOwnProperty.call(counts,app.status))counts[app.status]++});const max=Math.max(1,...Object.values(counts));$("statusStats").innerHTML=Object.entries(counts).map(([key,count])=>`<div class="stat-row"><span>${esc(key==="open"?"Offen":key==="archived"?"Archiv":labels[key]||key)}</span><div class="stat-bar"><i style="width:${Math.round(count/max*100)}%"></i></div><strong>${count}</strong></div>`).join("")}
 function render(){
+  renderStats();
   const terms=normalized($("search").value).trim().split(/\s+/).filter(Boolean);
-  const status=$("status").value,matching=$("matching").value;
-  const archiveFilter=status==="archived";
+  const status=[...selectedStatuses],matching=$("matching").value;
   let jobs=terms.length?dashboardJobs.filter(job=>{const text=searchable(job);return terms.every(term=>text.includes(term))}):dashboardJobs;
-  jobs=jobs.filter(job=>Boolean(job.archived_at)===archiveFilter);
+  const appByJob=new Map(dashboardApps.map(app=>[app.job_id,app]));
+  jobs=jobs.filter(job=>!status.length||status.some(value=>value==="archived"&&Boolean(job.archived_at)||value==="open"&&!job.archived_at&&!appByJob.has(job.id)||!job.archived_at&&appByJob.get(job.id)&&appByJob.get(job.id).status===value));
   if(matching)jobs=jobs.filter(job=>Boolean(job.has_matching)===(matching==="matched"));
   const jobCounts=dashboardJobs.reduce((counts,job)=>counts.set(jobKey(job),(counts.get(jobKey(job))||0)+1),new Map());
   const jobIds=new Set(jobs.map(job=>job.id));
   let apps=dashboardApps.filter(app=>jobIds.has(app.job_id));
   const byJob=new Map(apps.map(a=>[a.job_id,a]));
   let open=jobs.filter(j=>!byJob.has(j.id));
-  const openFilter=status==="open";
-  if(status&&!archiveFilter&&!openFilter)apps=apps.filter(a=>a.status===status);
-  $("applicationsTitle").firstChild.textContent=archiveFilter?"Archivierte Jobs":openFilter?"Offene Jobs":status?labels[status]||"Gefilterte Bewerbungen":"Aktuelle Bewerbungen";
-  $("applicationsCount").textContent=archiveFilter?jobs.length:openFilter?open.length:apps.length;
+  const archiveFilter=status.length===1&&status[0]==="archived",openFilter=status.length===1&&status[0]==="open";
+  if(status.length&&!archiveFilter&&!openFilter)apps=apps.filter(a=>status.includes(a.status));
+  $("applicationsTitle").firstChild.textContent=archiveFilter?"Archivierte Jobs":openFilter?"Offene Jobs":status.length?"Gefilterte Jobs & Bewerbungen":"Jobs & Bewerbungen";
+  $("applicationsCount").textContent=archiveFilter?jobs.length:openFilter?open.length:apps.length+open.length;
   if(archiveFilter){
     $("applications").innerHTML=jobs.length?jobs.map(j=>`<a class="item" href="/jobs/${j.id}"><strong>${esc(j.title)}</strong><span>${esc(j.company||"Firma unbekannt")}${jobCounts.get(jobKey(j))>1?` · importiert ${esc(date(j.imported_at))}`:""}</span></a>`).join(""):`<p class="empty">Keine passenden archivierten Jobs.</p>`;
   }else if(openFilter){
@@ -62,7 +74,7 @@ async function loadDashboard(){
   [dashboardJobs,dashboardApps]=await Promise.all([req(`/matching/jobs?profile_id=${encodeURIComponent(profileId)}&include_archived=true`),req(`/applications?profile_id=${encodeURIComponent(profileId)}`)]);
   render();
 }
-async function init(){try{const profiles=await req("/profiles");$("profile").innerHTML=profiles.map(p=>`<option value="${p.id}">${esc(p.display_name)}</option>`).join("");$("profile").onchange=loadDashboard;$("search").oninput=render;$("status").onchange=render;$("matching").onchange=render;await loadDashboard()}catch(e){$("applications").innerHTML=`<p class="empty">${esc(e.message)}</p>`}}init();
+async function init(){try{const profiles=await req("/profiles");$("profile").innerHTML=profiles.map(p=>`<option value="${p.id}">${esc(p.display_name)}</option>`).join("");$("profile").onchange=loadDashboard;$("search").oninput=render;$("matching").onchange=render;document.querySelectorAll("#statusFilters button").forEach(button=>button.onclick=()=>{const value=button.dataset.status;selectedStatuses.has(value)?selectedStatuses.delete(value):selectedStatuses.add(value);button.classList.toggle("active",selectedStatuses.has(value));render()});await loadDashboard()}catch(e){$("applications").innerHTML=`<p class="empty">${esc(e.message)}</p>`}}init();
 </script>
 </body>
 </html>

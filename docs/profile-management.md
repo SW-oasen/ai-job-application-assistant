@@ -276,6 +276,38 @@ Backend lädt genau eine PDF zu Dify hoch und startet den veröffentlichten
 Workflow mit der ausgewählten Profil-ID. Der strukturierte JSON-Import bleibt
 in der Oberfläche als Diagnose- und Fallbackweg verfügbar.
 
+## Profil-Sicherung als Markdown
+
+Eine persönliche Profilsicherung wird als UTF-8-Markdown exportiert. Damit sie
+später verlässlich importiert werden kann, enthält sie neben lesbaren
+Abschnitten einen maschinenlesbaren JSON-Block:
+
+```markdown
+# Application Assistant Profile Export
+<!-- profile-export: 1 -->
+```json
+{ "format": "application-assistant-profile", "version": 1, "profile": {} }
+```
+```
+
+Version 1 enthält persönliche Basisdaten, Zielprofil, Arbeitspräferenzen und
+Skills. Jobs, Bewerbungen, Ereignisse, Dokumente, Matching-Ergebnisse,
+CV-Empfehlungen sowie weitere Ressourcen werden nicht Bestandteil der Datei.
+
+Der Parser akzeptiert ausschließlich den bekannten Formatnamen und unterstützte
+Formatversionen. Vor der Persistenz werden UTF-8, Marker, JSON-Syntax,
+Pflichtfelder, Feldtypen, Wertebereiche und Profilregeln (zum Beispiel
+Mindestlaufzeit bei befristeter Beschäftigungsart) validiert. Unbekannte
+Zusatzfelder werden nicht stillschweigend übernommen; sie erzeugen einen
+Warnhinweis oder werden bei inkompatiblen Versionen abgelehnt.
+
+Fehler erzeugen eine erklärende, nicht persistierende Importmeldung. Ein
+fehlgeschlagener oder teilweise ungültiger Import ändert niemals ein
+vorhandenes Profil. Der Import erfolgt zuerst als Vorschau mit erkannter
+Version und Feldfehlern; erst eine ausdrückliche Bestätigung legt ein neues
+Profil in einer Transaktion an. Ein vorhandenes Profil wird nicht automatisch
+überschrieben.
+
 ## Portfolio-Projekte
 
 Portfolio-Projekte können manuell gepflegt oder direkt aus der JavaScript-Datei

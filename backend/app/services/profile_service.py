@@ -230,6 +230,67 @@ async def create_profile(payload: BaseModel) -> dict:
         return _serialize(profile)
 
 
+async def delete_profile(profile_id: UUID) -> None:
+    factory = _session_factory()
+    async with factory() as session:
+        profile = await session.get(Profile, profile_id)
+        if profile is None:
+            raise ApplicationError("Profil nicht gefunden.", code="profile_not_found", status_code=404)
+        await session.delete(profile)
+        await session.commit()
+
+
+async def import_profile_snapshot(payload: BaseModel, resources: dict[str, list[dict[str, Any]]]) -> dict:
+    """Create a fully independent profile from an exported snapshot."""
+    values = _ensure_target_role_preferences(payload.model_dump(mode="python"))
+    values.pop("change_reason", None)
+    factory = _session_factory()
+    resource_names = ("experiences", "education", "certificates", "skills", "projects", "references")
+    source_to_new: dict[str, UUID] = {}
+    skill_ids: dict[str, UUID] = {}
+    async with factory() as session:
+        try:
+            profile = Profile(**values)
+            session.add(profile)
+            await session.flush()
+            for name in resource_names:
+                definition = RESOURCES[name]
+                allowed = {column.name for column in definition.model.__table__.columns} - {"id", "profile_id", "created_at", "updated_at", "revision"}
+                localization_allowed = {column.name for column in definition.localization_model.__table__.columns} - {"id", definition.localization_parent_field}
+                for raw in resources.get(name, []):
+                    if not isinstance(raw, dict):
+                        continue
+                    old_id = str(raw.get("id", ""))
+                    row = definition.model(profile_id=profile.id, **{key: raw[key] for key in allowed if key in raw})
+                    session.add(row)
+                    await session.flush()
+                    if old_id:
+                        source_to_new[old_id] = row.id
+                        if name == "skills":
+                            skill_ids[old_id] = row.id
+                    for localization in raw.get("localizations", []):
+                        if isinstance(localization, dict):
+                            session.add(definition.localization_model(**{definition.localization_parent_field: row.id}, **{key: localization[key] for key in localization_allowed if key in localization}))
+            for raw in resources.get("skill_evidence", []):
+                if not isinstance(raw, dict):
+                    continue
+                skill_id = skill_ids.get(str(raw.get("skill_id", "")))
+                if skill_id is None:
+                    continue
+                allowed = {column.name for column in SkillEvidence.__table__.columns} - {"id", "skill_id", "created_at", "updated_at"}
+                values = {key: raw[key] for key in allowed if key in raw}
+                source_id = raw.get("source_resource_id")
+                if source_id:
+                    values["source_resource_id"] = source_to_new.get(str(source_id))
+                session.add(SkillEvidence(skill_id=skill_id, **values))
+            await _record_revision(session, profile_id=profile.id, entity_type="profile", row=profile, action="created", change_reason="Profil aus Sicherung importiert")
+            await session.commit()
+            return _serialize(profile)
+        except Exception:
+            await session.rollback()
+            raise
+
+
 async def get_profile(profile_id: UUID) -> dict:
     factory = _session_factory()
     async with factory() as session:

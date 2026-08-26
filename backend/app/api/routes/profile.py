@@ -1,9 +1,11 @@
+import asyncio
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, Response, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app.core.config import get_settings
 from app.core.errors import ApplicationError
@@ -53,9 +55,11 @@ from app.services.profile_service import (
     create_profile,
     create_resource,
     create_skill_evidence,
+    delete_profile,
     delete_resource,
     delete_skill_evidence,
     get_profile,
+    import_profile_snapshot,
     list_profiles,
     list_resources,
     list_revisions,
@@ -64,6 +68,7 @@ from app.services.profile_service import (
     update_resource,
     update_skill_evidence,
 )
+from app.parsers.profile_snapshot import parse_profile_snapshot, parse_profile_snapshot_with_resources, render_profile_snapshot
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -92,9 +97,76 @@ async def create_profile_entry(payload: ProfileCreate) -> dict:
     return await create_profile(payload)
 
 
+@router.get("/{profile_id}/export.md")
+async def export_profile_snapshot(profile_id: UUID) -> Response:
+    profile = await get_profile(profile_id)
+    resources = await asyncio.gather(
+        list_resources(profile_id, "experiences"),
+        list_resources(profile_id, "education"),
+        list_resources(profile_id, "certificates"),
+        list_resources(profile_id, "skills"),
+        list_resources(profile_id, "projects"),
+        list_resources(profile_id, "references"),
+        list_skill_evidence(profile_id),
+    )
+    profile["resources"] = dict(zip(
+        ("experiences", "education", "certificates", "skills", "projects", "references", "skill_evidence"),
+        resources,
+    ))
+    content = render_profile_snapshot(profile)
+    safe_name = "".join(char if char.isalnum() or char in "-_ ." else "_" for char in (profile.get("display_name") or "profil")).strip() or "profil"
+    filename = f"profile-export-{safe_name}.md"
+    return Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/snapshot-preview")
+async def preview_profile_snapshot(file: UploadFile = File(...)) -> dict:
+    try:
+        profile = parse_profile_snapshot((await file.read()).decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise ApplicationError("Die Profilsicherung ist keine gültige UTF-8-Datei.", code="invalid_profile_snapshot", status_code=422) from exc
+    except ValueError as exc:
+        raise ApplicationError(str(exc), code="invalid_profile_snapshot", status_code=422) from exc
+    return {"valid": True, "profile": jsonable_encoder(profile.model_dump(exclude={"change_reason"}))}
+
+
+@router.post("/import")
+async def import_profile_snapshot_entry(file: UploadFile = File(...), display_name: str | None = Form(None)) -> dict:
+    try:
+        profile, resources = parse_profile_snapshot_with_resources((await file.read()).decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise ApplicationError("Die Profilsicherung ist keine gültige UTF-8-Datei.", code="invalid_profile_snapshot", status_code=422) from exc
+    except ValueError as exc:
+        raise ApplicationError(str(exc), code="invalid_profile_snapshot", status_code=422) from exc
+    if display_name:
+        profile = profile.model_copy(update={"display_name": display_name.strip()})
+    existing = await list_profiles()
+    if any(item["display_name"].casefold() == profile.display_name.casefold() for item in existing):
+        if not display_name:
+            suffix = 1
+            suggestion = f"{profile.display_name} (Import)"
+            names = {item["display_name"].casefold() for item in existing}
+            while suggestion.casefold() in names:
+                suffix += 1
+                suggestion = f"{profile.display_name} (Import {suffix})"
+            return {"requires_name_confirmation": True, "suggested_display_name": suggestion}
+        raise ApplicationError("Der gewählte Profilname ist bereits vorhanden.", code="duplicate_profile_name", status_code=409)
+    return await import_profile_snapshot(profile, resources)
+
+
 @router.get("/{profile_id}")
 async def get_profile_entry(profile_id: UUID) -> dict:
     return await get_profile(profile_id)
+
+
+@router.delete("/{profile_id}", status_code=204)
+async def delete_profile_entry(profile_id: UUID) -> Response:
+    await delete_profile(profile_id)
+    return Response(status_code=204)
 
 
 @router.patch("/{profile_id}")
