@@ -42,7 +42,7 @@ Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen
 
 ## Funktionsumfang
 
-- kanonische deutsch- und englischsprachige Profilverwaltung
+- zentrale, kompakte Profilverwaltung in der Verwaltungsoberfläche
 - strukturiertes berufliches Zielprofil mit davon getrenntem Ziel-Fit
 - Portfolio-Projekte als eigene, prüfbare Evidenzquelle inklusive Import aus
   `projects.js`
@@ -104,7 +104,7 @@ Dokumente gehören nicht in das Repository.
 | Zentralverwaltung und Jobimport | `http://localhost:8080/manage` |
 | Jobdetails, Matching und Bewerbung | `http://localhost:8080/jobs/{job_id}` |
 | Browser-Bridge für Ein-Klick-Jobimport | `http://localhost:8080/browser-import` |
-| Profilverwaltung und CV-Import | `http://localhost:8080/profiles/admin` |
+| Profilverwaltung, Master-Profile und Jobimport | `http://localhost:8080/manage` |
 | API-Dokumentation in Entwicklung | `http://localhost:8080/docs` |
 | Dify | `http://localhost:8088/` |
 
@@ -179,21 +179,22 @@ Weitere technische Details befinden sich in den Dokumenten unter `docs/`.
 
 ## Bedienungsablauf
 
-1. Profil über den Tab `Profil` in der Profilverwaltung anlegen oder
-   auswählen.
-2. Profildaten manuell pflegen oder eine CV-PDF als prüfbare Vorschläge
-   importieren.
-3. Vorschläge und mögliche Konflikte bewusst prüfen.
-4. Stellenanzeige per URL, PDF oder HTML importieren.
-5. Alternativ das Browser-Lesezeichen wie unter `Verwaltung > Stellen importieren > Browser-Import einrichten` erstellen und
+1. Profil in `Verwaltung > Profil` anlegen oder auswählen.
+2. Stammdaten, Zielprofil und Arbeitspräferenzen manuell pflegen.
+3. Berufserfahrung, Ausbildung, Zertifikate, Skills, Projekte, Referenzen
+   und Skill-Evidenz in den jeweiligen Verwaltungsbereichen pflegen.
+4. Die deutschen und englischen Master-Profile getrennt importieren und ihre
+   Versionen bei Bedarf auswählen.
+5. Stellenanzeige per URL, PDF oder HTML importieren.
+6. Alternativ das Browser-Lesezeichen wie unter `Verwaltung > Stellen importieren > Browser-Import einrichten` erstellen und
    eine geöffnete Stellenanzeige mit einem Klick an die lokale Anwendung senden.
    Auch komplexe Seiten wie Indeed werden dabei automatisch in strukturierte
    Jobdaten umgewandelt.
-6. Erkannte Metadaten kontrollieren und gegebenenfalls bearbeiten.
-7. Matching für das gewünschte Profil ausführen.
-8. Bewerbungsstatus, Kommunikationsweg und Verlauf pflegen.
-9. Tatsächlich versendete Unterlagen am Bewerbungsdatensatz archivieren.
-10. Offene Stellen und Bewerbungen auf der Hauptseite filtern oder durchsuchen.
+7. Erkannte Metadaten kontrollieren und gegebenenfalls bearbeiten.
+8. Matching für das gewünschte Profil ausführen.
+9. Bewerbungsstatus, Kommunikationsweg und Verlauf pflegen.
+10. Tatsächlich versendete Unterlagen am Bewerbungsdatensatz archivieren.
+11. Offene Stellen und Bewerbungen auf der Hauptseite filtern oder durchsuchen.
 
 Ein Import wird nur gespeichert, wenn ausreichend verwertbarer Inhalt
 vorliegt. CV-Importe überschreiben das kanonische Profil niemals automatisch.

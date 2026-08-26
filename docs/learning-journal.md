@@ -42,3 +42,22 @@ zu geplanten Arbeiten stehen in der [Roadmap](roadmap.md).
   sind optional, Aktivitäts-Bullets bleiben in der Verwaltung.
 - Workflow-Änderungen müssen in Dify nach dem Import veröffentlicht werden;
   ein Entwurf ist über die Workflow-API nicht ausführbar.
+
+## 2026-08 – Verwaltungsoberfläche
+
+- Beobachtung: Die bisherige, eingebettete Profilverwaltung benötigte für
+  zusammenhängende Pflegevorgänge zu viele Wechsel und zu viel vertikalen
+  Platz.
+- Änderung: Die normale Pflege liegt nun direkt in `Verwaltung` in fünf
+  Bereichen. Desktop-Listen und Editoren nutzen zwei Spalten, neue Einträge
+  öffnen ihren Editor direkt am jeweiligen Bereich.
+- Entscheidung: Beim Wechsel oder Schließen eines geänderten Editors wird
+  nach dem Speichern gefragt. Die Ablehnung verwirft ausschließlich die
+  Änderungen und führt den gewünschten Wechsel trotzdem aus.
+- Entscheidung: Einzelne Ressourcen werden zunächst als kanonischer Text
+  gepflegt. Getrennte DE/EN-Lokalisierungen werden erst bei beobachtbaren
+  Matchingproblemen erneut bewertet; zuerst werden Extraktion und Review
+  verbessert.
+- Entscheidung: Der Masterprofil-Import ist der reguläre Einstieg für DE und
+  EN. Der CV-Import bleibt als Backend-/Diagnosefunktion erhalten, aber nicht
+  als sichtbarer täglicher Workflow.

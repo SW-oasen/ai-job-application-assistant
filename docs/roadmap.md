@@ -21,6 +21,18 @@ der [README](../README.md), technische Grundlagen im
 
 ## Erledigt
 
+- Verwaltungsoberfläche auf `/manage` als kompakter Desktop-Arbeitsbereich
+  umgesetzt: Profil, Erfahrung & Skills, Projekte & Nachweise, Master-Profile
+  und Jobimport.
+- Profilressourcen mit direkt öffnenden Editoren und Schutz vor dem Verwerfen
+  ungespeicherter Änderungen ausgestattet.
+- Ausbildung, Zertifikate, Projekte, Referenzen und Skill-Evidenz in die
+  direkte Verwaltungsoberfläche übernommen; Skills und Evidenz werden
+  alphabetisch angezeigt.
+- DE- und EN-Master-Profile mit unabhängiger Versionsauswahl und kompaktem,
+  ein- und ausblendbarem Importfeld in die Verwaltung übernommen.
+- Datenpflege beim Jobimport um Suche, Bewerbungsstatus und Matching-Filter
+  erweitert; der angezeigte Status ist der Bewerbungsstatus.
 - DE-/EN-Master-Profile importierbar und versioniert.
 - CV-Recommender mit verÃ¶ffentlichtem Dify-Workflow, evidenzgebundener
   Validierung und versioniertem CV-Markdown umgesetzt.

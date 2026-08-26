@@ -7,7 +7,7 @@ HEADING_PATTERN = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*$")
 BOLD_HEADING_PATTERN = re.compile(r"^\s*\*\*(?P<heading>[^*]{2,60})\*\*\s*.{0,80}$")
 LIST_ITEM_PATTERN = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.+?)\s*$")
 ACTIVITY_HEADINGS = re.compile(
-    r"\b("
+    r"\b(tasks?|"
     r"aufgaben|tätigkeiten|verantwortung|verantwortlichkeiten|mission|"
     r"(?:deine|ihre) rolle|rolle|ihr aufgabengebiet|das erwartet dich|"
     r"wie sie etwas bewirken können|"

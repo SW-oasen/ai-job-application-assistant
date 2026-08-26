@@ -1,6 +1,20 @@
 from app.parsers.job_structure import extract_job_structure
 
 
+def test_extracts_activities_from_tasks_heading() -> None:
+    result = extract_job_structure("""
+## **Tasks**
+- Design and train machine learning models
+- Integrate trained models into production systems
+## **Requirements**
+- Strong Python skills
+""")
+    assert [item["activity"] for item in result.activities] == [
+        "Design and train machine learning models",
+        "Integrate trained models into production systems",
+    ]
+
+
 def test_extracts_generic_you_will_activity_heading() -> None:
     result = extract_job_structure("""
 **As part of the Data Platform organization, you will:**

@@ -1091,6 +1091,16 @@ async def list_matching_jobs(profile_id=None, *, include_archived: bool = False)
                 RequirementMatch.profile_id == profile_id
             )
         matched_job_ids = set((await session.scalars(matched_statement)).all())
+        applications_by_job = {}
+        if profile_id is not None:
+            applications_by_job = {
+                application.job_id: application
+                for application in (
+                    await session.scalars(
+                        select(Application).where(Application.profile_id == profile_id)
+                    )
+                ).all()
+            }
         jobs_statement = select(Job, Company).outerjoin(
             Company, Company.id == Job.company_id
         )
@@ -1109,6 +1119,16 @@ async def list_matching_jobs(profile_id=None, *, include_archived: bool = False)
                 "source_url": job.source_url,
                 "source_filename": job.source_filename,
                 "language": job.language,
+                "application_status": (
+                    applications_by_job[job.id].status
+                    if job.id in applications_by_job
+                    else "open"
+                ),
+                "application_status_changed_at": (
+                    applications_by_job[job.id].status_changed_at
+                    if job.id in applications_by_job
+                    else job.imported_at
+                ),
                 "published_at": job.published_at,
                 "deadline": job.deadline,
                 "imported_at": job.imported_at,

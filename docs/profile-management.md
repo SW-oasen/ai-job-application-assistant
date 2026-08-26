@@ -2,22 +2,34 @@
 
 ## Lokale Oberfläche
 
-Die Profilverwaltung ist nach dem Start des Backends hier erreichbar:
+Die tägliche Profilverwaltung ist nach dem Start des Backends hier erreichbar:
 
 ```text
-http://localhost:8080/profiles/admin
+http://localhost:8080/manage
 ```
+
+Die Verwaltungsoberfläche gliedert sich in fünf Bereiche:
+
+- `Profil`: Stammdaten, Kontakt, Sprache, Zielprofil und Arbeitspräferenzen.
+- `Erfahrung & Skills`: Berufserfahrung, Ausbildung, Zertifikate und Skills.
+- `Projekte & Nachweise`: Projekte, Referenzen und Skill-Evidenz.
+- `Master-Profile`: deutsche und englische Master-Profile mit unabhängigen
+  Versionslisten und Importen.
+- `Jobimport`: Importwege sowie Datenpflege mit Suche, Bewerbungsstatus- und
+  Matching-Filter.
 
 Zum ersten Test:
 
-1. Im linken Navigationsbereich den Tab `Profil` öffnen und mit `Neues Profil`
-   ein Profil anlegen.
-2. Links einen der weiteren Bereiche auswählen.
-3. Mit `Eintrag hinzufügen` einen Datensatz erfassen.
-4. Deutsche und englische Texte getrennt pflegen.
-5. Den Eintrag zunächst als `Entwurf` speichern und nach Prüfung auf
-   `Freigegeben` setzen.
-6. Über `Revisionen` den unveränderlichen Änderungsverlauf prüfen.
+1. In `Profil` ein Profil anlegen oder auswählen und die Basisdaten pflegen.
+2. In den Ressourcenbereichen `Neu anlegen` wählen; der Editor erscheint
+   direkt unter dem jeweiligen Button.
+3. Bestehende Einträge über ihren Button öffnen. Ein erneuter Klick schließt
+   den Editor wieder.
+4. Änderungen mit `Speichern` unmittelbar persistieren. Werden ungespeicherte
+   Änderungen durch Öffnen oder Schließen eines Editors verworfen, fragt die
+   Oberfläche vorher nach; bei Ablehnung des Speicherns wird dennoch
+   geschlossen beziehungsweise gewechselt.
+5. Über die API lassen sich Revisionen weiterhin prüfen.
 
 Die Stammdatenpflege erfolgt über den Tab `Profil` in derselben Hauptsektion
 wie die übrigen Bereiche, nicht über ein separates Dialogfenster.
@@ -99,9 +111,12 @@ Die Definition ist über `GET /profiles/taxonomy/skills` verfügbar. In der
 Datenbank werden stabile englische Codes gespeichert; die Oberfläche zeigt
 verständliche deutsche Bezeichnungen.
 
-Jeder Bereich unterstützt deutsche und englische Lokalisierungen. Inhalte
-beginnen standardmäßig als `draft` und können nach Prüfung auf `approved`
-gesetzt werden.
+Das Datenmodell unterstützt deutsche und englische Lokalisierungen. In der
+aktuellen Verwaltungsoberfläche werden Ressourcen jedoch als ein kanonischer
+Text gepflegt; getrennte Ressourcenlokalisierungen sind bewusst nicht Teil des
+täglichen Workflows. Die DE- und EN-Master-Profile bleiben davon unabhängig.
+Inhalte beginnen standardmäßig als `draft` und können nach Prüfung auf
+`approved` gesetzt werden.
 
 ## Revisionen
 
@@ -142,6 +157,11 @@ darf später nur bei `usage_consent: true` und für einen ausdrücklich
 freigegebenen Anwendungsfall erfolgen.
 
 ## CV-Import und kontrollierte Übernahme
+
+Der CV-Import bleibt als Backend- und Diagnosefunktion verfügbar, ist aber
+nicht der reguläre Einstieg in die Profilpflege. Für den normalen Workflow
+werden die Master-Profile in `Verwaltung > Master-Profile` importiert und die
+strukturierten Profildaten direkt in der Verwaltung gepflegt.
 
 Ein CV überschreibt das kanonische Profil nicht. Der Import läuft über einen
 Prüfpuffer:
