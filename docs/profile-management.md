@@ -11,8 +11,10 @@ http://localhost:8080/manage
 Die Verwaltungsoberfläche gliedert sich in fünf Bereiche:
 
 - `Profil`: Stammdaten, Kontakt, Sprache, Zielprofil und Arbeitspräferenzen.
-- `Erfahrung & Skills`: Berufserfahrung, Ausbildung, Zertifikate und Skills.
-- `Projekte & Nachweise`: Projekte, Referenzen und Skill-Evidenz.
+- `Praxis & Qualifikationen`: Berufserfahrung, Ausbildung, Referenzen,
+  Portfolio-Projekte und Zertifikate. Angewandte Skills werden direkt am
+  jeweiligen Eintrag ausgewählt.
+- `Skills`: technische und allgemeine Skills in getrennten Spalten.
 - `Master-Profile`: deutsche und englische Master-Profile mit unabhängigen
   Versionslisten und Importen.
 - `Jobimport`: Importwege sowie Datenpflege mit Suche, Bewerbungsstatus- und
@@ -122,8 +124,7 @@ Inhalte beginnen standardmäßig als `draft` und können nach Prüfung auf
 
 Jede Anlage oder Änderung erhöht die Revision des Eintrags und die
 Gesamtrevision des Profils. Zusätzlich wird ein unveränderlicher Snapshot in
-`profile_entity_revisions` gespeichert. `change_reason` dokumentiert den
-fachlichen Anlass.
+`profile_entity_revisions` gespeichert.
 
 Einträge werden nicht durch CV-Importe oder LLM-Ausgaben automatisch geändert.
 
@@ -313,7 +314,9 @@ Profil in einer Transaktion an. Ein vorhandenes Profil wird nicht automatisch
 Der Export unter `Verwaltung > Profil` erzeugt einen Markdown-Download mit dem
 Dateinamen `profile-export-<profilname>.md`. Er enthält die persönlichen
 Basisdaten, das Zielprofil und die Arbeitspräferenzen sowie Berufserfahrung,
-Ausbildung, Zertifikate, Skills, Projekte, Referenzen und Skill-Evidenzen.
+Ausbildung, Zertifikate, Skills, Projekte und Referenzen. Skills werden direkt
+bei Berufserfahrung, Ausbildung, Projekten und Zertifikaten als angewandt
+zugeordnet.
 Jobs, Bewerbungen, Matching-Ergebnisse, generierte Dokumente und
 Master-Profile werden nicht exportiert.
 

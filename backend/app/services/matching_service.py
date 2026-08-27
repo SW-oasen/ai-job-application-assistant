@@ -24,7 +24,7 @@ from app.database.models import (
     ProfileSource,
     RequirementMatch,
     Skill,
-    SkillEvidence,
+    AppliedSkillLink,
     WorkExperience,
 )
 from app.database.session import get_session_factory
@@ -426,8 +426,8 @@ async def _profile_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
 
 async def _linked_skill_evidence_inputs(session, profile_id) -> list[EvidenceInput]:
     links = (await session.scalars(
-        select(SkillEvidence).join(Skill).where(Skill.profile_id == profile_id)
-        .options(selectinload(SkillEvidence.skill))
+        select(AppliedSkillLink).join(Skill).where(Skill.profile_id == profile_id)
+        .options(selectinload(AppliedSkillLink.skill))
     )).all()
     result: list[EvidenceInput] = []
     for link in links:
@@ -448,7 +448,7 @@ async def _linked_skill_evidence_inputs(session, profile_id) -> list[EvidenceInp
             source = await session.get(Certificate, link.source_resource_id)
         elif link.source_resource_type == "education" and link.source_resource_id:
             source = await session.get(EducationEntry, link.source_resource_id)
-        if source is None and link.source_resource_type != "manual_training":
+        if source is None:
             continue
         label = "Manuelles Training"
         years = None
@@ -483,8 +483,8 @@ async def _linked_skill_evidence_inputs(session, profile_id) -> list[EvidenceInp
             source_name=f"profile:{profile_id}:skill-evidence:{link.id}", source_type="manual",
             source_content=json.dumps(content, ensure_ascii=False, sort_keys=True),
             label=f"{link.skill.canonical_name} · {label}",
-            evidence_text="\n".join(value for value in (f"Skill: {link.skill.canonical_name}", f"Quelle: {label}", context_text, link.evidence_text) if value),
-            experience_context=link.experience_context,
+            evidence_text="\n".join(value for value in (f"Skill: {link.skill.canonical_name}", f"Quelle: {label}", context_text) if value),
+            experience_context={"experience": "professional", "project": "project", "education": "education", "certificate": "training"}[link.source_resource_type],
             keywords=[link.skill.canonical_name, *link.skill.aliases, *role_context.split()],
         ))
     return result

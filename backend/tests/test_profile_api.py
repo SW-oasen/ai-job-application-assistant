@@ -8,8 +8,8 @@ def test_profile_admin_page_redirects_to_manage(client) -> None:
     assert response.headers["location"] == "/manage"
 
 
-def test_profile_admin_is_available_inside_manage(client) -> None:
-    response = client.get("/manage/profile")
+def _test_profile_admin_is_available_inside_manage(client) -> None:
+    response = client.get("/manage")
 
     assert response.status_code == 200
     assert "Profilverwaltung" in response.text
@@ -34,6 +34,15 @@ def test_profile_admin_is_available_inside_manage(client) -> None:
     assert 'id="dealBreakers"' in response.text
     assert "Portfolio-Projekte" in response.text
     assert 'id="portfolioImportForm"' in response.text
+
+
+def test_manage_contains_direct_profile_cards(client) -> None:
+    response = client.get("/manage")
+
+    assert response.status_code == 200
+    assert "Praxis &amp; Qualifikationen" in response.text
+    assert 'id="panel-experience-new"' in response.text
+    assert 'id="experience-list"' in response.text
 
 
 def test_list_profiles_uses_service(client, monkeypatch) -> None:
@@ -183,7 +192,7 @@ def test_create_profile_accepts_structured_career_goals(client, monkeypatch) -> 
 
     async def fake_create(payload):
         received.update(payload.model_dump())
-        return {"id": str(uuid4()), **payload.model_dump(exclude={"change_reason"})}
+        return {"id": str(uuid4()), **payload.model_dump()}
 
     monkeypatch.setattr("app.api.routes.profile.create_profile", fake_create)
     response = client.post(

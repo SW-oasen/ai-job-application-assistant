@@ -29,7 +29,6 @@ def render_profile_snapshot(profile: dict[str, Any] | ProfileCreate) -> str:
     fields = {
         key: profile.get(key)
         for key in ProfileCreate.model_fields
-        if key != "change_reason"
     }
     fields["display_name"] = profile.get("display_name", "")
     if profile.get("resources"):

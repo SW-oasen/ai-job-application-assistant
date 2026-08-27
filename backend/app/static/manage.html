@@ -32,8 +32,8 @@
 <main>
   <nav class="steps" aria-label="Verwaltungsbereiche">
     <button type="button" class="step" data-target="panel-profile-new">Profil</button>
-    <button type="button" class="step" data-target="panel-experience-new">Erfahrung &amp; Skills</button>
-    <button type="button" class="step" data-target="panel-projects">Projekte &amp; Nachweise</button>
+    <button type="button" class="step" data-target="panel-experience-new">Praxis &amp; Qualifikationen</button>
+    <button type="button" class="step" data-target="panel-skills">Skills</button>
     <button type="button" class="step" data-target="panel-master">Master-Profile</button>
     <button type="button" class="step active" data-target="panel-import">Jobimport</button>
     <!--
@@ -46,7 +46,7 @@
   <div class="workspace" id="panel-experience-new"><section class="panel"><h2>Berufserfahrung</h2><p>Berufsstationen direkt pflegen.</p><div class="profile-grid"><section id="experience-list" class="jobs"><div class="empty">Berufserfahrung wird geladen…</div></section><section><form id="experience-form"><input id="experience-id" type="hidden"><label for="experience-company">Unternehmen</label><input id="experience-company" required maxlength="500"><div class="profile-grid"><div><label for="experience-start">Start</label><input id="experience-start" type="date" required></div><div><label for="experience-end">Ende</label><input id="experience-end" type="date"></div></div><div class="profile-grid"><div><label for="experience-type">Beschäftigungsart</label><input id="experience-type" maxlength="100"></div><div><label for="experience-location">Ort</label><input id="experience-location" maxlength="500"></div></div><label for="experience-remote">Arbeitsmodell</label><input id="experience-remote" maxlength="50"><label for="experience-reason">Änderungsgrund</label><input id="experience-reason" maxlength="1000"><p><button id="experience-save">Speichern</button> <button type="button" class="secondary" id="experience-new">Neue Station</button></p><div id="experience-message" class="message" role="status"></div></form></section></div></section></div>
   <div class="workspace" id="panel-profile-new"><section class="panel"><h2>Profil</h2><p>Basisdaten, Kontakt und Zielprofil direkt bearbeiten.</p><form id="profile-basics-form" class="profile-form"><div class="profile-grid"><div><label for="profile-display-name">Profilname</label><input id="profile-display-name" required maxlength="300"></div><div><label for="profile-full-name">Vollständiger Name</label><input id="profile-full-name" maxlength="500"></div><div><label for="profile-email">E-Mail</label><input id="profile-email" type="email" maxlength="500"></div><div><label for="profile-phone">Telefon</label><input id="profile-phone" maxlength="100"></div><div><label for="profile-linkedin">LinkedIn</label><input id="profile-linkedin" type="url" maxlength="2048"></div><div><label for="profile-portfolio">Portfolio</label><input id="profile-portfolio" type="url" maxlength="2048"></div></div><label for="profile-goal">Berufliches Ziel</label><textarea id="profile-goal" maxlength="10000"></textarea><div class="profile-grid"><div><label for="profile-industries">Zielbranchen</label><input id="profile-industries" maxlength="5000" placeholder="Kommagetrennt"></div><div><label for="profile-locations">Zielorte</label><input id="profile-locations" maxlength="5000" placeholder="Kommagetrennt"></div></div><label for="profile-change-reason">Änderungsgrund</label><input id="profile-change-reason" maxlength="1000"><button id="profile-basics-save">Profil speichern</button><div id="profile-basics-message" class="message" role="status"></div></form><details><summary>Weitere Profilbereiche im Übergangsmodus</summary><iframe class="profile-frame" id="profileFrame" title="Profilverwaltung"></iframe></details></section></div>
   <div class="workspace" id="panel-profile"><section class="panel"><h2>Profil</h2><p>Übergangsbereich: Die bestehende Profilverwaltung wird schrittweise in dieses Kartenlayout übernommen.</p><iframe class="profile-frame" id="profileFrame" title="Profilverwaltung"></iframe></section></div>
-  <div class="workspace" id="panel-experience"><section class="panel"><h2>Erfahrung &amp; Skills</h2><p>Die Auswahl öffnet den jeweiligen Bereich der bestehenden Profilverwaltung. Die direkte Kartenmigration folgt schrittweise.</p><p><button class="button secondary profile-resource" data-resource="experiences">Berufserfahrung öffnen</button> <button class="button secondary profile-resource" data-resource="skills">Skills öffnen</button> <button class="button secondary profile-resource" data-resource="skill-evidence">Evidenz öffnen</button></p></section></div>
+  <div class="workspace" id="panel-experience"><section class="panel"><h2>Praxis &amp; Qualifikationen</h2><p>Berufserfahrung, Ausbildung, Referenzen, Portfolio-Projekte und Zertifikate werden zusammen gepflegt. Skills werden direkt am jeweiligen Nachweis ausgewählt.</p><p><button class="button secondary profile-resource" data-resource="evidence">Praxis &amp; Qualifikationen öffnen</button> <button class="button secondary profile-resource" data-resource="skills">Skills öffnen</button></p></section></div>
   <div class="workspace" id="panel-projects"><section class="panel"><div class="project-resources"><section class="project-resource"><h2>Projekte</h2><section id="project-list" class="jobs"></section><form id="project-form" hidden><input id="project-id" type="hidden"><label for="project-name">Projektname</label><input id="project-name" required><label for="project-type">Projekttyp</label><input id="project-type"><label for="project-role">Eigene Rolle</label><input id="project-role"><p><button id="project-save">Speichern</button></p><div id="project-message" class="message"></div></form></section><section class="project-resource"><h2>Referenzen</h2><section id="reference-list" class="jobs"></section><form id="reference-form" hidden><input id="reference-id" type="hidden"><label for="reference-name">Name</label><input id="reference-name" required><label for="reference-organization">Organisation</label><input id="reference-organization"><label for="reference-email">E-Mail</label><input id="reference-email" type="email"><label for="reference-phone">Telefon</label><input id="reference-phone"><p><button id="reference-save">Speichern</button></p><div id="reference-message" class="message"></div></form></section></div></section><section class="panel"><div class="project-resource"><h2>Skill-Evidenz</h2><section id="evidence-list" class="jobs"></section><form id="evidence-form" hidden><input id="evidence-id" type="hidden"><label for="evidence-skill">Skill</label><select id="evidence-skill" required></select><label for="evidence-source-type">Quelle</label><select id="evidence-source-type"><option value="experience">Berufserfahrung</option><option value="project">Projekt</option><option value="certificate">Zertifikat</option><option value="education">Ausbildung</option><option value="manual_training">Manuelles Training</option></select><label for="evidence-source">Verknüpfter Eintrag</label><select id="evidence-source"></select><label for="evidence-context">Evidenzart</label><select id="evidence-context"><option value="professional">Beruflich</option><option value="project">Projekt</option><option value="training">Training</option></select><label for="evidence-text">Konkreter Nachweis</label><textarea id="evidence-text"></textarea><p><button id="evidence-save">Speichern</button></p><div id="evidence-message" class="message"></div></form></div></section></div>
   <div class="workspace" id="panel-master"><section class="panel"><h2>Master-Profile</h2><p>Aktuelle deutsche und englische Vorlage samt Versionshistorie direkt verwalten.</p><div id="master-cards" class="master-cards"></div></section></div>
   <div class="workspace active" id="panel-import">
@@ -82,10 +82,8 @@ const date=value=>value?new Intl.DateTimeFormat("de-DE",{dateStyle:"medium"}).fo
 async function deleteJob(id,title){if(!confirm(`Job „${title}“ wirklich löschen?\n\nMatching-Ergebnisse, Bewerbungsstatus und zugehörige Dokumente werden ebenfalls gelöscht.`))return;try{await req(`/matching/jobs/${encodeURIComponent(id)}`,{method:"DELETE"});show("success",`Job „${title}“ wurde gelöscht.`);await jobs()}catch(e){show("error",e.message)}}
 async function jobs(){try{const path=managedProfile?`/matching/jobs?profile_id=${encodeURIComponent(managedProfile.id)}`:"/matching/jobs",all=await req(path),labels={open:"Offen",draft:"Entwurf",applied:"Beworben",followed_up:"Nachgefragt",interview:"Vorstellungsgespräch",rejected:"Abgelehnt",offer:"Angebot",accepted:"Angenommen",withdrawn:"Zurückgezogen",closed:"Geschlossen"},term=$("maintenance-search")?.value.trim().toLocaleLowerCase("de")||"",status=$("maintenance-status")?.value||"",matching=$("maintenance-matching")?.value||"",a=all.filter(j=>{const text=[j.title,j.company,j.location,j.source_portal].filter(Boolean).join(" ").toLocaleLowerCase("de");return(!term||text.includes(term))&&(!status||j.application_status===status)&&(!matching||(matching==="matched"?j.has_matching:!j.has_matching))});$("jobs").innerHTML=a.length?a.map(j=>`<div class="job-row"><a class="job" href="/jobs/${encodeURIComponent(j.id)}"><strong>${esc(j.title||"Ohne Titel")}</strong><span>${esc(j.company||"Firma unbekannt")} · importiert ${esc(date(j.imported_at))} · Status: ${esc(labels[j.application_status]||j.application_status)} (${esc(date(j.application_status_changed_at))})</span></a><div class="job-actions"><button class="delete-job" type="button" data-job-id="${esc(j.id)}" data-job-title="${esc(j.title||"Ohne Titel")}">Löschen</button></div></div>`).join(""):'<div class="empty">Keine Jobs für diese Filter.</div>';document.querySelectorAll(".delete-job").forEach(button=>button.onclick=()=>deleteJob(button.dataset.jobId,button.dataset.jobTitle))}catch(e){$("jobs").innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab,.pane").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.pane).classList.add("active");$("message").className="message"});
-document.querySelectorAll(".steps .step[data-target]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".steps .step[data-target]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".workspace").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.target).classList.add("active");if(b.dataset.target==="panel-profile"&&!$("profileFrame").src)$("profileFrame").src="/manage/profile?embedded=20260822-employment-preferences-v1"});
+document.querySelectorAll(".steps .step[data-target]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".steps .step[data-target]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".workspace").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.target).classList.add("active")});
 const initialWorkspace=$(location.hash.slice(1));if(initialWorkspace?.classList.contains("workspace")){document.querySelectorAll(".steps .step[data-target]").forEach(x=>x.classList.toggle("active",x.dataset.target===initialWorkspace.id));document.querySelectorAll(".workspace").forEach(x=>x.classList.toggle("active",x===initialWorkspace))}
-function openProfileResource(resource){$("profileFrame").src=`/manage/profile?embedded=20260822-employment-preferences-v1&resource=${encodeURIComponent(resource)}`;document.querySelectorAll(".steps .step[data-target]").forEach(x=>x.classList.toggle("active",x.dataset.target==="panel-profile-new"));document.querySelectorAll(".workspace").forEach(x=>x.classList.toggle("active",x.id==="panel-profile-new"));}
-document.querySelectorAll(".profile-resource").forEach(b=>b.onclick=()=>openProfileResource(b.dataset.resource));
 $("url-form").onsubmit=async e=>{e.preventDefault();const b=$("url-submit");b.disabled=true;show("warning","Import läuft…");try{const d=await req("/imports/url",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:$("job-url").value.trim(),force_browser:$("force-browser").checked})});if(!d.success)show("error",d.error?.message||"Import fehlgeschlagen.");else if(!d.job_id)show("warning","Inhalt gelesen, aber wegen unzureichender Qualität nicht gespeichert.");else{show("success",d.duplicate?"Job war bereits vorhanden.":"Job erfolgreich importiert.",d.job_id);jobs()}}catch(x){show("error",x.message)}finally{b.disabled=false}};
 $("job-pdf").onchange=()=>{$("replace-existing-option").style.display=/\.html?$/i.test($("job-pdf").files[0]?.name||"")?"none":"flex"};
 $("pdf-form").onsubmit=async e=>{e.preventDefault();const f=$("job-pdf").files[0],b=$("pdf-submit");if(!f)return;const html=/\.html?$/i.test(f.name),endpoint=html?"/imports/html":"/imports/pdf";b.disabled=true;show("warning",`${html?"HTML":"PDF"} wird verarbeitet…`);try{const form=new FormData;form.append("file",f);if(!html)form.append("replace_existing",$("replace-existing").checked?"true":"false");const d=await req(endpoint,{method:"POST",body:form});if(!d.success||!d.job_id)show("warning",`Datei gelesen, aber nicht gespeichert: ${(d.warnings||[]).join(", ")||"unzureichende Qualität"}`);else{const message=d.reimported?"Vorhandener PDF-Job wurde neu importiert.":d.duplicate?"Job war bereits vorhanden.":`${html?"HTML":"PDF"}-Job erfolgreich importiert.`;show("success",message,d.job_id);jobs()}}catch(x){show("error",x.message)}finally{b.disabled=false}};
@@ -94,9 +92,12 @@ $("panel-experience-new").insertAdjacentHTML("beforeend",`<section class="panel"
 $("experience-list").closest(".panel").insertAdjacentHTML("beforeend",`<div class="experience-resources"><section class="experience-resource"><h3>Ausbildung</h3><section id="education-list" class="jobs"><div class="empty">Ausbildung wird geladen…</div></section><form id="education-form" hidden><input id="education-id" type="hidden"><label for="education-institution">Institution</label><input id="education-institution" required maxlength="500"><div class="profile-grid"><div><label for="education-start">Start</label><input id="education-start" type="date"></div><div><label for="education-end">Ende</label><input id="education-end" type="date"></div></div><label for="education-location">Ort</label><input id="education-location" maxlength="500"><p><button id="education-save">Speichern</button></p><div id="education-message" class="message" role="status"></div></form></section><section class="experience-resource"><h3>Zertifikate</h3><section id="certificate-list" class="jobs"><div class="empty">Zertifikate werden geladen…</div></section><form id="certificate-form" hidden><input id="certificate-id" type="hidden"><label for="certificate-name">Offizieller Name</label><input id="certificate-name" required maxlength="500"><label for="certificate-issuer">Aussteller</label><input id="certificate-issuer" required maxlength="500"><div class="profile-grid"><div><label for="certificate-issued">Ausgestellt am</label><input id="certificate-issued" type="date"></div><div><label for="certificate-expires">Gültig bis</label><input id="certificate-expires" type="date"></div></div><label for="certificate-credential">Credential-ID</label><input id="certificate-credential" maxlength="500"><label for="certificate-url">Verifikations-URL</label><input id="certificate-url" type="url" maxlength="2048"><p><button id="certificate-save">Speichern</button></p><div id="certificate-message" class="message" role="status"></div></form></section></div>`);
 $("profile-basics-save").insertAdjacentHTML("beforebegin",`<section class="preference-section" id="profile-target-role-section"><label>Zielrollen</label><p class="empty">Priorität 1 ist die wichtigste Zielrolle.</p><div id="profile-target-role-rows" class="target-role-choice"></div><button type="button" class="choice-button" id="profile-add-target-role">Zielrolle hinzufügen</button></section>`);
 $("profile-preferences-section").insertAdjacentHTML("afterbegin",`<div id="profile-language-field"><label for="profile-language">Standardsprache</label><select id="profile-language"><option value="de">Deutsch</option><option value="en">English</option></select></div>`);
+$("panel-experience-new").insertAdjacentHTML("afterend",`<div class="workspace" id="panel-skills"></div>`);$("panel-skills").append($("panel-experience-new").querySelectorAll(":scope > .panel")[1]);
 const profilePanel=$("panel-profile-new").querySelector(".panel");profilePanel.querySelector("h2")?.remove();profilePanel.querySelector("p")?.remove();
 profilePanel.querySelector("details")?.remove();$("panel-profile")?.remove();$("panel-experience")?.remove();
-$("panel-experience-new").querySelectorAll(".panel")[1].querySelector("p").textContent="Skills direkt pflegen.";
+const legacyProjects=$("panel-projects"),projectResources=legacyProjects?.querySelector(".project-resources");if(projectResources){$("panel-experience-new").append(projectResources);legacyProjects.remove()}
+document.body.insertAdjacentHTML("beforeend",`<section hidden aria-hidden="true"><form id="evidence-form"><input id="evidence-id"><button id="evidence-save" type="button"></button></form><section id="evidence-list"></section><div id="evidence-message"></div></section>`)
+$("panel-skills").querySelector("p").textContent="Skills direkt pflegen.";
 document.querySelector("#profile-employment-types-buttons [data-choice='temporary']").insertAdjacentElement("afterend",$("profile-minimum-duration-field"));
 $("profile-basics-form").insertAdjacentHTML("afterbegin",`<div class="profile-columns"><section class="profile-column" id="profile-contact-column"><h3>Profil &amp; Präferenzen</h3></section><section class="profile-column" id="profile-goal-column"><h3>Zielprofil</h3><div class="profile-grid" id="profile-target-fields"></div></section></div>`);
 const moveProfileField=(fieldId,target)=>target.append($(fieldId).closest(".profile-grid > div"));
@@ -154,7 +155,7 @@ $("profile-basics-form").onsubmit=async event=>{event.preventDefault();const but
 const experienceFormShell=$("experience-form").closest("section"),skillFormShell=$("skill-form").closest("section");$("experience-list").parentElement.style.gridTemplateColumns="1fr";$("experience-list").parentElement.append($("experience-form"));$("experience-form").hidden=true;experienceFormShell?.remove();
 $("skill-list").parentElement.style.gridTemplateColumns="1fr";$("skill-list").parentElement.append($("skill-form"));$("skill-form").hidden=true;skillFormShell?.remove();
 $("experience-new").style.display="none";$("skill-new").style.display="none";
-loadProfileBasics().then(async()=>{await loadSkillTaxonomy().catch(error=>profileMessage("error",error.message));await Promise.all([loadExperiences(),loadSkills(),educationResource.load(),certificateResource.load(),projectResource.load(),referenceResource.load(),loadMasterProfiles(),jobs()]);await loadEvidenceOptions().catch(error=>{const node=$("evidence-list");if(node)node.innerHTML=`<div class="empty">${esc(error.message)}</div>`});await evidenceResource.load()});
+loadProfileBasics().then(async()=>{await loadSkillTaxonomy().catch(error=>profileMessage("error",error.message));await Promise.all([loadExperiences(),loadSkills(),educationResource.load(),certificateResource.load(),projectResource.load(),referenceResource.load(),loadMasterProfiles(),jobs()])});
 $("experience-new").onclick=clearExperienceForm;
 setupProfileCreation();
 loadProfileBasics().then(()=>{setupProfileCreation();setupProfileExport();setupProfileImport();setupProfileDelete()});
@@ -170,5 +171,328 @@ setupProfileExport();setupProfileImport();setupProfileDelete();
 $("profile-basics-form").addEventListener("submit",()=>{setTimeout(async()=>{if(managedProfile?.id)localStorage.setItem("managedProfileId",managedProfile.id);await loadProfileBasics();await reloadProfileResources()},800)});
 jobs();
 document.addEventListener("change",async event=>{const input=event.target;if(input.id!=="import-profile-file")return;event.stopImmediatePropagation();const file=input.files?.[0];if(!file)return;const upload=async name=>{const body=new FormData();body.append("file",file);if(name)body.append("display_name",name);return req("/profiles/import",{method:"POST",body})};try{let imported=await upload();if(imported.requires_name_confirmation){const name=prompt("Ein Profil mit diesem Namen existiert bereits. Vorgeschlagener Name:",imported.suggested_display_name);if(!name)return;imported=await upload(name.trim())}localStorage.setItem("managedProfileId",imported.id);await loadProfileBasics();await reloadProfileResources();profileMessage("success","Profil erfolgreich als neues Profil importiert.")}catch(error){profileMessage("error",error.message)}finally{input.value=""}},true);
+</script>
+<script>
+(() => {
+  const practice = document.getElementById("panel-experience-new");
+  const projectResources = practice?.querySelector(".project-resources");
+  if (practice && projectResources && !projectResources.parentElement.classList.contains("panel")) {
+    const rightColumn = document.createElement("section");
+    rightColumn.className = "evidence-column";
+    rightColumn.append(projectResources);
+    practice.append(rightColumn);
+  }
+  const desktopStyle = document.createElement("style");
+  desktopStyle.textContent = `#panel-experience-new.active{display:grid;grid-template-columns:minmax(520px,1fr) minmax(520px,1fr);gap:18px;align-items:start}#panel-experience-new>.panel:first-child{padding:0;border:0;background:transparent}.evidence-column{min-width:0}.evidence-column .project-resources{margin-top:0}.work-experience-resource{margin:0 0 14px}.resource-heading,.skill-heading{display:flex;align-items:center;gap:12px;margin:0 0 10px}.resource-heading h2,.resource-heading h3,.skill-heading h2{margin:0}.resource-heading .button,.skill-heading .skill-new-action{width:auto;margin:0}.work-experience-resource>.profile-grid{margin:0}#panel-skills.active{display:block}.skill-heading{margin-bottom:0}.skill-editor-host{width:calc((100% - 18px)/2)}.skill-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:0}.skill-column{min-width:0;padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff}.skill-column .skill-group:first-of-type{margin-top:0}.manage-choice{font-weight:400}.manage-choice strong{font-size:14px!important;font-weight:400}.manage-choice span{font-size:12px!important;font-weight:400}.skill-choice,.skill-choice span{font-size:14px!important;font-weight:400!important}.applied-skills select{display:none}.applied-skill-choices{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0 9px}.applied-skill-choice{width:auto;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#34445b;font:650 13px/1.25 inherit}.applied-skill-choice.selected{background:#e8f0ff;border-color:var(--blue);color:#0f3d98}.applied-skill-more{width:auto;background:#fff;border-color:var(--line);color:#34445b}`;
+  document.head.append(desktopStyle);
+  const requestWithoutChangeReason = req;
+  req = async (url, options = {}) => {
+    if (typeof options.body === "string" && options.headers?.["Content-Type"] === "application/json") {
+      const body = JSON.parse(options.body);
+      delete body.change_reason;
+      options = {...options, body:JSON.stringify(body)};
+    }
+    return requestWithoutChangeReason(url, options);
+  };
+  ["profile-change-reason", "skill-reason"].forEach(id => {
+    const input = document.getElementById(id), label = document.querySelector(`label[for="${id}"]`);
+    if (input) input.type = "hidden";
+    label?.remove();
+  });
+  const profileStyle = document.createElement("style");
+  profileStyle.textContent = `#panel-profile-new>.panel{padding:0;border:0;background:transparent}#panel-profile-new .profile-selection-card{padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff;margin-bottom:18px}#panel-profile-new .profile-selection-card h2{margin:0 0 12px}#panel-profile-new .profile-toolbar{margin:0;align-items:end}#panel-profile-new .profile-toolbar label{flex:0 0 calc(33.333% - 8px)}#panel-profile-new .profile-actions{flex-wrap:nowrap}.profile-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:18px}.profile-column{padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff}.profile-column h3{margin:0 0 12px}.profile-compact-row{display:grid;gap:10px;margin:0 0 10px}.profile-compact-row.two{grid-template-columns:1fr 1fr}.profile-compact-row.three{grid-template-columns:1fr 1fr 1fr}.profile-compact-row label{margin:0}.target-role-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px}.target-role-choice .target-role-row{grid-template-columns:minmax(80px,1fr) 120px 43px auto;gap:6px;margin:0}.target-role-choice .target-role-level,.target-role-choice .target-role-priority{padding-left:7px;padding-right:7px}.target-role-choice .remove-target-role{padding:8px 9px;white-space:nowrap}.remove-target-role.danger{border-color:#f5b8b4!important;background:#fff!important;color:#b42318!important}#profile-add-target-role{margin-top:14px!important}`;
+  document.head.append(profileStyle);
+  function compactProfileRow(column, ids, className) {
+    const row = document.createElement("div"); row.className = `profile-compact-row ${className}`;
+    const anchor = column._compactAnchor || column.querySelector("h3"); anchor.after(row); column._compactAnchor = row;
+    ids.forEach(id => { const input = document.getElementById(id), field = input?.closest("div"); if (field) row.append(field); });
+  }
+  function setupProfileLayout() {
+    const panel = document.querySelector("#panel-profile-new > .panel"), form = document.getElementById("profile-basics-form"), toolbar = document.getElementById("profile-selector")?.closest(".profile-toolbar");
+    if (!panel || !form || !toolbar || panel.querySelector(".profile-selection-card")) return;
+    const selection = document.createElement("section"); selection.className = "profile-selection-card";
+    const title = panel.querySelector(":scope > h2"); if (title) selection.append(title);
+    panel.querySelector(":scope > p")?.remove(); selection.append(toolbar); form.before(selection);
+    const contact = document.getElementById("profile-contact-column"), goal = document.getElementById("profile-goal-column");
+    compactProfileRow(contact, ["profile-full-name", "profile-display-name"], "two");
+    compactProfileRow(contact, ["profile-email", "profile-phone", "profile-language"], "three");
+    compactProfileRow(contact, ["profile-linkedin", "profile-portfolio"], "two");
+  }
+  const originalRenderTargetRoleRows = renderTargetRoleRows;
+  renderTargetRoleRows = items => { originalRenderTargetRoleRows(items); document.querySelectorAll(".remove-target-role").forEach(button => { button.textContent = "Löschen"; button.classList.add("danger"); }); };
+  setupProfileLayout();
+  new MutationObserver(setupProfileLayout).observe(document.getElementById("panel-profile-new"), {childList:true, subtree:true});
+
+  const experiencePanel = practice?.querySelector(":scope > .panel");
+  if (experiencePanel && !experiencePanel.querySelector(".work-experience-resource")) {
+    const workCard = document.createElement("section");
+    workCard.className = "experience-resource work-experience-resource";
+    const heading = document.createElement("div");
+    heading.className = "resource-heading";
+    const title = experiencePanel.querySelector(":scope > h2");
+    const description = experiencePanel.querySelector(":scope > p");
+    const grid = experiencePanel.querySelector(":scope > .profile-grid");
+    if (title) heading.append(title);
+    workCard.append(heading);
+    if (description) description.remove();
+    if (grid) workCard.append(grid);
+    experiencePanel.prepend(workCard);
+  }
+
+  function placeCreateButtons() {
+    const mappings = [
+      ["experience-create", ".work-experience-resource .resource-heading"],
+      ["education-create", ".experience-resource:has(#education-list) h3"],
+      ["certificate-create", ".experience-resource:has(#certificate-list) h3"],
+      ["project-create", ".project-resource:has(#project-list) h2"],
+      ["reference-create", ".project-resource:has(#reference-list) h2"]
+    ];
+    mappings.forEach(([id, titleSelector]) => {
+      const button = document.getElementById(id);
+      const title = practice?.querySelector(titleSelector);
+      if (!button || !title || button.parentElement.classList.contains("resource-heading")) return;
+      let heading = title.closest(".resource-heading");
+      if (!heading) {
+        heading = document.createElement("div");
+        heading.className = "resource-heading";
+        title.before(heading);
+        heading.append(title);
+      }
+      heading.append(button);
+      document.getElementById(`${id}-host`)?.remove();
+      const createEditors = {
+        "experience-create": {form:"experience-form", id:"experience-id", fields:["experience-company","experience-start","experience-end","experience-type","experience-location","experience-remote"]},
+        "education-create": {form:"education-form", id:"education-id", fields:["education-institution","education-start","education-end","education-location"]},
+        "certificate-create": {form:"certificate-form", id:"certificate-id", fields:["certificate-name","certificate-issuer","certificate-issued","certificate-expires","certificate-credential","certificate-url"]},
+        "project-create": {form:"project-form", id:"project-id", fields:["project-name","project-type","project-role"]},
+        "reference-create": {form:"reference-form", id:"reference-id", fields:["reference-name","reference-organization","reference-email","reference-phone","reference-linkedin"]}
+      };
+      const editor = createEditors[id];
+      if (editor) button.onclick = () => {
+        const form = $(editor.form), host = document.createElement("div");
+        host.className = "resource-editor-host";
+        button.closest(".work-experience-resource,.experience-resource,.project-resource")?.append(host);
+        if (id === "experience-create") { showExperienceEditor(host, null); return; }
+        host.append(form); form.hidden = false; form.classList.add("inline-editor"); form.reset(); $(editor.id).value = "";
+        form.dataset.initial = JSON.stringify(["", ...editor.fields.map(field => $(field).value)]);
+      };
+    });
+  }
+  placeCreateButtons();
+  new MutationObserver(placeCreateButtons).observe(practice, {childList:true, subtree:true});
+  document.getElementById("certificate-list")?.addEventListener("click", async event => {
+    const button = event.target.closest("[data-item-id]");
+    if (!button || !managedProfile) return;
+    const item = (await req(`/profiles/${encodeURIComponent(managedProfile.id)}/certificates`)).find(value => value.id === button.dataset.itemId);
+    if (!item) return;
+    const form = document.getElementById("certificate-form");
+    button.nextElementSibling.append(form); form.hidden = false; form.classList.add("inline-editor");
+    document.getElementById("certificate-id").value = item.id;
+    document.getElementById("certificate-name").value = item.official_name || "";
+    document.getElementById("certificate-issuer").value = item.issuer || "";
+    document.getElementById("certificate-issued").value = item.issued_at || "";
+    document.getElementById("certificate-credential").value = item.credential_id || "";
+    document.getElementById("certificate-url").value = item.verification_url || "";
+    form.dataset.initial = JSON.stringify([item.id,item.official_name||"",item.issuer||"",item.issued_at||"",item.expires_at||"",item.credential_id||"",item.verification_url||""]);
+  });
+
+  const compactStyle = document.createElement("style");
+  compactStyle.textContent = `.compact-grid{display:grid;gap:10px;margin:0 0 10px}.compact-grid label{margin:0}.compact-grid input{margin-top:4px}.company-location{grid-template-columns:3fr 1fr}.experience-details{grid-template-columns:1fr 1fr 1.5fr 1.5fr}.two-fields{grid-template-columns:1fr 1fr}.choice-field .choice-buttons{margin:4px 0 0}.choice-field .choice-button{font-size:12px;padding:6px 9px!important}.inline-editor{padding:14px}.inline-editor>label,.inline-editor>input,.inline-editor>.profile-grid{margin-top:0}#experience-new,#experience-list #experience-create,#project-list #project-create,#certificate-list #certificate-create{display:none!important}`;
+  document.head.append(compactStyle);
+  function moveField(form, id, row) {
+    const input = document.getElementById(id), label = form.querySelector(`label[for="${id}"]`);
+    if (!input || !label) return;
+    const field = document.createElement("div");
+    field.append(label, input);
+    row.append(field);
+  }
+  function addRow(form, className, ids) {
+    const row = document.createElement("div"); row.className = `compact-grid ${className}`;
+    const anchor = form.querySelector("p"); anchor.before(row);
+    ids.forEach(id => moveField(form, id, row));
+    return row;
+  }
+  const experienceForm = document.getElementById("experience-form");
+  document.getElementById("experience-new")?.remove();
+  experienceState = () => JSON.stringify([$("experience-id").value,$("experience-company").value,$("experience-start").value,$("experience-end").value,$("experience-type").value,$("experience-location").value,$("experience-remote").value]);
+  fillExperienceForm = item => { $("experience-id").value=item.id||""; $("experience-company").value=item.company||""; $("experience-start").value=item.start_date||""; $("experience-end").value=item.end_date||""; $("experience-type").value=item.employment_type||""; $("experience-location").value=item.location||""; $("experience-remote").value=item.remote_model||""; $("experience-form").dataset.initial=experienceState(); };
+  experienceForm.querySelector('label[for="experience-reason"]')?.remove();
+  document.getElementById("experience-reason")?.remove();
+  addRow(experienceForm, "company-location", ["experience-company", "experience-location"]);
+  const experienceDetails = addRow(experienceForm, "experience-details", ["experience-start", "experience-end", "experience-type", "experience-remote"]);
+  experienceForm.querySelectorAll(":scope > .profile-grid").forEach(grid => { if (!grid.children.length) grid.remove(); });
+  function choiceField(id, choices) {
+    const input = document.getElementById(id), field = input.closest(".compact-grid > div");
+    input.type = "hidden";
+    field.classList.add("choice-field");
+    const buttons = document.createElement("div"); buttons.className = "choice-buttons";
+    buttons.innerHTML = choices.map(([value, label]) => `<button type="button" class="choice-button" data-value="${value}">${label}</button>`).join("");
+    field.append(buttons);
+    const sync = () => buttons.querySelectorAll("button").forEach(button => button.classList.toggle("active", button.dataset.value === input.value));
+    buttons.querySelectorAll("button").forEach(button => button.onclick = () => { input.value = button.dataset.value; sync(); });
+    return sync;
+  }
+  const syncEmployment = choiceField("experience-type", [["permanent", "Unbefristet"], ["temporary", "Befristet"], ["freelance", "Freelance"], ["internship", "Praktikum"]]);
+  const syncRemote = choiceField("experience-remote", [["remote", "Remote"], ["hybrid", "Hybrid"], ["onsite", "Vor Ort"]]);
+  document.getElementById("experience-list").addEventListener("click", () => setTimeout(() => { syncEmployment(); syncRemote(); }));
+  const educationForm = document.getElementById("education-form");
+  const educationRow = addRow(educationForm, "company-location", ["education-institution", "education-location"]);
+  const educationDates = educationForm.querySelector(":scope > .profile-grid");
+  if (educationDates) educationRow.after(educationDates);
+  const certificateForm = document.getElementById("certificate-form");
+  addRow(certificateForm, "two-fields", ["certificate-issuer", "certificate-issued"]);
+  certificateForm.querySelector('label[for="certificate-expires"]')?.remove(); const certificateExpires = document.getElementById("certificate-expires"); if (certificateExpires) certificateExpires.type = "hidden";
+  addRow(certificateForm, "two-fields", ["certificate-credential", "certificate-url"]);
+  addRow(document.getElementById("project-form"), "two-fields", ["project-type", "project-role"]);
+  const referenceForm = document.getElementById("reference-form");
+  const linkedinLabel = document.createElement("label"); linkedinLabel.htmlFor = "reference-linkedin"; linkedinLabel.textContent = "LinkedIn";
+  const linkedinInput = document.createElement("input"); linkedinInput.id = "reference-linkedin"; linkedinInput.type = "url"; linkedinInput.maxLength = 2048;
+  referenceForm.querySelector("p").before(linkedinLabel, linkedinInput);
+  addRow(referenceForm, "two-fields", ["reference-name", "reference-organization"]);
+  addRow(referenceForm, "two-fields", ["reference-email", "reference-phone"]);
+  const linkedinRow = document.createElement("div"); linkedinRow.className = "compact-grid";
+  linkedinRow.append(linkedinLabel, linkedinInput);
+  referenceForm.querySelector("p").before(linkedinRow);
+  [experienceForm, certificateForm, document.getElementById("education-form")].forEach(form => {
+    form.querySelectorAll(".profile-grid > div").forEach(field => { if (!field.children.length) field.remove(); });
+    form.querySelectorAll(".profile-grid").forEach(grid => { if (!grid.children.length) grid.remove(); });
+  });
+  referenceForm.addEventListener("submit", async event => { event.preventDefault(); event.stopImmediatePropagation(); const id=document.getElementById("reference-id").value, body={full_name:document.getElementById("reference-name").value.trim(),organization:document.getElementById("reference-organization").value.trim()||null,email:document.getElementById("reference-email").value.trim()||null,phone:document.getElementById("reference-phone").value.trim()||null,linkedin_url:linkedinInput.value.trim()||null}; try { await req(id?`/profiles/${encodeURIComponent(managedProfile.id)}/references/${encodeURIComponent(id)}`:`/profiles/${encodeURIComponent(managedProfile.id)}/references`,{method:id?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); referenceForm.reset(); referenceForm.hidden=true; referenceForm.classList.remove("inline-editor"); await referenceResource.load(); } catch(error) { document.getElementById("reference-message").textContent=error.message; } }, true);
+  document.getElementById("reference-list").addEventListener("click", async event => { const id=event.target.closest("[data-item-id]")?.dataset.itemId; if (!id || !managedProfile) return; const items=await req(`/profiles/${encodeURIComponent(managedProfile.id)}/references`), item=items.find(value=>value.id===id); if(item) linkedinInput.value=item.linkedin_url||""; });
+
+  const originalLoadSkills = loadSkills;
+  loadSkills = async function () {
+    document.querySelector("#panel-skills .skill-heading #skill-create")?.remove();
+    await originalLoadSkills();
+    const list = document.getElementById("skill-list");
+    if (!list) return;
+    const panel = list.closest(".panel");
+    const create = list.querySelector("#skill-create");
+    if (panel && create) {
+      let heading = panel.querySelector(".skill-heading");
+      if (!heading) { heading = document.createElement("div"); heading.className = "skill-heading"; panel.querySelector("h2").before(heading); heading.append(panel.querySelector("h2")); panel.querySelector(":scope > p")?.remove(); }
+      heading.append(create);
+    }
+    list.querySelector("#skill-create-host")?.remove();
+    const skillForm = document.getElementById("skill-form");
+    if (skillForm) { skillForm.hidden = true; skillForm.classList.remove("inline-editor"); }
+    if (create) create.onclick = () => { const host = document.createElement("div"); host.className = "skill-editor-host"; panel.querySelector(".skill-heading").after(host); showSkillEditor(host, null); };
+    if (!list.querySelector(".skill-group")) return;
+    const technicalLabels = new Set(["Programmiersprachen", "Softwareentwicklung & APIs", "Frontend-Entwicklung", "Data Engineering", "KI & Agentensysteme", "Machine Learning & Predictive Analytics", "Datenbanken", "Cloud & DevOps", "Tools & Plattformen"]);
+    const columns = document.createElement("div");
+    columns.className = "skill-columns";
+    columns.innerHTML = `<section class="skill-column"></section><section class="skill-column"></section>`;
+    const [technical, general] = columns.querySelectorAll(".skill-column");
+    [...list.querySelectorAll(":scope > .skill-group")].forEach(group => (technicalLabels.has(group.querySelector("h3")?.textContent) ? technical : general).append(group));
+    [technical, general].forEach(column => [...column.querySelectorAll(".skill-group")].sort((a, b) => a.querySelector("h3").textContent.localeCompare(b.querySelector("h3").textContent, "de")).forEach(group => column.append(group)));
+    list.append(columns);
+  };
+
+  const years = document.getElementById("skill-years");
+  years.type = "text";
+  years.inputMode = "decimal";
+  years.placeholder = "z. B. 1,5";
+  document.getElementById("skill-form").onsubmit = async event => {
+    event.preventDefault();
+    if (!managedProfile) { skillMessage("error", "Bitte zuerst ein Profil anlegen."); return; }
+    const button = document.getElementById("skill-save");
+    const id = document.getElementById("skill-id").value;
+    const rawYears = years.value.trim();
+    const parsedYears = rawYears === "" ? null : Number(rawYears.replace(",", "."));
+    if (rawYears && (!Number.isFinite(parsedYears) || parsedYears < 0 || parsedYears > 80)) {
+      skillMessage("error", "Erfahrungsjahre bitte als Zahl zwischen 0 und 80 eingeben.");
+      return;
+    }
+    button.disabled = true;
+    const body = {canonical_name:document.getElementById("skill-name").value.trim(),category:document.getElementById("skill-category").value,proficiency_level:document.getElementById("skill-level").value || null,years_experience:parsedYears,last_used_at:document.getElementById("skill-last-used").value || null,aliases:csv(document.getElementById("skill-aliases").value),active:document.getElementById("skill-active").checked,change_reason:document.getElementById("skill-reason").value.trim() || null};
+    try {
+      await req(id ? `/profiles/${encodeURIComponent(managedProfile.id)}/skills/${encodeURIComponent(id)}` : `/profiles/${encodeURIComponent(managedProfile.id)}/skills`, {method:id ? "PATCH" : "POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      skillMessage("success", id ? "Skill gespeichert." : "Skill angelegt.");
+      clearSkillForm();
+      await loadSkills();
+    } catch (error) { skillMessage("error", error.message); } finally { button.disabled = false; }
+  };
+
+  const resources = [
+    {resource:"experiences", form:"experience-form", list:"experience-list", create:"experience-new", title:"company", reload:loadExperiences, fields:["company","start_date","end_date","employment_type","location","remote_model"], ids:["experience-company","experience-start","experience-end","experience-type","experience-location","experience-remote"]},
+    {resource:"education", form:"education-form", list:"education-list", create:"education-create", title:"institution", reload:()=>educationResource.load(), fields:["institution","start_date","end_date","location"], ids:["education-institution","education-start","education-end","education-location"]},
+    {resource:"certificates", form:"certificate-form", list:"certificate-list", create:"certificate-create", title:"official_name", reload:()=>certificateResource.load(), fields:["official_name","issuer","issued_at","expires_at","credential_id","verification_url"], ids:["certificate-name","certificate-issuer","certificate-issued","certificate-expires","certificate-credential","certificate-url"]},
+    {resource:"projects", form:"project-form", list:"project-list", create:"project-create", title:"canonical_name", reload:()=>projectResource.load(), fields:["canonical_name","project_type","role"], ids:["project-name","project-type","project-role"]}
+  ];
+  function renderAppliedSkillChoices(select, choices, expanded = false) {
+    const entries = [...select.options].map(option => ({id:option.value, name:option.textContent, selected:option.selected}));
+    const selected = entries.filter(skill => skill.selected).sort((a, b) => a.name.localeCompare(b.name, "de"));
+    const remaining = entries.filter(skill => !skill.selected).sort((a, b) => a.name.localeCompare(b.name, "de"));
+    const visible = expanded ? [...selected, ...remaining] : selected;
+    choices.innerHTML = visible.map(skill => `<button type="button" class="applied-skill-choice${skill.selected ? " selected" : ""}" data-skill-id="${esc(skill.id)}">${esc(skill.name)}</button>`).join("") + (!expanded && remaining.length ? `<button type="button" class="applied-skill-more">+ ${remaining.length} weitere Skills</button>` : "");
+    choices.querySelectorAll("button").forEach(button => button.onclick = () => {
+      if (button.classList.contains("applied-skill-more")) {
+        renderAppliedSkillChoices(select, choices, true);
+        return;
+      }
+      const option = [...select.options].find(candidate => candidate.value === button.dataset.skillId);
+      option.selected = !option.selected;
+      renderAppliedSkillChoices(select, choices);
+    });
+  }
+  async function populateSkills(select, choices) {
+    if (!managedProfile) return;
+    const skills = await req(`/profiles/${encodeURIComponent(managedProfile.id)}/skills`);
+    const selected = new Set([...select.selectedOptions].map(option => option.value));
+    select.innerHTML = skills.map(skill => `<option value="${esc(skill.id)}" ${selected.has(skill.id) ? "selected" : ""}>${esc(skill.canonical_name)}</option>`).join("");
+    renderAppliedSkillChoices(select, choices);
+  }
+  resources.forEach(config => {
+    const form = document.getElementById(config.form);
+    if (!form) return;
+    const picker = document.createElement("section");
+    picker.className = "preference-section applied-skills";
+    picker.innerHTML = `<label>Angewandte Skills</label><select multiple name="applied_skill_ids"></select><div class="applied-skill-choices"></div><p class="empty">Fehlt ein Skill? Erst im Tab Skills anlegen.</p><label>Inhaltsbeschreibung (Stichpunkte)</label><textarea name="content_bullets" placeholder="Ein Punkt je Zeile"></textarea>`;
+    form.querySelector("p")?.before(picker);
+    const select = picker.querySelector("select");
+    const choices = picker.querySelector(".applied-skill-choices");
+    let skillsLoading;
+    const ensureSkills = () => skillsLoading ||= populateSkills(select, choices).catch(() => {}).finally(() => { skillsLoading = null; });
+    picker.addEventListener("pointerenter", ensureSkills, {once:true});
+    form.addEventListener("focusin", ensureSkills, {once:true});
+    document.getElementById(config.list)?.addEventListener("click", async event => {
+      if (event.target.closest(`#${config.create}`)) {
+        select.selectedIndex = -1;
+        renderAppliedSkillChoices(select, choices);
+        picker.querySelector("textarea").value = "";
+        return;
+      }
+      const itemButton = event.target.closest("[data-item-id],[data-experience-id]");
+      const itemId = itemButton?.dataset.itemId || itemButton?.dataset.experienceId;
+      if (!itemId || !managedProfile) return;
+      const items = await req(`/profiles/${encodeURIComponent(managedProfile.id)}/${config.resource}`);
+      const item = items.find(candidate => candidate.id === itemId);
+      if (!item) return;
+      await populateSkills(select, choices);
+      const selected = new Set(item.applied_skill_ids || []);
+      [...select.options].forEach(option => { option.selected = selected.has(option.value); });
+      renderAppliedSkillChoices(select, choices);
+      const localization = (item.localizations || []).find(entry => entry.language === "de") || item.localizations?.[0];
+      picker.querySelector("textarea").value = (localization?.bullets || []).join("\n");
+    });
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const body = Object.fromEntries(config.fields.map((field, index) => [field, document.getElementById(config.ids[index]).value || null]));
+      body.applied_skill_ids = [...select.selectedOptions].map(option => option.value);
+      const bullets = picker.querySelector("textarea").value.split("\n").map(value => value.trim()).filter(Boolean);
+      if (bullets.length) body.localizations = [{language:"de", title:body[config.title], bullets}];
+      const id = form.querySelector('input[type="hidden"]')?.value;
+      try {
+        await req(id ? `/profiles/${encodeURIComponent(managedProfile.id)}/${config.resource}/${encodeURIComponent(id)}` : `/profiles/${encodeURIComponent(managedProfile.id)}/${config.resource}`, {method:id ? "PATCH" : "POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+        form.reset();
+        form.querySelector('input[type="hidden"]').value = "";
+        form.hidden = true;
+        form.classList.remove("inline-editor");
+        await config.reload();
+      } catch (error) { alert(error.message); }
+    }, true);
+  });
+})();
 </script>
 </body></html>

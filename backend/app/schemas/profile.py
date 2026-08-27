@@ -115,7 +115,6 @@ class ProfileCreate(BaseModel):
     minimum_contract_duration_months: int | None = Field(default=None, ge=1, le=600)
     deal_breakers: list[str] = Field(default_factory=list, max_length=50)
     default_language: Language = "de"
-    change_reason: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def normalize_goal_lists(self):
@@ -152,7 +151,6 @@ class ProfileUpdate(BaseModel):
     deal_breakers: list[str] | None = Field(default=None, max_length=50)
     default_language: Language | None = None
     status: Literal["active", "inactive"] | None = None
-    change_reason: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def normalize_goal_lists(self):
@@ -181,7 +179,6 @@ class ResourceBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     localizations: list[LocalizationInput] = Field(default_factory=list, max_length=2)
-    change_reason: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def languages_must_be_unique(self):
@@ -214,32 +211,6 @@ class SkillUpdate(ResourceBase):
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
 
 
-class SkillEvidenceCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    skill_id: UUID
-    source_resource_type: Literal[
-        "experience", "project", "certificate", "education", "manual_training"
-    ]
-    source_resource_id: UUID | None = None
-    experience_context: Literal["professional", "project", "training"]
-    evidence_text: str | None = Field(default=None, max_length=10_000)
-    confidence: float = Field(default=1.0, ge=0, le=1)
-
-
-class SkillEvidenceUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    skill_id: UUID | None = None
-    source_resource_type: (
-        Literal["experience", "project", "certificate", "education", "manual_training"] | None
-    ) = None
-    source_resource_id: UUID | None = None
-    experience_context: Literal["professional", "project", "training"] | None = None
-    evidence_text: str | None = Field(default=None, max_length=10_000)
-    confidence: float | None = Field(default=None, ge=0, le=1)
-
-
 class WorkExperienceCreate(ResourceBase):
     company: str = Field(min_length=1, max_length=500)
     employment_type: str | None = Field(default=None, max_length=100)
@@ -247,6 +218,7 @@ class WorkExperienceCreate(ResourceBase):
     end_date: date | None = None
     location: str | None = Field(default=None, max_length=500)
     remote_model: str | None = Field(default=None, max_length=50)
+    applied_skill_ids: list[UUID] = Field(default_factory=list, max_length=100)
     status: ContentStatus = "draft"
 
 
@@ -257,6 +229,7 @@ class WorkExperienceUpdate(ResourceBase):
     end_date: date | None = None
     location: str | None = Field(default=None, max_length=500)
     remote_model: str | None = Field(default=None, max_length=50)
+    applied_skill_ids: list[UUID] | None = Field(default=None, max_length=100)
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
 
@@ -270,6 +243,7 @@ class PortfolioProjectCreate(ResourceBase):
     source_url: str | None = Field(default=None, max_length=2048)
     repository_url: str | None = Field(default=None, max_length=2048)
     technologies: list[str] = Field(default_factory=list, max_length=100)
+    applied_skill_ids: list[UUID] = Field(default_factory=list, max_length=100)
     status: ContentStatus = "draft"
 
 
@@ -282,6 +256,7 @@ class PortfolioProjectUpdate(ResourceBase):
     source_url: str | None = Field(default=None, max_length=2048)
     repository_url: str | None = Field(default=None, max_length=2048)
     technologies: list[str] | None = Field(default=None, max_length=100)
+    applied_skill_ids: list[UUID] | None = Field(default=None, max_length=100)
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
 
@@ -291,6 +266,7 @@ class EducationCreate(ResourceBase):
     start_date: date | None = None
     end_date: date | None = None
     location: str | None = Field(default=None, max_length=500)
+    applied_skill_ids: list[UUID] = Field(default_factory=list, max_length=100)
     status: ContentStatus = "draft"
 
 
@@ -299,6 +275,7 @@ class EducationUpdate(ResourceBase):
     start_date: date | None = None
     end_date: date | None = None
     location: str | None = Field(default=None, max_length=500)
+    applied_skill_ids: list[UUID] | None = Field(default=None, max_length=100)
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
 
@@ -310,6 +287,7 @@ class CertificateCreate(ResourceBase):
     expires_at: date | None = None
     credential_id: str | None = Field(default=None, max_length=500)
     verification_url: HttpUrl | None = None
+    applied_skill_ids: list[UUID] = Field(default_factory=list, max_length=100)
     status: ContentStatus = "draft"
 
 
@@ -320,6 +298,7 @@ class CertificateUpdate(ResourceBase):
     expires_at: date | None = None
     credential_id: str | None = Field(default=None, max_length=500)
     verification_url: HttpUrl | None = None
+    applied_skill_ids: list[UUID] | None = Field(default=None, max_length=100)
     status: ContentStatus | None = None
     localizations: list[LocalizationInput] | None = Field(default=None, max_length=2)
 
@@ -368,4 +347,3 @@ class RevisionResponse(BaseModel):
     revision: int
     action: str
     snapshot: dict
-    change_reason: str | None

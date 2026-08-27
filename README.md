@@ -184,8 +184,9 @@ Weitere technische Details befinden sich in den Dokumenten unter `docs/`.
 
 1. Profil in `Verwaltung > Profil` anlegen oder auswählen.
 2. Stammdaten, Zielprofil und Arbeitspräferenzen manuell pflegen.
-3. Berufserfahrung, Ausbildung, Zertifikate, Skills, Projekte, Referenzen
-   und Skill-Evidenz in den jeweiligen Verwaltungsbereichen pflegen.
+3. Unter `Praxis & Qualifikationen` Berufserfahrung, Ausbildung, Referenzen,
+   Portfolio-Projekte und Zertifikate pflegen. Die angewandten Skills jeweils
+   direkt am konkreten Eintrag aus der separaten Skillliste auswählen.
 4. Die deutschen und englischen Master-Profile getrennt importieren und ihre
    Versionen bei Bedarf auswählen.
 5. Stellenanzeige per URL, PDF oder HTML importieren.

@@ -29,8 +29,6 @@ from app.schemas.profile import (
     ReferenceCreate,
     ReferenceUpdate,
     SkillCreate,
-    SkillEvidenceCreate,
-    SkillEvidenceUpdate,
     SkillUpdate,
     WorkExperienceCreate,
     WorkExperienceUpdate,
@@ -54,19 +52,15 @@ from app.services.master_profile_service import (
 from app.services.profile_service import (
     create_profile,
     create_resource,
-    create_skill_evidence,
     delete_profile,
     delete_resource,
-    delete_skill_evidence,
     get_profile,
     import_profile_snapshot,
     list_profiles,
     list_resources,
     list_revisions,
-    list_skill_evidence,
     update_profile,
     update_resource,
-    update_skill_evidence,
 )
 from app.parsers.profile_snapshot import parse_profile_snapshot, parse_profile_snapshot_with_resources, render_profile_snapshot
 
@@ -107,10 +101,9 @@ async def export_profile_snapshot(profile_id: UUID) -> Response:
         list_resources(profile_id, "skills"),
         list_resources(profile_id, "projects"),
         list_resources(profile_id, "references"),
-        list_skill_evidence(profile_id),
     )
     profile["resources"] = dict(zip(
-        ("experiences", "education", "certificates", "skills", "projects", "references", "skill_evidence"),
+        ("experiences", "education", "certificates", "skills", "projects", "references"),
         resources,
     ))
     content = render_profile_snapshot(profile)
@@ -131,7 +124,7 @@ async def preview_profile_snapshot(file: UploadFile = File(...)) -> dict:
         raise ApplicationError("Die Profilsicherung ist keine gültige UTF-8-Datei.", code="invalid_profile_snapshot", status_code=422) from exc
     except ValueError as exc:
         raise ApplicationError(str(exc), code="invalid_profile_snapshot", status_code=422) from exc
-    return {"valid": True, "profile": jsonable_encoder(profile.model_dump(exclude={"change_reason"}))}
+    return {"valid": True, "profile": jsonable_encoder(profile.model_dump())}
 
 
 @router.post("/import")
@@ -308,29 +301,6 @@ async def create_skill(profile_id: UUID, payload: SkillCreate) -> dict:
 @router.patch("/{profile_id}/skills/{item_id}")
 async def update_skill(profile_id: UUID, item_id: UUID, payload: SkillUpdate) -> dict:
     return await update_resource(profile_id, "skills", item_id, payload)
-
-
-@router.get("/{profile_id}/skill-evidence")
-async def get_skill_evidence(profile_id: UUID) -> list[dict]:
-    return await list_skill_evidence(profile_id)
-
-
-@router.post("/{profile_id}/skill-evidence")
-async def create_profile_skill_evidence(profile_id: UUID, payload: SkillEvidenceCreate) -> dict:
-    return await create_skill_evidence(profile_id, payload)
-
-
-@router.patch("/{profile_id}/skill-evidence/{item_id}")
-async def update_profile_skill_evidence(
-    profile_id: UUID, item_id: UUID, payload: SkillEvidenceUpdate
-) -> dict:
-    return await update_skill_evidence(profile_id, item_id, payload)
-
-
-@router.delete("/{profile_id}/skill-evidence/{item_id}", status_code=204)
-async def delete_profile_skill_evidence(profile_id: UUID, item_id: UUID) -> Response:
-    await delete_skill_evidence(profile_id, item_id)
-    return Response(status_code=204)
 
 
 @router.get("/{profile_id}/experiences")

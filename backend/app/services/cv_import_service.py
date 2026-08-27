@@ -132,7 +132,7 @@ UPDATE_SCHEMAS = {
     "references": ReferenceUpdate,
 }
 
-IGNORED_COMPARISON_FIELDS = {"change_reason", "status", "revision", "id", "profile_id"}
+IGNORED_COMPARISON_FIELDS = {"status", "revision", "id", "profile_id"}
 
 
 def _normalized_text(value: object) -> str:
@@ -453,9 +453,6 @@ async def apply_cv_suggestion(
 ) -> dict:
     suggestion = await _get_pending_suggestion(profile_id, suggestion_id)
     proposed_data = review.proposed_data or suggestion["proposed_data"]
-    proposed_data["change_reason"] = (
-        review.review_note or f"Aus CV-Import {suggestion['batch_id']} übernommen"
-    )
     resource_type = suggestion["resource_type"]
     matched_entity_id = suggestion["matched_entity_id"]
     match = await _current_match(

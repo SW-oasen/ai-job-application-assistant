@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
@@ -22,13 +22,12 @@ from app.database.models import (
     ProfileReference,
     ReferenceLocalization,
     Skill,
-    SkillEvidence,
+    AppliedSkillLink,
     SkillLocalization,
     WorkExperience,
     WorkExperienceLocalization,
 )
 from app.database.session import get_session_factory
-from app.schemas.profile import SkillEvidenceCreate, SkillEvidenceUpdate
 
 
 def _derive_target_role_level(role: str) -> str | None:
@@ -59,6 +58,7 @@ class ResourceDefinition:
     localization_model: type
     localization_parent_field: str
     fields: frozenset[str]
+    applied_skill_source_type: str | None = None
 
 
 RESOURCES = {
@@ -93,7 +93,7 @@ RESOURCES = {
                 "remote_model",
                 "status",
             }
-        ),
+        ), "experience",
     ),
     "projects": ResourceDefinition(
         PortfolioProject,
@@ -111,13 +111,13 @@ RESOURCES = {
                 "technologies",
                 "status",
             }
-        ),
+        ), "project",
     ),
     "education": ResourceDefinition(
         EducationEntry,
         EducationLocalization,
         "education_entry_id",
-        frozenset({"institution", "start_date", "end_date", "location", "status"}),
+        frozenset({"institution", "start_date", "end_date", "location", "status"}), "education",
     ),
     "certificates": ResourceDefinition(
         Certificate,
@@ -133,7 +133,7 @@ RESOURCES = {
                 "verification_url",
                 "status",
             }
-        ),
+        ), "certificate",
     ),
     "references": ResourceDefinition(
         ProfileReference,
@@ -178,14 +178,14 @@ def _serialize(row) -> dict[str, Any]:
     return jsonable_encoder(data)
 
 
-def _clean_values(payload: BaseModel, allowed_fields: frozenset[str]) -> tuple[dict, Any, Any]:
+def _clean_values(payload: BaseModel, allowed_fields: frozenset[str]) -> tuple[dict, Any, list[UUID] | None]:
     values = payload.model_dump(mode="python", exclude_unset=True)
     localizations = values.pop("localizations", None)
-    change_reason = values.pop("change_reason", None)
+    applied_skill_ids = values.pop("applied_skill_ids", None)
     values = {key: value for key, value in values.items() if key in allowed_fields}
     if values.get("verification_url") is not None:
         values["verification_url"] = str(values["verification_url"])
-    return values, localizations, change_reason
+    return values, localizations, applied_skill_ids
 
 
 async def _record_revision(
@@ -195,7 +195,6 @@ async def _record_revision(
     entity_type: str,
     row,
     action: str,
-    change_reason: str | None,
 ) -> None:
     session.add(
         ProfileEntityRevision(
@@ -205,14 +204,12 @@ async def _record_revision(
             revision=row.revision,
             action=action,
             snapshot=_serialize(row),
-            change_reason=change_reason,
         )
     )
 
 
 async def create_profile(payload: BaseModel) -> dict:
     values = _ensure_target_role_preferences(payload.model_dump(mode="python"))
-    change_reason = values.pop("change_reason", None)
     profile = Profile(**values)
     factory = _session_factory()
     async with factory() as session:
@@ -224,7 +221,6 @@ async def create_profile(payload: BaseModel) -> dict:
             entity_type="profile",
             row=profile,
             action="created",
-            change_reason=change_reason,
         )
         await session.commit()
         return _serialize(profile)
@@ -243,11 +239,11 @@ async def delete_profile(profile_id: UUID) -> None:
 async def import_profile_snapshot(payload: BaseModel, resources: dict[str, list[dict[str, Any]]]) -> dict:
     """Create a fully independent profile from an exported snapshot."""
     values = _ensure_target_role_preferences(payload.model_dump(mode="python"))
-    values.pop("change_reason", None)
     factory = _session_factory()
     resource_names = ("experiences", "education", "certificates", "skills", "projects", "references")
     source_to_new: dict[str, UUID] = {}
     skill_ids: dict[str, UUID] = {}
+    pending_applied_skills: list[tuple[object, str, list[object]]] = []
     async with factory() as session:
         try:
             profile = Profile(**values)
@@ -268,22 +264,15 @@ async def import_profile_snapshot(payload: BaseModel, resources: dict[str, list[
                         source_to_new[old_id] = row.id
                         if name == "skills":
                             skill_ids[old_id] = row.id
+                    if definition.applied_skill_source_type:
+                        pending_applied_skills.append((row, definition.applied_skill_source_type, raw.get("applied_skill_ids", [])))
                     for localization in raw.get("localizations", []):
                         if isinstance(localization, dict):
                             session.add(definition.localization_model(**{definition.localization_parent_field: row.id}, **{key: localization[key] for key in localization_allowed if key in localization}))
-            for raw in resources.get("skill_evidence", []):
-                if not isinstance(raw, dict):
-                    continue
-                skill_id = skill_ids.get(str(raw.get("skill_id", "")))
-                if skill_id is None:
-                    continue
-                allowed = {column.name for column in SkillEvidence.__table__.columns} - {"id", "skill_id", "created_at", "updated_at"}
-                values = {key: raw[key] for key in allowed if key in raw}
-                source_id = raw.get("source_resource_id")
-                if source_id:
-                    values["source_resource_id"] = source_to_new.get(str(source_id))
-                session.add(SkillEvidence(skill_id=skill_id, **values))
-            await _record_revision(session, profile_id=profile.id, entity_type="profile", row=profile, action="created", change_reason="Profil aus Sicherung importiert")
+            for row, source_type, raw_skill_ids in pending_applied_skills:
+                mapped_skill_ids = [skill_ids[str(item)] for item in raw_skill_ids if str(item) in skill_ids]
+                await _sync_applied_skills(session, profile.id, row, source_type, mapped_skill_ids)
+            await _record_revision(session, profile_id=profile.id, entity_type="profile", row=profile, action="created")
             await session.commit()
             return _serialize(profile)
         except Exception:
@@ -311,7 +300,6 @@ async def list_profiles() -> list[dict]:
 
 async def update_profile(profile_id: UUID, payload: BaseModel) -> dict:
     values = _ensure_target_role_preferences(payload.model_dump(mode="python", exclude_unset=True))
-    change_reason = values.pop("change_reason", None)
     factory = _session_factory()
     async with factory() as session:
         profile = await session.get(Profile, profile_id)
@@ -328,7 +316,6 @@ async def update_profile(profile_id: UUID, payload: BaseModel) -> dict:
             entity_type="profile",
             row=profile,
             action="updated",
-            change_reason=change_reason,
         )
         await session.commit()
         return _serialize(profile)
@@ -346,104 +333,40 @@ async def list_resources(profile_id: UUID, resource_type: str) -> list[dict]:
                 .order_by(definition.model.created_at)
             )
         ).all()
-        return [_serialize(row) for row in rows]
+        result = [_serialize(row) for row in rows]
+        if definition.applied_skill_source_type and result:
+            links = (await session.scalars(
+                select(AppliedSkillLink).where(
+                    AppliedSkillLink.source_resource_type == definition.applied_skill_source_type,
+                    AppliedSkillLink.source_resource_id.in_([row.id for row in rows]),
+                )
+            )).all()
+            skill_ids_by_resource: dict[UUID, list[UUID]] = {}
+            for link in links:
+                skill_ids_by_resource.setdefault(link.source_resource_id, []).append(link.skill_id)
+            for item in result:
+                item["applied_skill_ids"] = skill_ids_by_resource.get(UUID(item["id"]), [])
+        return result
 
 
-_SKILL_EVIDENCE_SOURCE_MODELS = {
-    "experience": WorkExperience,
-    "project": PortfolioProject,
-    "certificate": Certificate,
-    "education": EducationEntry,
-}
-
-
-async def _validate_skill_evidence_source(session, profile_id: UUID, values: dict) -> None:
-    skill = await session.scalar(
-        select(Skill).where(Skill.id == values["skill_id"], Skill.profile_id == profile_id)
-    )
-    if skill is None:
-        raise ApplicationError("Skill not found.", code="profile_entry_not_found", status_code=404)
-    source_type = values["source_resource_type"]
-    source_id = values.get("source_resource_id")
-    if source_type == "manual_training":
-        if source_id is not None:
-            raise ApplicationError("Manual training has no linked resource.", code="invalid_skill_evidence", status_code=422)
-        return
-    model = _SKILL_EVIDENCE_SOURCE_MODELS[source_type]
-    if source_id is None or await session.scalar(
-        select(model.id).where(model.id == source_id, model.profile_id == profile_id)
-    ) is None:
-        raise ApplicationError("Linked profile resource not found.", code="profile_entry_not_found", status_code=404)
-
-
-async def list_skill_evidence(profile_id: UUID) -> list[dict]:
-    factory = _session_factory()
-    async with factory() as session:
-        rows = (
-            await session.scalars(
-                select(SkillEvidence)
-                .join(Skill)
-                .where(Skill.profile_id == profile_id)
-                .order_by(SkillEvidence.created_at)
-            )
-        ).all()
-        return [_serialize(row) for row in rows]
-
-
-async def create_skill_evidence(profile_id: UUID, payload: SkillEvidenceCreate) -> dict:
-    values = payload.model_dump(mode="python")
-    factory = _session_factory()
-    try:
-        async with factory() as session:
-            await _validate_skill_evidence_source(session, profile_id, values)
-            row = SkillEvidence(**values)
-            session.add(row)
-            profile = await session.get(Profile, profile_id)
-            profile.revision += 1
-            await session.flush()
-            await session.commit()
-            return _serialize(row)
-    except IntegrityError as exception:
-        raise ApplicationError("This evidence link already exists.", code="profile_entry_conflict", status_code=409) from exception
-
-
-async def update_skill_evidence(profile_id: UUID, item_id: UUID, payload: SkillEvidenceUpdate) -> dict:
-    values = payload.model_dump(mode="python", exclude_unset=True)
-    factory = _session_factory()
-    async with factory() as session:
-        row = await session.scalar(
-            select(SkillEvidence).join(Skill).where(SkillEvidence.id == item_id, Skill.profile_id == profile_id)
-        )
-        if row is None:
-            raise ApplicationError("Skill evidence not found.", code="profile_entry_not_found", status_code=404)
-        candidate = {"skill_id": row.skill_id, "source_resource_type": row.source_resource_type,
-                     "source_resource_id": row.source_resource_id, **values}
-        await _validate_skill_evidence_source(session, profile_id, candidate)
-        for key, value in values.items():
-            setattr(row, key, value)
-        profile = await session.get(Profile, profile_id)
-        profile.revision += 1
-        await session.commit()
-        return _serialize(row)
-
-
-async def delete_skill_evidence(profile_id: UUID, item_id: UUID) -> None:
-    factory = _session_factory()
-    async with factory() as session:
-        row = await session.scalar(
-            select(SkillEvidence).join(Skill).where(SkillEvidence.id == item_id, Skill.profile_id == profile_id)
-        )
-        if row is None:
-            raise ApplicationError("Skill evidence not found.", code="profile_entry_not_found", status_code=404)
-        profile = await session.get(Profile, profile_id)
-        profile.revision += 1
-        await session.delete(row)
-        await session.commit()
+async def _sync_applied_skills(session, profile_id: UUID, row, source_type: str, skill_ids: list[UUID]) -> None:
+    unique_ids = list(dict.fromkeys(skill_ids))
+    if unique_ids:
+        found_ids = set((await session.scalars(
+            select(Skill.id).where(Skill.profile_id == profile_id, Skill.id.in_(unique_ids))
+        )).all())
+        if found_ids != set(unique_ids):
+            raise ApplicationError("Applied skills must belong to the selected profile.", code="profile_entry_not_found", status_code=404)
+    await session.execute(delete(AppliedSkillLink).where(
+        AppliedSkillLink.source_resource_type == source_type,
+        AppliedSkillLink.source_resource_id == row.id,
+    ))
+    session.add_all(AppliedSkillLink(skill_id=skill_id, source_resource_type=source_type, source_resource_id=row.id) for skill_id in unique_ids)
 
 
 async def create_resource(profile_id: UUID, resource_type: str, payload: BaseModel) -> dict:
     definition = RESOURCES[resource_type]
-    values, localizations, change_reason = _clean_values(payload, definition.fields)
+    values, localizations, applied_skill_ids = _clean_values(payload, definition.fields)
     row = definition.model(profile_id=profile_id, **values)
     factory = _session_factory()
     try:
@@ -455,6 +378,8 @@ async def create_resource(profile_id: UUID, resource_type: str, payload: BaseMod
                 )
             session.add(row)
             await session.flush()
+            if definition.applied_skill_source_type:
+                await _sync_applied_skills(session, profile_id, row, definition.applied_skill_source_type, applied_skill_ids or [])
             for localization in localizations or []:
                 session.add(
                     definition.localization_model(
@@ -471,7 +396,6 @@ async def create_resource(profile_id: UUID, resource_type: str, payload: BaseMod
                 entity_type=resource_type,
                 row=row,
                 action="created",
-                change_reason=change_reason,
             )
             await session.commit()
             return _serialize(row)
@@ -490,7 +414,7 @@ async def update_resource(
     payload: BaseModel,
 ) -> dict:
     definition = RESOURCES[resource_type]
-    values, localizations, change_reason = _clean_values(payload, definition.fields)
+    values, localizations, applied_skill_ids = _clean_values(payload, definition.fields)
     factory = _session_factory()
     try:
         async with factory() as session:
@@ -510,6 +434,8 @@ async def update_resource(
                 )
             for key, value in values.items():
                 setattr(row, key, value)
+            if definition.applied_skill_source_type and applied_skill_ids is not None:
+                await _sync_applied_skills(session, profile_id, row, definition.applied_skill_source_type, applied_skill_ids)
             if localizations is not None:
                 existing = {item.language: item for item in row.localizations}
                 for localization in localizations:
@@ -534,7 +460,6 @@ async def update_resource(
                 entity_type=resource_type,
                 row=row,
                 action="updated",
-                change_reason=change_reason,
             )
             await session.commit()
             return _serialize(row)
@@ -586,6 +511,11 @@ async def delete_resource(
                     status_code=404,
                 )
             profile = await session.get(Profile, profile_id)
+            if definition.applied_skill_source_type:
+                await session.execute(delete(AppliedSkillLink).where(
+                    AppliedSkillLink.source_resource_type == definition.applied_skill_source_type,
+                    AppliedSkillLink.source_resource_id == row.id,
+                ))
             deleted_revision = row.revision + 1
             snapshot = _serialize(row)
             snapshot["revision"] = deleted_revision
@@ -599,7 +529,6 @@ async def delete_resource(
                     revision=deleted_revision,
                     action="deleted",
                     snapshot=snapshot,
-                    change_reason="In der Profilverwaltung gelöscht.",
                 )
             )
             await session.delete(row)

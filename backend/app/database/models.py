@@ -460,7 +460,7 @@ class Skill(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(30), default="draft")
     revision: Mapped[int] = mapped_column(Integer, default=1)
     localizations: Mapped[list["SkillLocalization"]] = relationship(cascade="all, delete-orphan")
-    evidence_links: Mapped[list["SkillEvidence"]] = relationship(
+    applied_links: Mapped[list["AppliedSkillLink"]] = relationship(
         back_populates="skill", cascade="all, delete-orphan"
     )
 
@@ -473,21 +473,16 @@ class SkillLocalization(LocalizedTextMixin, Base):
     skill_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"))
 
 
-class SkillEvidence(TimestampMixin, Base):
-    """A concrete, auditable use of one skill in a profile resource.
+class AppliedSkillLink(TimestampMixin, Base):
+    """A skill selected directly on one concrete profile evidence entry."""
 
-    ``source_resource_id`` intentionally is polymorphic: it may point to a work
-    experience, portfolio project, certificate, education entry, or be empty
-    for a manually documented training item.
-    """
-
-    __tablename__ = "skill_evidence"
+    __tablename__ = "applied_skill_links"
     __table_args__ = (
         UniqueConstraint(
             "skill_id",
             "source_resource_type",
             "source_resource_id",
-            name="uq_skill_evidence_source",
+            name="uq_applied_skill_link_source",
         ),
     )
 
@@ -497,11 +492,7 @@ class SkillEvidence(TimestampMixin, Base):
     )
     source_resource_type: Mapped[str] = mapped_column(String(30))
     source_resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    experience_context: Mapped[str] = mapped_column(String(30))
-    evidence_text: Mapped[str | None] = mapped_column(Text)
-    confidence: Mapped[float] = mapped_column(Float, default=1.0)
-
-    skill: Mapped["Skill"] = relationship(back_populates="evidence_links")
+    skill: Mapped["Skill"] = relationship(back_populates="applied_links")
 
 
 class WorkExperience(TimestampMixin, Base):
@@ -675,7 +666,6 @@ class ProfileEntityRevision(Base):
     revision: Mapped[int] = mapped_column(Integer)
     action: Mapped[str] = mapped_column(String(30))
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    change_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
