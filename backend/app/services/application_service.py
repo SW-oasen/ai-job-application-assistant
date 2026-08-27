@@ -428,7 +428,27 @@ async def list_applications(profile_id=None) -> list[dict]:
         if profile_id is not None:
             statement = statement.where(Application.profile_id == profile_id)
         rows = (await session.execute(statement)).all()
-        return [
+        applications = [
             _application_dict(application, job, company, profile)
             for application, job, company, profile in rows
         ]
+        if not applications:
+            return applications
+        upcoming_rows = (
+            await session.execute(
+                select(ApplicationEvent.application_id, ApplicationEvent.occurred_at)
+                .where(
+                    ApplicationEvent.application_id.in_([application.id for application, *_ in rows]),
+                    ApplicationEvent.event_type == "status_change",
+                    ApplicationEvent.status == "interview",
+                    ApplicationEvent.occurred_at >= datetime.now(timezone.utc),
+                )
+                .order_by(ApplicationEvent.occurred_at)
+            )
+        ).all()
+        upcoming_interviews: dict[str, datetime] = {}
+        for application_id, occurred_at in upcoming_rows:
+            upcoming_interviews.setdefault(str(application_id), occurred_at)
+        for application in applications:
+            application["upcoming_interview_at"] = upcoming_interviews.get(application["id"])
+        return applications

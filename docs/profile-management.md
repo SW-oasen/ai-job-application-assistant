@@ -130,6 +130,24 @@ Einträge werden nicht durch CV-Importe oder LLM-Ausgaben automatisch geändert.
 
 ## API
 
+### Aktueller Verwaltungsstand
+
+Die Desktop-Verwaltung verwendet die Tabs `Profil`, `Praxis & Qualifikationen`,
+`Skills`, `Master-Profile` und `Jobimport`. Angewandte Skills werden direkt an
+Berufserfahrung, Ausbildung, Zertifikaten und Projekten ausgewählt; eine
+separate manuelle Skill-Evidenz ist nicht mehr vorgesehen. Die Editorformulare
+enthalten kein Änderungsgrund-Feld.
+
+Die Oberfläche ist konsequent für Desktop-Breite ausgelegt. Einträge in
+`Praxis & Qualifikationen` verwenden Karten und kompakte Editoren; Löschaktionen
+werden – mit Ausnahme von `Profil löschen` – als einheitliche graue
+Papierkorb-Icons dargestellt.
+
+Die Kategorien für Skills sind fachlich getrennt in Softwareentwicklung & APIs,
+Frontend-Entwicklung, Data Engineering, KI & Agentensysteme, Machine Learning &
+Predictive Analytics sowie weitere technische und allgemeine Gruppen. Nicht
+zuordenbare Skills landen in `Sonstiges`.
+
 Ein Profil wird über `POST /profiles` angelegt. Die Ressourcen liegen darunter:
 
 ```text

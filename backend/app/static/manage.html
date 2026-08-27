@@ -200,7 +200,7 @@ document.addEventListener("change",async event=>{const input=event.target;if(inp
     label?.remove();
   });
   const profileStyle = document.createElement("style");
-  profileStyle.textContent = `#panel-profile-new>.panel{padding:0;border:0;background:transparent}#panel-profile-new .profile-selection-card{padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff;margin-bottom:18px}#panel-profile-new .profile-selection-card h2{margin:0 0 12px}#panel-profile-new .profile-toolbar{margin:0;align-items:end}#panel-profile-new .profile-toolbar label{flex:0 0 calc(33.333% - 8px)}#panel-profile-new .profile-actions{flex-wrap:nowrap}.profile-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:18px}.profile-column{padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff}.profile-column h3{margin:0 0 12px}.profile-compact-row{display:grid;gap:10px;margin:0 0 10px}.profile-compact-row.two{grid-template-columns:1fr 1fr}.profile-compact-row.three{grid-template-columns:1fr 1fr 1fr}.profile-compact-row label{margin:0}.target-role-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px}.target-role-choice .target-role-row{grid-template-columns:minmax(80px,1fr) 120px 43px auto;gap:6px;margin:0}.target-role-choice .target-role-level,.target-role-choice .target-role-priority{padding-left:7px;padding-right:7px}.target-role-choice .remove-target-role{padding:8px 9px;white-space:nowrap}.remove-target-role.danger{border-color:#f5b8b4!important;background:#fff!important;color:#b42318!important}#profile-add-target-role{margin-top:14px!important}`;
+  profileStyle.textContent = `#panel-profile-new>.panel{padding:0;border:0;background:transparent}#panel-profile-new .profile-selection-card{padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff;margin-bottom:18px}#panel-profile-new .profile-selection-card h2{margin:0 0 12px}#panel-profile-new .profile-toolbar{margin:0;align-items:end}#panel-profile-new .profile-toolbar label{flex:0 0 calc(33.333% - 8px)}#panel-profile-new .profile-actions{flex-wrap:nowrap}.profile-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:18px}.profile-column{padding:18px;border:1px solid var(--line);border-radius:10px;background:#f8fbff}.profile-column h3{margin:0 0 12px}.profile-compact-row{display:grid;gap:10px;margin:0 0 10px}.profile-compact-row.two{grid-template-columns:1fr 1fr}.profile-compact-row.three{grid-template-columns:1fr 1fr 1fr}.profile-compact-row label{margin:0}.target-role-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px}.target-role-choice .target-role-row{grid-template-columns:minmax(80px,1fr) 120px 43px auto;gap:6px;margin:0;padding:0;border:0;background:transparent}.target-role-choice .target-role-level,.target-role-choice .target-role-priority{padding-left:7px;padding-right:7px}.target-role-choice .remove-target-role{padding:8px 9px;white-space:nowrap}.remove-target-role.danger{border-color:#f5b8b4!important;background:#fff!important;color:#b42318!important}#profile-add-target-role{margin-top:14px!important}`;
   document.head.append(profileStyle);
   function compactProfileRow(column, ids, className) {
     const row = document.createElement("div"); row.className = `profile-compact-row ${className}`;
@@ -493,6 +493,28 @@ document.addEventListener("change",async event=>{const input=event.target;if(inp
       } catch (error) { alert(error.message); }
     }, true);
   });
+  const entryButtonStyle = document.createElement('style');
+  entryButtonStyle.textContent = '.manage-choice{font-weight:400!important}.manage-choice strong{font-weight:700!important}.manage-choice span{font-weight:400!important;margin-left:8px!important}.manage-choice span::before{content:"•";display:inline-block;margin-right:8px;font-weight:700}.skill-choice span{margin-left:0!important}.skill-choice span::before{content:none!important}';
+  document.head.append(entryButtonStyle);
+  const importCardStyle = document.createElement('style');
+  importCardStyle.textContent = '#panel-import>.panel{background:#f8fbff}.job{background:#fff}.job strong{display:inline;font-size:15px;font-weight:700}.job span{display:inline;font-size:15px;font-weight:400;margin-left:8px}.job span::before{content:"·";display:inline-block;margin-right:8px;font-weight:700}';
+  document.head.append(importCardStyle);
+  // Replace destructive row actions with a compact, accessible trash icon.
+  const trashIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13M10 10v7M14 10v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const convertDeleteButtons = (root = document) => root.querySelectorAll('button:not(#delete-profile-button)').forEach(button => {
+    const label = button.textContent.trim();
+    if (!button.matches('.delete-job,.remove-target-role') && !/^(Löschen|Entfernen)$/.test(label)) return;
+    if (button.classList.contains('icon-delete-button')) return;
+    button.classList.add('icon-delete-button');
+    button.setAttribute('aria-label', 'Löschen');
+    button.title = 'Löschen';
+    button.innerHTML = trashIcon;
+  });
+  const deleteIconStyle = document.createElement('style');
+  deleteIconStyle.textContent = '.icon-delete-button,.icon-delete-button.remove-target-role.danger{width:34px!important;height:34px!important;padding:6px!important;display:inline-flex!important;align-items:center;justify-content:center;color:#667085!important;background:#fff!important;border:1px solid #c7ced8!important;border-radius:7px!important}.icon-delete-button:hover,.icon-delete-button:focus-visible,.icon-delete-button.remove-target-role.danger:hover,.icon-delete-button.remove-target-role.danger:focus-visible{color:#667085!important;background:#f3f4f6!important;border-color:#98a2b3!important}.icon-delete-button svg{width:20px;height:20px;display:block}.icon-delete-button svg *{pointer-events:none}';
+  document.head.append(deleteIconStyle);
+  convertDeleteButtons();
+  new MutationObserver(() => convertDeleteButtons()).observe(document.body, {childList:true, subtree:true});
 })();
 </script>
 </body></html>

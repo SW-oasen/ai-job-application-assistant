@@ -18,6 +18,9 @@ Links:
 Dashboardfunktion 
 - Statisstikgraphik der Bewerbungsstati 
 - Bewerbungsstatus-Buttons als Filter. Mehrfachauswahl erlaubt, dedeutet aber OR Relation
+- Karte `Empfehlungen für Aktionen`: anstehende Gespräche innerhalb der
+  nächsten 72 Stunden, seit mehr als 14 Tagen offene Bewerbungen sowie seit
+  mehr als 21 Tagen offene Nachfragen. Jede Empfehlung filtert die Liste.
 - Navigation zur Verwaltung und optional direkte Aktion zum Jobimport
 
 Rechts: 
@@ -25,7 +28,9 @@ Rechts:
 - Job-/Bewerbungsliste 
 
 ### Job-/Bewerbungsliste
-kompakte Tabellen-/Zeilenstruktur
+Kompakte Zeilenstruktur: Jobtitel fett, Unternehmen normal und Status mit
+Datum in derselben Zeile; die Bereiche werden durch deutliche Sonderzeichen
+getrennt.
 
 Mögliche bestehende Informationen: Jobtitel, Unternehmen, Bewerbungsstatus, offen/archiviert, Fit-Werte, Import-/Bewerbungsdatum,
 letzte Aktivität und Link zum Detail. Keine neuen Statistikberechnungen nur für das Redesign.

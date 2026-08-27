@@ -26,6 +26,12 @@ In der Entwicklungsumgebung steht die interaktive OpenAPI-Dokumentation unter
 Nach Bearbeiten oder Löschen eines Ereignisses wird der Bewerbungszustand aus
 dem verbleibenden Verlauf neu aufgebaut.
 
+Die Listenantwort von `GET /applications` enthält zusätzlich
+`upcoming_interview_at`, sofern im Verlauf ein zukünftiges
+`status_change`-Ereignis mit Status `interview` existiert. Der Wert ist der
+früheste kommende Gesprächstermin und dient dem Dashboard für Erinnerungen;
+er wird nicht separat persistiert.
+
 ## Archivierte Bewerbungsdateien
 
 - `POST /applications/{application_id}/files`

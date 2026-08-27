@@ -60,7 +60,8 @@ Ich habe diese Anwendung entwickelt, weil ich mich selbst auf zahlreiche Stellen
 - Bewerbungsstatus und bearbeitbarer Ereignisverlauf
 - Archivierung tatsächlich versendeter Bewerbungs-PDFs
 - getrennte Erfassung von Quellportal und Bewerbungsweg
-- Dashboard mit Statusfiltern und Stichwortsuche (nun auf der Hauptseite)
+- Dashboard mit Statusfiltern, Stichwortsuche und kontextbezogenen
+  Aktionshinweisen (anstehende Gespräche sowie überfällige Bewerbungen)
 
 ## Ziel-Fit und Beschäftigungsarten
 
@@ -179,6 +180,10 @@ Historie protokolliert.
    ```
 
 Weitere technische Details befinden sich in den Dokumenten unter `docs/`.
+
+Die aktuelle Profilverwaltung pflegt angewandte Skills direkt an Erfahrung,
+Ausbildung, Zertifikaten und Projekten. Eine separate manuelle Skill-Evidenz und
+Änderungsgrund-Felder in den Editoren sind nicht mehr Bestandteil des Workflows.
 
 ## Bedienungsablauf
 

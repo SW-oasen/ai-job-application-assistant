@@ -76,5 +76,49 @@ async function loadDashboard(){
 }
 async function init(){try{const profiles=await req("/profiles");$("profile").innerHTML=profiles.map(p=>`<option value="${p.id}">${esc(p.display_name)}</option>`).join("");$("profile").onchange=loadDashboard;$("search").oninput=render;$("matching").onchange=render;document.querySelectorAll("#statusFilters button").forEach(button=>button.onclick=()=>{const value=button.dataset.status;selectedStatuses.has(value)?selectedStatuses.delete(value):selectedStatuses.add(value);button.classList.toggle("active",selectedStatuses.has(value));render()});await loadDashboard()}catch(e){$("applications").innerHTML=`<p class="empty">${esc(e.message)}</p>`}}init();
 </script>
+<script>document.querySelector("#statusFilters")?.previousElementSibling?.replaceChildren(document.createTextNode("Filter nach Bewerbungsstatus"));</script>
+<style>.item strong{display:inline;font-size:15px;font-weight:700}.item span{display:inline;font-size:15px;font-weight:400;margin-left:8px}.item span::before{content:"·";display:inline-block;margin-right:8px;font-weight:700}.item .status{display:inline-block;margin:0 0 0 8px;width:auto}.item .status::before{content:"·";display:inline-block;margin-right:8px;font-weight:700}</style>
+<script>
+(() => {
+  const statusPanel = document.querySelector("#statusFilters")?.closest(".panel");
+  if (statusPanel && !$("actionRecommendations")) statusPanel.insertAdjacentHTML("afterend", '<section class="panel"><h2>Empfehlungen für Aktionen</h2><div class="action-recommendations" id="actionRecommendations"></div></section>');
+  let actionFilter = "";
+  const daysAgo = days => Date.now() - days * 24 * 60 * 60 * 1000;
+  const actionMatches = () => {
+    const now = Date.now();
+    return {
+      interview_due: dashboardApps.filter(app => { const appointment = app.upcoming_interview_at || app.next_action_at, time = new Date(appointment).getTime(); return appointment && time >= now && time < now + 3 * 24 * 60 * 60 * 1000; }),
+      applied_overdue: dashboardApps.filter(app => app.status === "applied" && app.applied_at && new Date(app.applied_at).getTime() < daysAgo(14)),
+      followed_up_overdue: dashboardApps.filter(app => app.status === "followed_up" && app.status_changed_at && new Date(app.status_changed_at).getTime() < daysAgo(21))
+    };
+  };
+  const dateTime = value => new Intl.DateTimeFormat("de-DE", {dateStyle:"medium", timeStyle:"short"}).format(new Date(value));
+  const renderRecommendations = () => {
+    const host = $("actionRecommendations");
+    if (!host) return;
+    const matches = actionMatches();
+    const interview = matches.interview_due.map(app => { const appointment = app.upcoming_interview_at || app.next_action_at; return `<div class="action-recommendation"><button type="button" data-action-filter="interview_due">Anstehendes Gespräch</button><span>${esc(app.job.title)} · ${esc(app.job.company || "Firma unbekannt")} · ${esc(dateTime(appointment))}</span></div>`; }).join("");
+    const applied = matches.applied_overdue.length ? `<div class="action-recommendation"><button type="button" data-action-filter="applied_overdue">Beworben seit mehr als 14 Tagen</button><span>${matches.applied_overdue.length} ${matches.applied_overdue.length === 1 ? "Stelle" : "Stellen"} · ggf. nachfragen</span></div>` : "";
+    const followedUp = matches.followed_up_overdue.length ? `<div class="action-recommendation"><button type="button" data-action-filter="followed_up_overdue">Nachgefragt seit mehr als 21 Tagen</button><span>${matches.followed_up_overdue.length} ${matches.followed_up_overdue.length === 1 ? "Stelle" : "Stellen"}</span></div>` : "";
+    host.innerHTML = interview + applied + followedUp || '<p class="empty">Aktuell keine Aktion erforderlich.</p>';
+    host.querySelectorAll("[data-action-filter]").forEach(button => { button.classList.toggle("active", button.dataset.actionFilter === actionFilter); button.onclick = () => { actionFilter = actionFilter === button.dataset.actionFilter ? "" : button.dataset.actionFilter; selectedStatuses.clear(); document.querySelectorAll("#statusFilters button").forEach(item => item.classList.remove("active")); render(); }; });
+  };
+  const applyActionFilter = () => {
+    if (!actionFilter) return;
+    const allowed = new Set(actionMatches()[actionFilter].map(app => app.job_id));
+    document.querySelectorAll("#applications .item").forEach(item => { item.hidden = !allowed.has(decodeURIComponent(item.getAttribute("href").split("/").pop())); });
+    const visible = document.querySelectorAll("#applications .item:not([hidden])").length;
+    $("applicationsTitle").firstChild.textContent = actionFilter === "interview_due" ? "Anstehende Gespräche" : actionFilter === "applied_overdue" ? "Beworben seit mehr als 14 Tagen" : "Nachgefragt seit mehr als 21 Tagen";
+    $("applicationsCount").textContent = visible;
+    if (!visible) $("applications").innerHTML = '<p class="empty">Keine passenden Bewerbungen.</p>';
+  };
+  const baseRender = render;
+  render = () => { baseRender(); renderRecommendations(); applyActionFilter(); };
+  document.querySelectorAll("#statusFilters button").forEach(button => button.addEventListener("click", () => { actionFilter = ""; }));
+  const style = document.createElement("style");
+  style.textContent = '.action-recommendations{display:grid;gap:8px}.action-recommendation{display:flex;align-items:center;gap:8px;min-width:0}.action-recommendation button{flex:0 0 auto;padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#34445b;font:650 12px/1.2 inherit;cursor:pointer}.action-recommendation button:hover,.action-recommendation button.active{border-color:#91b4f5;background:#edf3ff;color:#0f3d98}.action-recommendation span{min-width:0;color:var(--muted);font-size:12px}';
+  document.head.append(style);
+})();
+</script>
 </body>
 </html>

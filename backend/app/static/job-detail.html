@@ -736,6 +736,9 @@
     };
     document.getElementById("cancelEdit").onclick=hideApplicationEditor;
     load();
+    const trashIcon='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13M10 10v7M14 10v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const convertDeleteButtons=()=>document.querySelectorAll('button.delete-event,button.delete-action').forEach(button=>{if(button.classList.contains('icon-delete-button'))return;button.classList.add('icon-delete-button');button.setAttribute('aria-label','Löschen');button.title='Löschen';button.innerHTML=trashIcon});
+    const deleteIconStyle=document.createElement('style');deleteIconStyle.textContent='.icon-delete-button{width:34px!important;height:34px!important;padding:6px!important;display:inline-flex!important;align-items:center;justify-content:center;color:#667085!important;background:#fff!important;border:1px solid #c7ced8!important;border-radius:7px!important}.icon-delete-button:hover,.icon-delete-button:focus-visible{color:#667085!important;background:#f3f4f6!important;border-color:#98a2b3!important}.icon-delete-button svg{width:20px;height:20px;display:block}.icon-delete-button svg *{pointer-events:none}';document.head.append(deleteIconStyle);convertDeleteButtons();new MutationObserver(convertDeleteButtons).observe(document.body,{childList:true,subtree:true});
   </script>
 </body>
 </html>
