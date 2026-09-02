@@ -5,28 +5,30 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Application Assistant · Jobdetails</title>
   <style>
-    :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#155eef;--line:#dce3eb;--muted:#647084}
+    :root{font-family:Inter,system-ui,"Segoe UI",sans-serif;color:#18212f;background:#f4f7fa;--blue:#0F766E;--line:#dce3eb;--muted:#647084}
     *{box-sizing:border-box}body{margin:0;font-size:14px;line-height:1.45}header{background:#132033;color:#fff;padding:22px 32px;display:flex;justify-content:space-between;align-items:center;gap:20px}
-    header h1{margin:0 0 5px;font-size:27px;line-height:1.2}header p{margin:0;color:#c9d4e4;font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap}.nav-link{color:#d8e2f0;text-decoration:none;padding:8px 10px;border-radius:7px;font-size:14px}.nav-link:hover,.nav-link.active{color:#fff;background:#ffffff18}.nav-link.active{font-weight:750}
-    .button{border:1px solid var(--blue);border-radius:8px;background:var(--blue);color:#fff;padding:9px 12px;font:700 13px/1.25 inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.button:hover{background:#0f4dcc;border-color:#0f4dcc}.button:focus-visible,.fit-score:focus-visible,.delete-action:focus-visible{outline:3px solid #91b4ff;outline-offset:2px}.button:disabled{cursor:not-allowed;opacity:.6}.button.secondary{background:#fff;border-color:var(--line);color:#34445b}.button.secondary:hover{background:#edf3ff;border-color:#91b4ff;color:#0f3d98}.button.strong{background:var(--blue);border-color:var(--blue);color:#fff}.button.strong:hover{background:#0f4dcc;border-color:#0f4dcc}
+    header h1{margin:0 0 5px;font-size:27px;line-height:1.2}header p{margin:0;color:#c9d4e4;font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap}.nav-link,.nav-profile{color:#d8e2f0;text-decoration:none;padding:8px 10px;border-radius:7px;font-size:14px}.nav-profile{border-color:#f4f7fa;background:#f4f7fa;color:#132033;cursor:default}.nav-link:hover,.nav-link.active{color:#fff;background:#ffffff18}.nav-link.active{font-weight:750}
+    .button{border:1px solid var(--blue);border-radius:8px;background:var(--blue);color:#fff;padding:9px 12px;font:700 13px/1.25 inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.button:hover{background:#0B5F59;border-color:#0B5F59}.button:focus-visible,.fit-score:focus-visible,.delete-action:focus-visible{outline:3px solid #91b4ff;outline-offset:2px}.button:disabled{cursor:not-allowed;opacity:.6}.button.secondary{background:#fff;border-color:var(--line);color:#34445b}.button.secondary:hover{background:#edf3ff;border-color:#91b4ff;color:#0f3d98}.button.strong{background:var(--blue);border-color:var(--blue);color:#fff}.button.strong:hover{background:#0B5F59;border-color:#0B5F59}
     main{width:100%;margin:0;padding:18px 32px 48px}.panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:0}
     .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.meta div{padding:11px;border-radius:9px;background:#f6f8fb}.meta strong{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
     .matching-summary{border-left:5px solid var(--blue)}.matching-summary h2,#matchingSummary>h2{font-size:16px;line-height:1.3;margin:0 0 5px}.matching-summary p,#matchingSummary>p{margin:5px 0;font-size:14px}.fit-scores{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}.fit-score{padding:8px 11px;border-radius:8px;background:#fff;border:1px solid var(--line);color:#34445b;font:inherit;font-size:13px;cursor:pointer}.fit-score:hover,.fit-score.active{border-color:#91b4ff;background:#edf3ff;color:#0f3d98}.fit-score strong{margin-right:5px}.fit-scores .button{padding:8px 11px;font-size:13px}.matching-details{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.fit-detail{margin-top:8px;border:1px solid var(--line);border-radius:9px;background:#f8fafc}.fit-detail>summary,.requirement-detail>summary{cursor:pointer;padding:10px 12px;font-weight:700;font-size:13px}.fit-detail-body{padding:0 12px 12px}.fit-criteria{display:grid;gap:7px}.fit-criterion{padding:9px;border-radius:7px;background:#fff;font-size:13px}.fit-criterion span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.requirement-detail{margin-top:7px;border:1px solid var(--line);border-radius:8px;background:#fff}.requirement-detail:hover,.requirement-detail[open]{border-color:#91b4ff;background:#edf3ff}.requirement-detail[open] summary{color:#0f3d98}.requirement-body{padding:0 12px 12px;font-size:13px}.requirement-body p{margin:7px 0}.requirement-body strong{color:#34445b}
     .content{overflow-wrap:anywhere;line-height:1.62}.content h1{font-size:1.55rem;margin:1.5em 0 .55em}.content h2{font-size:1.35rem;margin:1.4em 0 .5em}.content h3,.content h4{font-size:1.12rem;margin:1.25em 0 .45em}.content p{margin:.65em 0}.content ul,.content ol{padding-left:1.55rem}.content li{margin:.35em 0}.content blockquote{margin:1em 0;padding:.15em 1em;border-left:4px solid #b9c8dd;background:#f6f8fb;color:#40506a}.content a{color:var(--blue)}.content pre{overflow:auto;padding:12px;background:#f2f5f8;border-radius:8px}.content hr{border:0;border-top:1px solid var(--line);margin:1.5em 0}.warning{color:#8a4b08}.warning:not(:empty){margin-bottom:16px}.error{color:#b42318}.source{overflow-wrap:anywhere}
     .structured-groups{display:grid;gap:12px}.structured-group{padding:13px;border-radius:10px;background:#f6f8fb}.structured-group h3{margin:0 0 8px;font-size:16px}.structured-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.structured-field{padding:8px 9px;background:#fff;border:1px solid var(--line);border-radius:8px}.structured-field strong{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}.requirement-groups{display:grid;gap:10px}.requirement-group h4{margin:0 0 6px;font-size:13px}.requirement-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}.requirement-list li{padding:9px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:13px}.requirement-list li:hover{border-color:#91b4ff;background:#edf3ff}.requirement-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.tag{padding:2px 7px;border-radius:999px;background:#e7edf7;color:#34445b;font-size:12px}.reference-details summary{cursor:pointer;font-weight:700;font-size:18px}.reference-details[open] summary{margin-bottom:18px}.reference-hint{color:var(--muted);font-size:13px}
-    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid label{font-size:12px;font-weight:700;color:var(--muted)}select,input,textarea{display:block;width:100%;margin-top:5px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#18212f;font:inherit}select:hover,input:hover,textarea:hover{border-color:#b8c9e8}select:focus,input:focus,textarea:focus{outline:3px solid #dbe8ff;border-color:#7da7f5}.full{grid-column:1/-1}.timeline{display:grid;gap:7px;margin-top:10px}.timeline-item{position:relative}.event{position:relative;width:100%;padding:10px 82px 10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;text-align:left;color:#34445b;font:inherit}.event:hover,.event.active{border-color:#91b4ff;background:#edf3ff}.event strong{display:block;font-size:13px}.event span{font-size:12px;color:var(--muted)}.delete-event,.delete-action{border:1px solid #f5b8b4;border-radius:7px;background:#fff;color:#b42318;font:700 12px/1.2 inherit;cursor:pointer;padding:6px 8px}.delete-event:hover,.delete-action:hover{background:#fff0ee;border-color:#dc5d55}.delete-event{position:absolute;right:9px;top:50%;transform:translateY(-50%)}.event-editor-host,.event-create-host{min-height:0}.hidden{display:none}
-    .documents h3{margin:0 0 8px}.document-list{display:grid;gap:7px;margin-top:10px}.document-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 11px;border:1px solid var(--line);background:#fff;border-radius:8px}.document-row:hover{border-color:#91b4ff;background:#f8fbff}.document-row span{display:block;font-size:12px;color:var(--muted);margin-top:3px}.document-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}.document-actions a{font-size:12px;font-weight:700;color:var(--blue);text-decoration:none;padding:6px 8px}.document-actions a:hover{text-decoration:underline}.document-warning{padding:10px;border-radius:8px;background:#fff4e5;color:#8a4b08}
-    details.inline-editor{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}details.inline-editor summary{cursor:pointer;color:var(--blue);font-weight:700}.application-overview{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.application-overview span{padding:8px 11px;border-radius:8px;background:#f6f8fb}#newApplicationEvent{margin-top:8px}
-    .summary-card{margin-bottom:14px;padding:14px 16px}.summary-card h2{margin:0 0 10px;font-size:21px}.summary-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}.summary-grid>div{min-width:0;padding:8px 10px;border-radius:8px;background:#f6f8fb}.summary-grid strong{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}.summary-grid span,.summary-grid select{font-size:13px;overflow-wrap:anywhere}.summary-grid select{margin-top:0;padding:6px 7px}.job-workspace{display:grid;grid-template-columns:minmax(380px,.9fr) minmax(480px,1.1fr);gap:14px;align-items:start}.job-column{display:grid;gap:14px;align-content:start;min-width:0}.job-column>.panel{margin:0}details.section>summary{cursor:pointer;font-weight:700;font-size:16px;list-style:revert}details.section .section-body{margin-top:12px}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.application-form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.form-grid label{font-size:12px;font-weight:700;color:var(--muted)}select,input,textarea{display:block;width:100%;margin-top:5px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#18212f;font:inherit}select:hover,input:hover,textarea:hover{border-color:#b8c9e8}select:focus,input:focus,textarea:focus{outline:3px solid #dbe8ff;border-color:#7da7f5}.full{grid-column:1/-1}.timeline{display:grid;gap:7px;margin-top:10px}.timeline-item{position:relative}.event{position:relative;width:100%;padding:10px 82px 10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;text-align:left;color:#34445b;font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.event:hover,.event.active{border-color:#91b4ff;background:#edf3ff}.event strong,.event span,.event div{display:inline}.event strong{font-size:13px;margin-right:8px}.event span{font-size:12px;color:var(--muted)}.event>div::before{content:" · ";color:var(--muted)}.delete-event,.delete-action{border:1px solid #f5b8b4;border-radius:7px;background:#fff;color:#b42318;font:700 12px/1.2 inherit;cursor:pointer;padding:6px 8px}.delete-event:hover,.delete-action:hover{background:#fff0ee;border-color:#dc5d55}.delete-event{position:absolute;right:9px;top:9px}.event-editor-host,.event-create-host{min-height:0}.hidden{display:none}
+    .documents h3{margin:0 0 8px}.document-list{display:grid;gap:7px;margin-top:10px}.document-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0;border:1px solid var(--line);background:#fff;border-radius:8px}.document-row:hover{border-color:#91b4ff;background:#f8fbff}.document-entry{min-width:0;flex:1;border:0;background:transparent;padding:10px 11px;cursor:pointer;text-align:left;color:#34445b;font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.document-entry strong,.document-entry span{display:inline;white-space:nowrap}.document-entry span{font-size:12px;color:var(--muted);margin-left:8px}.document-entry span::before{content:"· ";}.document-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;padding-right:8px}.document-warning{padding:10px;border-radius:8px;background:#fff4e5;color:#8a4b08}
+    .inline-editor{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}.application-overview{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.application-overview span{padding:8px 11px;border-radius:8px;background:#f6f8fb}#newApplicationEvent{margin-top:8px}
+    .summary-card{margin-bottom:14px;padding:14px 16px}.summary-card h2{margin:0 0 10px;font-size:21px}.summary-grid{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:8px}.summary-grid>div{grid-column:span 2;min-width:0;padding:8px 10px;border-radius:8px;background:#f6f8fb}.summary-grid>.summary-company{grid-column:span 3}.summary-grid>.summary-matching{grid-column:span 4}.summary-grid>.summary-location,.summary-grid>.summary-imported,.summary-grid>.summary-last-action{grid-column:span 1}.summary-grid>.summary-status{grid-column:span 2}.summary-grid strong{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}.summary-grid span,.summary-grid select{font-size:13px;overflow-wrap:anywhere}.summary-grid .summary-company span{font-weight:700}.summary-grid select{margin-top:0;padding:6px 7px}#summaryMatching{display:block;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.job-workspace{display:grid;grid-template-columns:minmax(380px,.9fr) minmax(480px,1.1fr);gap:14px;align-items:start}.job-column{display:grid;gap:14px;align-content:start;min-width:0}.job-column>.panel{margin:0}details.section>summary{cursor:pointer;font-weight:700;font-size:16px;list-style:revert}details.section .section-body{margin-top:12px}
     .review-history{display:grid;gap:10px}.review-run{padding:12px;border:1px solid var(--line);border-radius:8px;background:#f6f8fb}.review-run h3{margin:0;font-size:14px;line-height:1.35}.review-run p{margin:7px 0 0;color:var(--muted);font-size:13px}.review-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.review-meta .tag{background:#fff}.review-issues{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}.review-issues li{padding:8px;background:#fff;border-radius:6px;font-size:13px}.review-issues strong{display:block}.review-error{color:#8a4b08}
     .cv-flow-group{margin:0 0 14px}.cv-flow-group h4{margin:0 0 7px;text-transform:capitalize;font-size:14px;line-height:1.35}.cv-flow{display:flex;flex-wrap:wrap;gap:7px;margin-left:24px}.cv-choice{display:inline-flex;cursor:pointer}.cv-choice input{position:absolute;opacity:0;pointer-events:none}.cv-choice span{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#34445b;font-size:13px;font-weight:650;line-height:1.2}.cv-choice-group{display:flex;margin:0 0 7px}.cv-choice-group span{width:100%;min-height:38px;border-radius:7px;font-size:14px;font-weight:800;background:#f6f8fb}.cv-choice-row{display:flex;width:100%;margin:0 0 7px}.cv-choice-row span{width:100%;border-radius:8px}.cv-choice:hover span{border-color:#91b4ff;background:#edf3ff}.cv-choice input:checked+span{border-color:var(--blue);background:#e8f0ff;color:#0f3d98}.cv-choice input:focus-visible+span{outline:3px solid #91b4ff;outline-offset:2px}
-    @media(max-width:900px){.job-workspace{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid,.structured-fields,.summary-grid{grid-template-columns:1fr}.full{grid-column:auto}}
+    @media(max-width:900px){.job-workspace{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(8,minmax(0,1fr))}}@media(max-width:750px){header{align-items:flex-start;flex-direction:column}.meta,.form-grid,.application-form-grid,.structured-fields,.summary-grid{grid-template-columns:1fr}.summary-grid>div,.summary-grid>.summary-company,.summary-grid>.summary-matching,.summary-grid>.summary-location,.summary-grid>.summary-imported,.summary-grid>.summary-status,.summary-grid>.summary-last-action{grid-column:auto}.full{grid-column:auto}}
+    .summary-grid>.summary-matching{grid-column:span 4!important}header .nav-profile{background:#f4f7fa!important;color:#132033!important;border:1px solid #f4f7fa!important}
   </style>
 </head>
 <body>
   <header>
     <div><h1>Job Detail</h1><p>Metadaten, Matching, Bewerbungsstatus und -unterlagen, Stellendetails</p></div>
     <nav class="actions" aria-label="Hauptnavigation">
+      <span class="nav-profile" id="active-profile" aria-live="polite">Kein Profil geladen</span>
       <a class="nav-link" href="/">Jobs und Bewerbungen</a>
       <a class="nav-link" href="/manage">Verwaltung</a>
     </nav>
@@ -35,14 +37,13 @@
     <section class="panel summary-card">
       <h2 id="summaryTitle">Stellenanzeige wird geladen …</h2>
       <div class="summary-grid">
-        <div><strong>Unternehmen</strong><span id="summaryCompany">–</span></div>
-        <div><strong>Ort</strong><span id="summaryLocation">–</span></div>
+        <div class="summary-company"><strong>Unternehmen</strong><span id="summaryCompany">–</span></div>
+        <div class="summary-location"><strong>Ort</strong><span id="summaryLocation">–</span></div>
         <div><strong>Quelle</strong><span id="summarySource">–</span></div>
-        <div><strong>Importiert am</strong><span id="summaryImported">–</span></div>
-        <div><strong>Profil</strong><select id="profile"></select></div>
-        <div><strong>Matching</strong><span id="summaryMatching">–</span></div>
-        <div><strong>Status</strong><span id="summaryStatus">–</span></div>
-        <div><strong>Letzte Aktion</strong><span id="summaryLastAction">–</span></div>
+        <div class="summary-imported"><strong>Importiert am</strong><span id="summaryImported">–</span></div>
+        <div class="summary-matching" style="grid-column:span 4"><strong>Matching</strong><span id="summaryMatching">–</span></div>
+        <div class="summary-status"><strong>Status</strong><span id="summaryStatus">–</span></div>
+        <div class="summary-last-action"><strong>Letzte Aktion</strong><span id="summaryLastAction">–</span></div>
       </div>
     </section>
     <div class="job-workspace">
@@ -85,34 +86,35 @@
         <div class="timeline" id="timeline"></div>
         <button type="button" class="button secondary" id="newApplicationEvent">Neuen Verlaufseintrag anlegen</button>
         <div class="event-create-host" id="applicationCreateHost"></div>
-        <details class="inline-editor" id="applicationEditor" hidden>
-          <summary>Verlaufseintrag hinzufügen oder bearbeiten</summary>
+        <div class="inline-editor" id="applicationEditor" hidden>
           <form id="applicationForm">
-          <div class="form-grid">
-            <label>Verlaufsereignis<select id="eventType">
+          <div class="form-grid application-form-grid">
+            <label>Verlaufsergebnis<select id="eventType" required>
+              <option value="" selected>Bitte auswählen</option>
               <option value="status_change">Statusänderung</option>
               <option value="internal_forwarded">Intern weitergeleitet</option>
               <option value="communication">Sonstige Kommunikation</option>
               <option value="note">Notiz</option>
             </select></label>
-            <label id="applicationStatusField">Neuer Status<select id="applicationStatus">
+            <label id="applicationStatusField">Status<select id="applicationStatus">
+              <option value="" selected>Bitte auswählen</option>
               <option value="draft">Entwurf</option><option value="applied">Beworben</option>
               <option value="followed_up">Nachgefragt</option><option value="interview">Vorstellungsgespräch</option>
               <option value="rejected">Abgelehnt</option><option value="offer">Angebot erhalten</option>
               <option value="accepted">Angenommen</option><option value="withdrawn">Zurückgezogen</option><option value="closed">Geschlossen</option>
             </select></label>
-            <label>Datum und Uhrzeit<input id="occurredAt" type="datetime-local"></label>
+            <label>Datum und Uhrzeit<input id="occurredAt" type="datetime-local" required></label>
             <label>Kommunikationsweg<select id="channel"><option value="">Nicht angegeben</option><option value="email">E-Mail</option><option value="company_portal">Arbeitgeberportal</option><option value="job_portal">Jobportal</option><option value="phone">Telefon</option><option value="personal">Persönlich</option><option value="other">Sonstiges</option></select></label>
-            <label id="portalNameField" class="hidden">Jobportal
+            <label id="portalNameField">Jobportal
               <input id="portalName" maxlength="100" list="jobPortalNames" placeholder="z. B. LinkedIn">
               <datalist id="jobPortalNames"><option value="LinkedIn"><option value="Indeed"><option value="Instaffo"><option value="StepStone"><option value="XING"><option value="Bundesagentur für Arbeit"></datalist>
             </label>
             <label>Kontaktperson<input id="contactPerson" maxlength="300" placeholder="z. B. Maria Mustermann"></label>
             <label class="full">Notiz<textarea id="applicationNote" rows="3" placeholder="Optionale Notiz zum Statuswechsel"></textarea></label>
           </div>
-          <p><button class="button" id="saveStatus" type="submit">Verlaufsereignis speichern</button> <button class="button secondary hidden" id="cancelEdit" type="button">Bearbeitung abbrechen</button></p>
+          <p><button class="button" id="saveStatus" type="submit">Verlaufsereignis speichern</button> <button class="button secondary" id="cancelEdit" type="button">Abbrechen</button></p>
           </form>
-        </details>
+        </div>
       </div>
     </details>
     <details class="panel section" id="documentsSection">
@@ -121,6 +123,7 @@
         <p id="documentHint">Speichere zuerst einen Bewerbungsstatus, um Unterlagen zu hinterlegen.</p>
         <div id="documentWarning"></div>
         <div class="document-list" id="documentList"></div>
+        <p><button type="button" class="button secondary hidden" id="showDocumentEditor">Unterlage hochladen</button></p>
         <form id="documentForm" class="hidden">
           <div class="form-grid">
             <label>Dokumentart<select id="documentType">
@@ -131,13 +134,13 @@
             </select></label>
             <label>PDF-Datei<input id="documentFile" type="file" accept="application/pdf,.pdf" required></label>
           </div>
-          <p><button class="button strong" id="uploadDocument" type="submit">PDF hochladen</button></p>
+          <p><button class="button strong" id="uploadDocument" type="submit">PDF hochladen</button> <button class="button secondary" id="cancelDocumentUpload" type="button">Abbrechen</button></p>
         </form>
       </div>
     </details>
     <details class="panel section" id="cvSection">
       <summary>Lebenslauf-Vorlage generieren</summary>
-      <div class="section-body" id="cvWorkspace"><p class="warning">Profil auswählen, um eine CV-Empfehlung zu erstellen.</p></div>
+      <div class="section-body" id="cvWorkspace"><p class="warning">Bitte zuerst in der Verwaltung ein Profil laden.</p></div>
     </details>
     <details class="panel section" id="structuredSection">
       <summary>Erkannte Stellendetails</summary>
@@ -180,7 +183,7 @@
     const documentLabels={resume:"Lebenslauf",cover_letter:"Anschreiben",certificate:"Zeugnis",other:"Sonstige Anlage"};
     const reviewStatusLabels={pending:"Ausstehend",accepted:"Freigegeben",corrected:"Korrigiert",retry_requested:"Wiederholung angefordert",manual_review_required:"Manuelle Prüfung erforderlich",failed:"Fehlgeschlagen"};
     const reviewDecisionLabels={accept:"Original übernommen",correct:"Korrektur übernommen",retry:"Wiederholung",manual_review:"Manuelle Prüfung"};
-    let currentJob=null,currentApplication=null,editingEventId=null,currentEvents=[],currentFiles=[];
+    let currentJob=null,currentApplication=null,editingEventId=null,currentEvents=[],currentFiles=[],activeProfile=null;
     let originalLoaded=false,originalLoading=false,originalHtml="",originalError="";
     async function request(url,options={}){
       const response=await fetch(url,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
@@ -206,9 +209,9 @@
     }
     function syncPortalName(){
       const isJobPortal=document.getElementById("channel").value==="job_portal";
-      document.getElementById("portalNameField").classList.toggle("hidden",!isJobPortal);
-      document.getElementById("portalName").required=isJobPortal;
-      if(!isJobPortal)document.getElementById("portalName").value="";
+      const portalName=document.getElementById("portalName");
+      portalName.required=isJobPortal;
+      portalName.disabled=!isJobPortal;
     }
     function syncEventType(){
       const changesStatus=document.getElementById("eventType").value==="status_change";
@@ -229,26 +232,33 @@
         return false;
       }
       document.getElementById("applicationCreateHost").append(editor);
-      editor.hidden=true;editor.open=false;
+      editor.hidden=true;
       document.querySelectorAll(".event[data-event-id]").forEach(item=>item.classList.remove("active"));
       resetEventEditor();
       return true;
     }
+    function closeApplicationEditor(){
+      const editor=document.getElementById("applicationEditor");
+      document.getElementById("applicationCreateHost").append(editor);
+      editor.hidden=true;
+      document.querySelectorAll(".event[data-event-id]").forEach(item=>item.classList.remove("active"));
+      resetEventEditor();
+    }
     function showApplicationEditor(host,event=null){
       const editor=document.getElementById("applicationEditor");
-      host.append(editor);editor.hidden=false;editor.open=true;
+      host.append(editor);editor.hidden=false;
       document.querySelectorAll(".event[data-event-id]").forEach(item=>item.classList.toggle("active",item.dataset.eventId===event?.id));
       if(event)fillEventEditor(event);else resetEventEditor();
     }
     function resetEventEditor(){
       editingEventId=null;
       document.getElementById("saveStatus").textContent="Verlaufsereignis speichern";
-      document.getElementById("cancelEdit").classList.add("hidden");
-      document.getElementById("applicationStatus").value=currentApplication?.status||"draft";
-      document.getElementById("eventType").value="status_change";
-      document.getElementById("occurredAt").value=localNow();
-      document.getElementById("channel").value=currentApplication?.response_channel||currentApplication?.application_channel||"";
-      document.getElementById("portalName").value=currentApplication?.response_portal_name||currentApplication?.application_portal_name||"";
+      document.getElementById("applicationForm").reset();
+      document.getElementById("eventType").value="";
+      document.getElementById("applicationStatus").value="";
+      document.getElementById("occurredAt").value="";
+      document.getElementById("channel").value="";
+      document.getElementById("portalName").value="";
       document.getElementById("contactPerson").value="";
       syncPortalName();
       syncEventType();
@@ -258,7 +268,7 @@
     function fillEventEditor(event){
       editingEventId=event.id;
       document.getElementById("eventType").value=["internal_forwarded","communication","note"].includes(event.event_type)?event.event_type:"status_change";
-      document.getElementById("applicationStatus").value=event.status||currentApplication?.status||"draft";
+      document.getElementById("applicationStatus").value=event.status||"";
       document.getElementById("occurredAt").value=localDateTime(event.occurred_at);
       document.getElementById("channel").value=event.channel||"";
       document.getElementById("portalName").value=event.portal_name||"";
@@ -267,14 +277,13 @@
       syncEventType();
       document.getElementById("applicationNote").value=event.note||"";
       document.getElementById("saveStatus").textContent="Statuseintrag aktualisieren";
-      document.getElementById("cancelEdit").classList.remove("hidden");
       document.getElementById("applicationEditor").dataset.initial=applicationEditorState();
     }
     function renderTimeline(events){
       currentEvents=events;
       const editor=document.getElementById("applicationEditor");
-      if(editor&&editor.parentElement!==document.getElementById("applicationCreateHost")){document.getElementById("applicationCreateHost").append(editor);editor.hidden=true;editor.open=false}
-      document.getElementById("timeline").innerHTML=events.length?events.map(event=>`<div class="timeline-item"><button type="button" class="event" data-event-id="${esc(event.id)}" title="Zum Bearbeiten anklicken"><strong>${esc(event.event_type==="created"||event.event_type==="status_change"?statusLabels[event.status]||eventLabels[event.event_type]:eventLabels[event.event_type]||event.event_type)}</strong><span>${esc(formatDate(event.occurred_at))}${event.channel?` · ${esc(channelLabels[event.channel]||event.channel)}${event.portal_name?` (${esc(event.portal_name)})`:""}`:""}${event.contact_person?` · ${esc(event.contact_person)}`:""}</span>${event.note?`<div>${esc(event.note)}</div>`:""}</button><button type="button" class="delete-event" data-delete-event-id="${esc(event.id)}" title="Eintrag löschen">Löschen</button><div class="event-editor-host"></div></div>`).join(""):`<p class="warning">Noch kein Bewerbungsverlauf vorhanden.</p>`;
+      if(editor&&editor.parentElement!==document.getElementById("applicationCreateHost")){document.getElementById("applicationCreateHost").append(editor);editor.hidden=true}
+      document.getElementById("timeline").innerHTML=events.length?events.map(event=>`<div class="timeline-item"><button type="button" class="event" data-event-id="${esc(event.id)}" title="Zum Bearbeiten anklicken"><strong>${esc(event.event_type==="created"||event.event_type==="status_change"?statusLabels[event.status]||eventLabels[event.event_type]:eventLabels[event.event_type]||event.event_type)}</strong><span>${esc(formatDate(event.occurred_at))}${event.channel?` · ${esc(channelLabels[event.channel]||event.channel)}${event.portal_name?` (${esc(event.portal_name)})`:""}`:""}${event.contact_person?` · ${esc(event.contact_person)}`:""}</span></button><button type="button" class="delete-event" data-delete-event-id="${esc(event.id)}" title="Eintrag löschen">Löschen</button><div class="event-editor-host"></div></div>`).join(""):`<p class="warning">Noch kein Bewerbungsverlauf vorhanden.</p>`;
       document.querySelectorAll(".event[data-event-id]").forEach(element=>element.onclick=()=>{const selected=element.classList.contains("active");if(selected){hideApplicationEditor();return}if(!hideApplicationEditor())return;showApplicationEditor(element.parentElement.querySelector(".event-editor-host"),currentEvents.find(item=>item.id===element.dataset.eventId))});
       document.querySelectorAll("[data-delete-event-id]").forEach(button=>button.onclick=event=>{event.stopPropagation();deleteEvent(button.dataset.deleteEventId)});
     }
@@ -291,18 +300,20 @@
     }
     function renderDocuments(files){
       currentFiles=files;
-      const form=document.getElementById("documentForm"),hint=document.getElementById("documentHint");
-      form.classList.toggle("hidden",!currentApplication);
+      const form=document.getElementById("documentForm"),hint=document.getElementById("documentHint"),showEditorButton=document.getElementById("showDocumentEditor");
+      form.classList.add("hidden");
+      showEditorButton.classList.toggle("hidden",!currentApplication);
       hint.textContent=currentApplication?"Hier werden Kopien der tatsächlich versendeten PDF-Dateien archiviert.":"Speichere zuerst einen Bewerbungsstatus, um Unterlagen zu hinterlegen.";
       const types=new Set(files.map(file=>file.document_type));
       const missing=currentApplication?.status==="applied"&&!types.has("resume");
       document.getElementById("documentWarning").innerHTML=missing?'<p class="document-warning">Für diese Bewerbung ist noch kein Lebenslauf hinterlegt.</p>':"";
       document.getElementById("documentList").innerHTML=files.length?files.map(file=>`
         <article class="document-row">
-          <div><strong>${esc(documentLabels[file.document_type]||file.document_type)} · ${esc(file.original_filename)}</strong><span>${esc(formatDate(file.submitted_at||file.created_at))} · ${esc(formatBytes(file.file_size))}</span></div>
-          <div class="document-actions"><a href="/applications/${encodeURIComponent(currentApplication.id)}/files/${encodeURIComponent(file.id)}/content" target="_blank" rel="noopener">Ansehen</a><button type="button" class="delete-action" data-file-id="${esc(file.id)}">Löschen</button></div>
+          <button type="button" class="document-entry" data-view-file-id="${esc(file.id)}" title="Unterlage ansehen"><strong>${esc(documentLabels[file.document_type]||file.document_type)} · ${esc(file.original_filename)}</strong><span>${esc(formatDate(file.submitted_at||file.created_at))} · ${esc(formatBytes(file.file_size))}</span></button>
+          <div class="document-actions"><button type="button" class="delete-action" data-file-id="${esc(file.id)}">Löschen</button></div>
         </article>`).join(""):(currentApplication?'<p class="warning">Noch keine abgeschickten Unterlagen hinterlegt.</p>':"");
       document.querySelectorAll("[data-file-id]").forEach(button=>button.onclick=()=>deleteDocument(button.dataset.fileId));
+      document.querySelectorAll("[data-view-file-id]").forEach(button=>button.onclick=()=>window.open(`/applications/${encodeURIComponent(currentApplication.id)}/files/${encodeURIComponent(button.dataset.viewFileId)}/content`,`_blank`,`noopener`));
     }
     function humanize(value){
       const labels={skill:"Fachkenntnisse",experience:"Berufserfahrung",education:"Ausbildung",language:"Sprachen",soft_skill:"Persönliche Kompetenzen",responsibility:"Aufgaben",other:"Weitere Anforderungen",must:"Muss",should:"Soll",nice_to_have:"Optional",strong_match:"Starker Match",partial_match:"Teilweiser Match",transferable:"Übertragbar",gap:"Lücke",unknown:"Unklar",match:"Passend",partial:"Teilweise",mismatch:"Abweichend",not_configured:"Nicht gepflegt",clear:"Kein Konflikt",conflict:"Ausschluss"};
@@ -397,8 +408,8 @@
       return `<div class="requirement-group"><h4>${esc(title)}</h4><ul class="requirement-list">${items.map(item=>`<li><label><input type="checkbox" data-cv-key="${esc(key)}" value="${esc(item.id)}" ${selected.includes(item.id)?"checked":""}> ${esc(item.name||item.label||cvLabel(item.id))}</label></li>`).join("")}</ul></div>`;
     }
     async function loadCvWorkspace(){
-      const node=document.getElementById("cvWorkspace"),profileId=document.getElementById("profile").value;
-      if(!profileId){node.innerHTML='<p class="warning">Profil auswählen, um eine CV-Empfehlung zu erstellen.</p>';return}
+      const node=document.getElementById("cvWorkspace"),profileId=activeProfile?.id;
+      if(!profileId){node.innerHTML='<p class="warning">Bitte zuerst in der Verwaltung ein Profil laden.</p>';return}
       if(!currentApplication){node.innerHTML='<p>Für diese Stelle besteht noch keine Bewerbung.</p><button class="button" id="createCvRecommendation">CV-Empfehlung erstellen</button>';document.getElementById("createCvRecommendation").onclick=createCvRecommendation;return}
       const [recommendation,documents]=await Promise.all([request(`/cv/applications/${encodeURIComponent(currentApplication.id)}/recommendation`),request(`/cv/applications/${encodeURIComponent(currentApplication.id)}/documents`)]);
       if(!recommendation){node.innerHTML='<p>Noch keine CV-Empfehlung vorhanden.</p><button class="button" id="createCvRecommendation">CV-Empfehlung erstellen</button>';document.getElementById("createCvRecommendation").onclick=createCvRecommendation;return}
@@ -431,7 +442,7 @@
       node.querySelectorAll("[data-cv-version]").forEach(button=>button.onclick=()=>{const doc=documents.find(item=>item.document_id===button.dataset.cvVersion),editor=document.getElementById("cvMarkdown");editor.value=doc.content;editor.classList.remove("hidden");const save=document.getElementById("saveCvMarkdown");save.classList.remove("hidden");save.onclick=()=>saveCvMarkdown(recommendation.language,editor.value)});
     }
     async function createCvRecommendation(){
-      const profileId=document.getElementById("profile").value;
+      const profileId=activeProfile?.id;
       try{await request("/cv/recommendations",{method:"POST",body:JSON.stringify({job_id:jobId,profile_id:profileId,language:currentJob.language==="en"?"en":"de"})});await loadApplication()}catch(error){alert(error.message)}
     }
     async function saveCvRecommendation(recommendation){
@@ -452,9 +463,9 @@
       }catch(error){alert(error.message)}
     }
     async function loadApplication(){
-      const profileId=document.getElementById("profile").value;
+      const profileId=activeProfile?.id;
       if(!profileId){
-        document.getElementById("summaryStatus").textContent=currentJob?.archived_at?"Archiv":"Profil auswählen";
+        document.getElementById("summaryStatus").textContent=currentJob?.archived_at?"Archiv":"Kein Profil geladen";
         document.getElementById("summaryLastAction").textContent="–";
         return;
       }
@@ -473,17 +484,17 @@
       await Promise.all([loadDocuments(),loadCvWorkspace()]);
     }
     async function loadMatchingSummary(){
-      const node=document.getElementById("matchingSummary"),profileId=document.getElementById("profile").value;
+      const node=document.getElementById("matchingSummary"),profileId=activeProfile?.id;
       node.innerHTML="";
       if(!profileId){
-        document.getElementById("summaryMatching").textContent="Profil auswählen";
+        document.getElementById("summaryMatching").textContent="Kein Profil geladen";
         return;
       }
       try{
         const data=await request(`/matching/results?job_id=${encodeURIComponent(jobId)}&profile_id=${encodeURIComponent(profileId)}`);
         const recommendation=data.recommendation, target=data.target_fit, qualification=data.qualification_fit;
         if(!data.matches?.length){
-          const profileName=document.getElementById("profile").selectedOptions[0]?.textContent||"ausgewähltes Profil";
+          const profileName=activeProfile?.display_name||"aktives Profil";
           document.getElementById("summaryMatching").textContent="Noch keine Bewertung";
           node.innerHTML=`
             <p>Für <strong>${esc(profileName)}</strong> liegt noch keine Matching-Bewertung vor.</p>
@@ -556,7 +567,7 @@
       }
     }
     async function runJobMatching(){
-      const button=document.getElementById("runJobMatching"),status=document.getElementById("matchingStatus"),profileId=document.getElementById("profile").value;
+      const button=document.getElementById("runJobMatching"),status=document.getElementById("matchingStatus"),profileId=activeProfile?.id;
       if(!button||!profileId)return;
       button.disabled=true;
       button.textContent="Matching läuft …";
@@ -622,8 +633,8 @@
         originalHtmlSection.classList.toggle("hidden",!hasOriginalHtml);
         renderStructuredDetails(data);
         document.querySelectorAll("#content a").forEach(link=>{link.target="_blank";link.rel="noopener noreferrer"});
-        document.getElementById("profile").innerHTML=profiles.map(profile=>`<option value="${profile.id}">${esc(profile.display_name)}</option>`).join("");
-        document.getElementById("profile").onchange=async()=>{await Promise.all([loadApplication(),loadMatchingSummary()])};
+        activeProfile=profiles.find(profile=>profile.id===localStorage.getItem("managedProfileId"))||null;
+        document.getElementById("active-profile").textContent=activeProfile?`Profil: ${activeProfile.display_name}`:"Kein Profil geladen";
         document.getElementById("occurredAt").value=localNow();
         await Promise.all([loadApplication(),loadMatchingSummary()]);
         await loadReviewHistory();
@@ -650,8 +661,9 @@
         else if(currentApplication)await request(`/applications/${currentApplication.id}/events`,{method:"POST",body:JSON.stringify(body)});
         else if(changesStatus){
           const {event_type,...applicationBody}=body;
-          await request("/applications",{method:"POST",body:JSON.stringify({...applicationBody,job_id:jobId,profile_id:document.getElementById("profile").value})});
+          await request("/applications",{method:"POST",body:JSON.stringify({...applicationBody,job_id:jobId,profile_id:activeProfile?.id})});
         }else throw new Error("Lege zuerst mit einer Statusänderung eine Bewerbung an.");
+        closeApplicationEditor();
         await loadApplication();
       }catch(error){alert(error.message)}
     };
@@ -731,8 +743,17 @@
         const data=await response.json().catch(()=>({}));
         if(!response.ok)throw new Error(data.error?.message||`HTTP ${response.status}`);
         input.value="";
+        document.getElementById("documentForm").classList.add("hidden");
         await loadDocuments();
       }catch(error){alert(error.message)}finally{button.disabled=false}
+    };
+    document.getElementById("showDocumentEditor").onclick=()=>{
+      if(!currentApplication)return;
+      document.getElementById("documentForm").classList.remove("hidden");
+    };
+    document.getElementById("cancelDocumentUpload").onclick=()=>{
+      document.getElementById("documentForm").reset();
+      document.getElementById("documentForm").classList.add("hidden");
     };
     document.getElementById("cancelEdit").onclick=hideApplicationEditor;
     load();

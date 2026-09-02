@@ -139,3 +139,37 @@ async def test_retry_limit_zero_requires_manual_review_without_callback() -> Non
     )
 
     assert outcome.extraction.requires_manual_review is True
+
+
+@pytest.mark.asyncio
+async def test_less_complete_retry_keeps_original_extraction() -> None:
+    original = JobExtractionCandidate(
+        metadata={"title": "Data Engineer", "company": "Example GmbH"},
+        activities=[
+            {"activity": "Datenpipelines entwickeln"},
+            {"activity": "Datenqualität überwachen"},
+        ],
+        requirements=[{"requirement": "Python"}, {"requirement": "SQL"}],
+    )
+    service = FakeReviewService(
+        [
+            ReviewResult(
+                review_type="job_extraction",
+                status="retry_requested",
+                decision="retry",
+            )
+        ]
+    )
+    async def retry_extractor(instructions: list[str]) -> JobExtractionCandidate:
+        return _candidate("Python")
+
+    outcome = await review_job_extraction_with_retry(
+        content="Stellenanzeige",
+        candidate=original,
+        review_service=service,
+        retry_extractor=retry_extractor,
+    )
+
+    assert outcome.extraction.activities == original.activities
+    assert outcome.extraction.requirements == original.requirements
+    assert outcome.extraction.requires_manual_review is True

@@ -9,6 +9,7 @@ from app.services.job_extraction_review_orchestrator import (
     JobExtractionCandidate,
     review_job_extraction_with_retry,
 )
+from app.services.job_extraction_service import enrich_job_extraction, is_job_extraction_llm_configured
 from app.services.review_service import ReviewService
 from app.services.review_history_service import store_review_result
 
@@ -32,11 +33,21 @@ async def review_job_extraction_if_configured(
     service = review_service or ReviewService()
     if not service.is_configured("job_extraction"):
         return JobExtractionReviewIntegrationResult(metadata, activities, requirements, ())
+    async def retry_extractor(instructions: list[str]) -> JobExtractionCandidate:
+        extracted = await enrich_job_extraction(
+            content=content,
+            metadata=metadata,
+            activities=activities,
+            requirements=requirements,
+            retry_instructions=instructions,
+        )
+        return JobExtractionCandidate(extracted.metadata, extracted.activities, extracted.requirements)
     try:
         outcome = await review_job_extraction_with_retry(
             content=content,
             candidate=JobExtractionCandidate(metadata, activities, requirements),
             review_service=service,
+            retry_extractor=retry_extractor if is_job_extraction_llm_configured() else None,
         )
     except ApplicationError as error:
         failed_review = ReviewResult(

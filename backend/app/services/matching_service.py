@@ -555,6 +555,21 @@ def _required_domain_terms(requirement: str) -> set[str]:
     return required
 
 
+_CLOUD_PLATFORM_EVIDENCE = re.compile(
+    r"\b(?:aws|amazon web services|azure|gcp|google cloud|cloud provider|cloud platform)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_cloud_platform_evidence(evidence: list[StoredEvidence]) -> bool:
+    """Cloud wording alone is not proof of hands-on cloud-provider experience."""
+    return any(
+        _CLOUD_PLATFORM_EVIDENCE.search(stored.item.evidence_text)
+        or _CLOUD_PLATFORM_EVIDENCE.search(" ".join(stored.item.keywords))
+        for stored in evidence
+    )
+
+
 def _alternative_anchor_terms(requirement: str) -> set[str]:
     tokens = WORD_PATTERN.findall(requirement.lower())
     anchors: set[str] = set()
@@ -783,12 +798,10 @@ def _evaluate(
         )
     ) if role_context_terms else True
     required_domain_terms = _required_domain_terms(requirement)
-    has_domain_context = bool(
-        required_domain_terms
-        and any(
-            required_domain_terms & _terms(stored.item.evidence_text, stored.item.keywords)
-            for stored in relevant
-        )
+    has_domain_context = (
+        _has_cloud_platform_evidence(relevant)
+        if "cloud" in required_domain_terms
+        else bool(required_domain_terms and any(required_domain_terms & _terms(stored.item.evidence_text, stored.item.keywords) for stored in relevant))
     ) if required_domain_terms else True
     # Context words are deliberately excluded from the lexical term set because
     # they are not skills. Detect them in the original requirement instead.

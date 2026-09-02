@@ -65,6 +65,16 @@ async def review_job_extraction_with_retry(
             extraction=_apply(candidate, manual_review),
             review_results=(initial_review, manual_review),
         )
+    if _is_less_complete(retried_candidate, candidate):
+        manual_review = _manual_review_result(
+            initial_review,
+            "Der Extraktions-Retry lieferte weniger quellenbasierte Tätigkeiten oder "
+            "Anforderungen als der ursprüngliche Kandidat.",
+        )
+        return JobExtractionReviewOutcome(
+            extraction=_apply(candidate, manual_review),
+            review_results=(initial_review, manual_review),
+        )
     retried_review = await _review_candidate(
         content=content,
         candidate=retried_candidate,
@@ -118,4 +128,15 @@ def _manual_review_result(review_result: ReviewResult, technical_error: str) -> 
             "decision": "manual_review",
             "technical_error": technical_error,
         }
+    )
+
+
+def _is_less_complete(
+    candidate: JobExtractionCandidate,
+    baseline: JobExtractionCandidate,
+) -> bool:
+    """A review retry may refine items but must never silently shrink the extraction."""
+    return (
+        len(candidate.activities) < len(baseline.activities)
+        or len(candidate.requirements) < len(baseline.requirements)
     )

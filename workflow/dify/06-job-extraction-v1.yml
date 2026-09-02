@@ -1,0 +1,172 @@
+app:
+  description: Extrahiert belegbare Metadaten, Tätigkeiten und Anforderungen aus Stellenanzeigen.
+  icon: clipboard
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: job extraction v1
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {enabled: false}
+    opening_statement: ''
+    retriever_resource: {enabled: false}
+    sensitive_word_avoidance: {enabled: false}
+    speech_to_text: {enabled: false}
+    suggested_questions: []
+    suggested_questions_after_answer: {enabled: false}
+    text_to_speech: {enabled: false}
+  graph:
+    edges:
+    - {data: {isInIteration: false, isInLoop: false, sourceType: start, targetType: llm}, id: start-extract, source: start, sourceHandle: source, target: extract, targetHandle: target, type: custom, zIndex: 0}
+    - {data: {isInIteration: false, isInLoop: false, sourceType: llm, targetType: code}, id: extract-serialize, source: extract, sourceHandle: source, target: serialize, targetHandle: target, type: custom, zIndex: 0}
+    - {data: {isInIteration: false, isInLoop: false, sourceType: code, targetType: end}, id: serialize-end, source: serialize, sourceHandle: source, target: end, targetHandle: target, type: custom, zIndex: 0}
+    nodes:
+    - data:
+        desc: Jobtext, Regelkandidat und optionale Hinweise aus dem Review.
+        selected: false
+        title: Extraction Input
+        type: start
+        variables:
+        - {default: '', label: job_content, max_length: 30000, options: [], required: true, type: paragraph, variable: job_content}
+        - {default: '', label: source_filename, max_length: 500, options: [], required: false, type: text-input, variable: source_filename}
+        - {default: '', label: source_url, max_length: 2048, options: [], required: false, type: text-input, variable: source_url}
+        - {default: '{}', label: rule_metadata_json, max_length: 10000, options: [], required: true, type: paragraph, variable: rule_metadata_json}
+        - {default: '[]', label: rule_activities_json, max_length: 30000, options: [], required: true, type: paragraph, variable: rule_activities_json}
+        - {default: '[]', label: rule_requirements_json, max_length: 30000, options: [], required: true, type: paragraph, variable: rule_requirements_json}
+        - {default: '[]', label: retry_instructions_json, max_length: 10000, options: [], required: true, type: paragraph, variable: retry_instructions_json}
+      height: 260
+      id: start
+      position: {x: 30, y: 220}
+      positionAbsolute: {x: 30, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context: {enabled: false, variable_selector: []}
+        model:
+          completion_params: {max_tokens: 6000, temperature: 0.1}
+          mode: chat
+          name: qwen2.5vl:7b
+          provider: langgenius/ollama/ollama
+        prompt_template:
+        - id: system
+          role: system
+          text: |
+            Extrahiere ausschließlich durch den Stellentext belegte Informationen.
+            Erfinde niemals Beschäftigungsart, Befristung, Ort oder Anforderungen.
+            Gib alle klaren Tätigkeiten und Anforderungen wieder, keine Benefits.
+            Jede Metadatenangabe braucht value, confidence (0 bis 1) und ein wörtliches evidence-Fragment.
+            Jede Tätigkeit und Anforderung braucht ebenfalls ein wörtliches evidence-Fragment.
+            Tätigkeiten beschreiben Arbeit der Rolle; Anforderungen beschreiben Ausbildung, Skills,
+            Erfahrung, Sprache oder andere Kandidatenqualifikationen. Nutze priority must, should oder nice_to_have.
+            Regelkandidaten sind nur Hinweise. Retry-Hinweise haben Vorrang und müssen gezielt geprüft werden.
+        - id: user
+          role: user
+          text: |
+            Quelldatei: {{#start.source_filename#}}
+            Quell-URL: {{#start.source_url#}}
+            Regel-Metadaten: {{#start.rule_metadata_json#}}
+            Regel-Tätigkeiten: {{#start.rule_activities_json#}}
+            Regel-Anforderungen: {{#start.rule_requirements_json#}}
+            Retry-Hinweise: {{#start.retry_instructions_json#}}
+            JOB_START
+            {{#start.job_content#}}
+            JOB_END
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              metadata:
+                additionalProperties: false
+                properties:
+                  title: {$ref: '#/$defs/field'}
+                  company: {$ref: '#/$defs/field'}
+                  location: {$ref: '#/$defs/field'}
+                  work_model: {$ref: '#/$defs/field'}
+                  employment_type: {$ref: '#/$defs/field'}
+                  contract_term: {$ref: '#/$defs/field'}
+                  language: {$ref: '#/$defs/field'}
+                required: [title, company, location, work_model, employment_type, contract_term, language]
+                type: object
+              activities: {items: {$ref: '#/$defs/activity'}, type: array}
+              requirements: {items: {$ref: '#/$defs/requirement'}, type: array}
+            required: [metadata, activities, requirements]
+            type: object
+            $defs:
+              field:
+                additionalProperties: false
+                properties: {value: {type: string}, confidence: {type: number}, evidence: {type: string}}
+                required: [value, confidence, evidence]
+                type: object
+              activity:
+                additionalProperties: false
+                properties: {activity: {type: string}, category: {type: string}, keywords: {items: {type: string}, type: array}, evidence: {type: string}}
+                required: [activity, category, keywords, evidence]
+                type: object
+              requirement:
+                additionalProperties: false
+                properties: {requirement: {type: string}, category: {type: string}, priority: {enum: [must, should, nice_to_have], type: string}, keywords: {items: {type: string}, type: array}, evidence: {type: string}}
+                required: [requirement, category, priority, keywords, evidence]
+                type: object
+        structured_output_enabled: true
+        title: Extract Job
+        type: llm
+        vision: {enabled: false}
+      height: 88
+      id: extract
+      position: {x: 334, y: 220}
+      positionAbsolute: {x: 334, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          def main(extraction: dict) -> dict:
+              return {"extraction_json": json.dumps(extraction, ensure_ascii=False)}
+        code_language: python3
+        desc: Serialisiert das strukturierte Ergebnis für das Backend.
+        outputs: {extraction_json: {children: null, type: string}}
+        selected: false
+        title: Serialize Extraction
+        type: code
+        variables:
+        - {value_selector: [extract, structured_output], value_type: object, variable: extraction}
+      height: 82
+      id: serialize
+      position: {x: 638, y: 220}
+      positionAbsolute: {x: 638, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Vollständige, quellenbelegte Job-Extraktion als JSON-String.
+        outputs:
+        - {value_selector: [serialize, extraction_json], value_type: string, variable: extraction_json}
+        selected: false
+        title: Extraction Output
+        type: end
+      height: 90
+      id: end
+      position: {x: 942, y: 220}
+      positionAbsolute: {x: 942, y: 220}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport: {x: 0, y: 0, zoom: 0.8}
+  rag_pipeline_variables: []

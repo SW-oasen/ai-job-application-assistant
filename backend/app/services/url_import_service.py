@@ -12,6 +12,7 @@ from app.parsers.job_seniority import (
     extract_job_seniority,
 )
 from app.parsers.job_role import extract_job_role
+from app.parsers.job_metadata import extract_job_metadata
 from app.parsers.job_structure import extract_job_structure
 from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.parsers.text_quality import assess_text_quality
@@ -20,7 +21,7 @@ from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
     store_job_extraction_review_history,
 )
-from app.services.semantic_metadata_service import enrich_job_metadata
+from app.services.job_extraction_service import enrich_job_extraction
 
 NON_FALLBACK_ERROR_CODES = {
     "invalid_url",
@@ -135,22 +136,23 @@ async def _persist_response(
         response.duplicate = False
         return response
 
-    semantic = await enrich_job_metadata(
-        response.markdown,
-        source_url=response.source_url,
-    )
     structure = await extract_job_structure_hybrid(response.markdown)
-    seniority = extract_job_seniority(response.markdown)
-    job_role = extract_job_role(semantic.metadata.get("title") or response.title, response.markdown)
-    reviewed = await review_job_extraction_if_configured(
+    extraction = await enrich_job_extraction(
         content=response.markdown,
-        metadata=semantic.metadata,
+        metadata=extract_job_metadata(response.markdown, source_url=response.source_url),
         activities=structure.activities,
         requirements=structure.requirements,
+        source_url=response.source_url,
+    )
+    seniority = extract_job_seniority(response.markdown)
+    job_role = extract_job_role(extraction.metadata.get("title") or response.title, response.markdown)
+    reviewed = await review_job_extraction_if_configured(
+        content=response.markdown,
+        metadata=extraction.metadata, activities=extraction.activities, requirements=extraction.requirements,
     )
     requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     response.warnings.extend(
-        warning for warning in semantic.warnings if warning not in response.warnings
+        warning for warning in extraction.warnings if warning not in response.warnings
     )
     persisted = await persist_imported_job(
         source_type="url",
@@ -164,7 +166,7 @@ async def _persist_response(
         warnings=response.warnings,
         metadata_override=reviewed.metadata,
         extracted_json={
-            "semantic_metadata": semantic.details,
+            "semantic_metadata": extraction.metadata_details,
             "activities": reviewed.activities,
             "requirements": requirements,
             "seniority": seniority,
@@ -180,7 +182,7 @@ async def _persist_response(
     if persisted.job_id and reviewed.review_results:
         await store_job_extraction_review_history(
             job_id=persisted.job_id,
-            original_metadata=semantic.metadata,
+            original_metadata=extraction.metadata,
             original_activities=structure.activities,
             original_requirements=structure.requirements,
             reviewed=reviewed,

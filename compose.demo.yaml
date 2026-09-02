@@ -1,0 +1,76 @@
+services:
+  chromadb-demo:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma-demo-data:/data
+    networks:
+      - ai-services
+    restart: unless-stopped
+
+  application-assistant-demo:
+    build:
+      context: ./backend
+    image: application-assistant-backend:0.1.0
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./.env.demo
+        required: true
+    environment:
+      APP_ENV: development
+      DEMO_MODE: "true"
+      DEMO_DATABASE_NAME: application_assistant_demo
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      APPLICATION_DOCUMENTS_PATH: /app/data/application-documents
+      CHROMA_HOST: chromadb-demo
+      CHROMA_PORT: 8000
+      CHROMA_COLLECTION: application-assistant-demo-evidence
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - application-demo-documents:/app/data/application-documents
+    networks:
+      - ai-services
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  demo-seed:
+    build:
+      context: ./backend
+    image: application-assistant-backend:0.1.0
+    profiles: [tools]
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./.env.demo
+        required: true
+    environment:
+      APP_ENV: development
+      DEMO_MODE: "true"
+      DEMO_DATABASE_NAME: application_assistant_demo
+      APPLICATION_DOCUMENTS_PATH: /app/data/application-documents
+      CHROMA_HOST: chromadb-demo
+      CHROMA_PORT: 8000
+      CHROMA_COLLECTION: application-assistant-demo-evidence
+    command: ["sh", "-c", "python -m app.tools.validate_demo_database && alembic upgrade head && python -m app.tools.seed_demo_data"]
+    networks:
+      - ai-services
+
+networks:
+  ai-services:
+    external: true
+    name: "${DOCKER_NETWORK_NAME:-docker_default}"
+
+volumes:
+  application-demo-documents:
+  chroma-demo-data:

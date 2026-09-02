@@ -172,7 +172,7 @@ workflow:
           write: 30
         title: Load Matching Job
         type: http-request
-        url: http://application-assistant-backend:8080/matching/jobs/{{#start.job_id#}}
+        url: http://application-assistant-demo:8080/matching/jobs/{{#start.job_id#}}
       height: 160
       id: context
       position:
@@ -523,7 +523,7 @@ workflow:
           write: 30
         title: Evaluate Matching
         type: http-request
-        url: http://application-assistant-backend:8080/matching/evaluate
+        url: http://application-assistant-demo:8080/matching/evaluate
       height: 160
       id: evaluate
       position:

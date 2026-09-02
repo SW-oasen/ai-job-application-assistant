@@ -374,3 +374,36 @@ def test_classifies_plain_nested_headings_in_flattened_html_capture() -> None:
         "Python and LLM API experience",
         "build things from scratch and care about reliability",
     ]
+
+
+def test_keeps_bold_task_and_requirement_subsections() -> None:
+    result = extract_job_structure(
+        "## **Tasks**\n"
+        "**80% Building: The core of the role**\n"
+        "- Build production AI systems\n"
+        "**20% Communication: Mostly internal**\n"
+        "- Explain technical decisions to non-technical colleagues\n"
+        "## **Requirements**\n"
+        "**Important**\n"
+        "- Production LLM engineering experience\n"
+        "- English at working level\n"
+        "**Highly valuable**\n"
+        "- German language skills\n"
+        "**Not required**\n"
+        "- A computer science degree\n"
+    )
+
+    assert [item["activity"] for item in result.activities] == [
+        "Build production AI systems",
+        "Explain technical decisions to non-technical colleagues",
+    ]
+    assert [item["requirement"] for item in result.requirements] == [
+        "Production LLM engineering experience",
+        "English at working level",
+        "German language skills",
+    ]
+    assert [item["priority"] for item in result.requirements] == [
+        "must",
+        "must",
+        "nice_to_have",
+    ]

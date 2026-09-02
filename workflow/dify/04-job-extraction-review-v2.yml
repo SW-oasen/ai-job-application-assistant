@@ -132,6 +132,32 @@ workflow:
         code: |
           import json
           def main(review: dict) -> dict:
+              required_issue_fields = {"field", "issue_type", "severity", "message"}
+              valid = (
+                  isinstance(review, dict)
+                  and isinstance(review.get("issues"), list)
+                  and all(
+                      isinstance(issue, dict)
+                      and required_issue_fields.issubset(issue)
+                      for issue in review["issues"]
+                  )
+              )
+              if not valid:
+                  review = {
+                      "review_type": "job_extraction",
+                      "status": "manual_review_required",
+                      "decision": "manual_review",
+                      "overall_confidence": 0,
+                      "issues": [{
+                          "field": "review_output",
+                          "issue_type": "schema_error",
+                          "severity": "high",
+                          "message": "Der Reviewer lieferte ein unvollständiges issues-Objekt.",
+                      }],
+                      "field_confidence": {},
+                      "corrected_result": {},
+                      "retry_instructions": [],
+                  }
               return {"review_json": json.dumps(review, ensure_ascii=False)}
         code_language: python3
         desc: Serialisiert das strukturierte Review-Ergebnis für das Backend.

@@ -150,6 +150,14 @@ Dokumente gehören nicht in das Repository.
 Beim Containerstart werden ausstehende Alembic-Migrationen automatisch
 ausgeführt.
 
+## Präsentationsmodus
+
+Für Vorführungen mit fiktiven Stellenanzeigen steht eine strikt getrennte
+Demo-Umgebung auf `http://localhost:8081` bereit. Sie verwendet eine eigene
+Datenbank und eigene persistente Volumes; ein Live-Import während der Demo
+bleibt dadurch von den echten Daten getrennt. Einrichtung und Ablauf stehen in
+[`docs/demo-mode.md`](docs/demo-mode.md).
+
 ## Review-Integration (Dify)
 
 Optional kann die Anwendung sogenannte Review-Workflows an Dify auslagern

@@ -62,7 +62,7 @@ BENEFIT_HEADINGS = re.compile(
     re.IGNORECASE,
 )
 OPTIONAL_MARKERS = re.compile(
-    r"\b(von vorteil|wünschenswert|idealerweise|nice to have|preferred|plus)\b",
+    r"\b(von vorteil|wünschenswert|idealerweise|nice to have|preferred|plus|highly valuable)\b",
     re.IGNORECASE,
 )
 OPTIONAL_ITEM_PREFIX = re.compile(
@@ -70,7 +70,16 @@ OPTIONAL_ITEM_PREFIX = re.compile(
     re.IGNORECASE,
 )
 MUST_MARKERS = re.compile(
-    r"\b(muss|zwingend|notwendig|erforderlich|required|must|mindestens)\b",
+    r"\b(muss|zwingend|notwendig|erforderlich|required|must|mindestens|important)\b",
+    re.IGNORECASE,
+)
+EXCLUDED_REQUIREMENT_SUBHEADINGS = re.compile(
+    r"^\s*(?:not required|nicht erforderlich|keine voraussetzungen)\s*$",
+    re.IGNORECASE,
+)
+# Labels nested inside an already identified section, rather than new sections.
+NESTED_SECTION_LABEL = re.compile(
+    r"^\s*(?:\d{1,3}\s*%(?=\s|$)|important\b|highly valuable\b|must[- ]?haves?\b|nice to have\b)",
     re.IGNORECASE,
 )
 SENIORITY_PATTERN = re.compile(
@@ -172,6 +181,15 @@ def _plain_section_heading(value: str) -> str | None:
     if len(heading) > 80 or re.search(r"[.!?]", heading):
         return None
     return _section_for_heading(heading)
+
+
+def _nested_section_heading(value: str, current_section: str | None) -> str | None:
+    """Return the inherited section for a known nested label, if applicable."""
+    if current_section == "requirement" and EXCLUDED_REQUIREMENT_SUBHEADINGS.match(value):
+        return "excluded"
+    if current_section is not None and NESTED_SECTION_LABEL.match(value):
+        return current_section
+    return None
 
 
 def _join_list_continuations(content: str) -> list[str]:
@@ -286,6 +304,15 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
             if candidate_section is not None:
                 heading = candidate_heading
                 section = candidate_section
+                continue
+            nested_section = _nested_section_heading(candidate_heading, section)
+            if nested_section == "excluded":
+                section = None
+                heading = candidate_heading
+                continue
+            if nested_section is not None:
+                # Keep the parent section and use this label as priority context.
+                heading = candidate_heading
                 continue
             # A new bold standalone heading must not inherit the previous
             # section (e.g. "Meine Kompetenzen" after an activity section).

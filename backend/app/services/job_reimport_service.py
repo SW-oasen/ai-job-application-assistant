@@ -9,6 +9,7 @@ from app.parsers.job_seniority import (
     ensure_seniority_requirement,
     extract_job_seniority,
 )
+from app.parsers.job_metadata import extract_job_metadata
 from app.parsers.job_structure import extract_job_structure
 from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.schemas.imports import JobReimportResponse, UrlImportRequest
@@ -16,7 +17,7 @@ from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
     store_job_extraction_review_history,
 )
-from app.services.semantic_metadata_service import enrich_job_metadata
+from app.services.job_extraction_service import enrich_job_extraction
 from app.services.url_import_service import import_url
 
 
@@ -61,27 +62,28 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
             status_code=409,
         )
 
-    semantic = await enrich_job_metadata(
-        source.normalized_content,
+    structure = await extract_job_structure_hybrid(source.normalized_content)
+    extraction = await enrich_job_extraction(
+        content=source.normalized_content,
+        metadata=extract_job_metadata(source.normalized_content, source_filename=source.source_filename, source_url=source.source_url),
+        activities=structure.activities,
+        requirements=structure.requirements,
         source_filename=source.source_filename,
         source_url=source.source_url,
     )
-    structure = await extract_job_structure_hybrid(source.normalized_content)
     seniority = extract_job_seniority(source.normalized_content)
     reviewed = await review_job_extraction_if_configured(
         content=source.normalized_content,
-        metadata=semantic.metadata,
-        activities=structure.activities,
-        requirements=structure.requirements,
+        metadata=extraction.metadata, activities=extraction.activities, requirements=extraction.requirements,
     )
     requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     warnings = [
         warning
         for warning in source.import_warnings
-        if not warning.startswith("semantic_metadata_")
+        if not warning.startswith("semantic_metadata_") and not warning.startswith("job_extraction_llm_")
     ]
     warnings.extend(
-        warning for warning in semantic.warnings if warning not in warnings
+        warning for warning in extraction.warnings if warning not in warnings
     )
     persisted = await persist_imported_job(
         source_type=source.source_type,
@@ -95,7 +97,7 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         warnings=warnings,
         metadata_override=reviewed.metadata,
         extracted_json={
-            "semantic_metadata": semantic.details,
+            "semantic_metadata": extraction.metadata_details,
             "activities": reviewed.activities,
             "requirements": requirements,
             "seniority": seniority,
@@ -114,7 +116,7 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
     if persisted.job_id and reviewed.review_results:
         await store_job_extraction_review_history(
             job_id=persisted.job_id,
-            original_metadata=semantic.metadata,
+            original_metadata=extraction.metadata,
             original_activities=structure.activities,
             original_requirements=structure.requirements,
             reviewed=reviewed,
@@ -123,6 +125,6 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
         job_id=job_id,
         source_type=source.source_type,
         retrieval_method=source.retrieval_method,
-        language=semantic.metadata.get("language"),
+        language=extraction.metadata.get("language"),
         warnings=warnings,
     )

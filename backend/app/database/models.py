@@ -629,6 +629,7 @@ class ProfileReference(TimestampMixin, Base):
     profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
     full_name: Mapped[str] = mapped_column(String(500))
     organization: Mapped[str | None] = mapped_column(String(500))
+    job_title: Mapped[str | None] = mapped_column(String(500))
     email: Mapped[str | None] = mapped_column(String(500))
     phone: Mapped[str | None] = mapped_column(String(100))
     linkedin_url: Mapped[str | None] = mapped_column(String(2048))

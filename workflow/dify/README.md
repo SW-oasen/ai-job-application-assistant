@@ -9,6 +9,7 @@ versionierten Workflow-DSLs des Application Assistant.
 | `01-import-job-url-v3.yml` | öffentliche Stellen-URL importieren und validieren |
 | `02-matching-v4.yml` | Jobanforderungen aus dem gespeicherten Job übernehmen oder extrahieren und evidenzbasiert bewerten |
 | `03-job-metadata-fallback-v1.yml` | fehlende oder unplausible Metadaten ergänzen |
+| `06-job-extraction-v1.yml` | vollständige Job-Extraktion für Metadaten, Tätigkeiten und Anforderungen |
 | `04-job-extraction-review-v1.yml` | strukturierte Job-Extraktionen gegen den Stellentext prüfen |
 | `05-job-matching-review-v1.yml` | gespeicherte Job-Matchings auf Evidenz und Konsistenz prüfen |
 
@@ -29,7 +30,7 @@ Für HTTP-Nodes zum Backend muss der Dify-SSRF-Proxy gezielt den internen
 Servicenamen erlauben:
 
 ```env
-SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=application-assistant-backend
+SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=application-assistant-backend,application-assistant-demo
 ```
 
 ## Import und Veröffentlichung
@@ -77,10 +78,14 @@ kein Matching aus.
 
 ## Matching
 
-`02-matching-v4.yml` erwartet:
+`02-matching-v4.yml` ist der produktive Workflow und erwartet:
 
 - `job_id`
 - `profile_id`
+
+Für die isolierte Demo `matching-demo-v4.yml` importieren und veröffentlichen.
+Diese Variante verwendet ausschließlich
+`http://application-assistant-demo:8080`.
 
 Der Workflow lädt den gespeicherten Job aus dem Backend. Wenn dort bereits
 strukturierte Anforderungen vorliegen, werden sie bevorzugt verwendet;

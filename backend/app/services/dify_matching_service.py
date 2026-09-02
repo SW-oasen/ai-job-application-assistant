@@ -39,7 +39,10 @@ def _friendly_workflow_failure_message(raw_error: str | None) -> tuple[str, str]
             return friendly_message, "matching_no_requirements"
     if match:
         return exception_message, "dify_matching_workflow_failed"
-    return "Der Dify-Matching-Workflow ist fehlgeschlagen.", "dify_matching_workflow_failed"
+    return (
+        f"Der Dify-Matching-Workflow ist fehlgeschlagen: {exception_message[:800]}",
+        "dify_matching_workflow_failed",
+    )
 
 
 def _workflow_error(response: httpx.Response) -> ApplicationError:

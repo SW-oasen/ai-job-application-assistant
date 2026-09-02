@@ -306,6 +306,7 @@ class CertificateUpdate(ResourceBase):
 class ReferenceCreate(ResourceBase):
     full_name: str = Field(min_length=1, max_length=500)
     organization: str | None = Field(default=None, max_length=500)
+    job_title: str | None = Field(default=None, max_length=500)
     email: str | None = Field(default=None, max_length=500)
     phone: str | None = Field(default=None, max_length=100)
     linkedin_url: HttpUrl | None = None
@@ -324,6 +325,7 @@ class ReferenceCreate(ResourceBase):
 class ReferenceUpdate(ResourceBase):
     full_name: str | None = Field(default=None, min_length=1, max_length=500)
     organization: str | None = Field(default=None, max_length=500)
+    job_title: str | None = Field(default=None, max_length=500)
     email: str | None = Field(default=None, max_length=500)
     phone: str | None = Field(default=None, max_length=100)
     linkedin_url: HttpUrl | None = None

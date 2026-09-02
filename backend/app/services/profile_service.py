@@ -143,8 +143,10 @@ RESOURCES = {
             {
                 "full_name",
                 "organization",
+                "job_title",
                 "email",
                 "phone",
+                "linkedin_url",
                 "preferred_language",
                 "usage_consent",
                 "status",
@@ -183,8 +185,9 @@ def _clean_values(payload: BaseModel, allowed_fields: frozenset[str]) -> tuple[d
     localizations = values.pop("localizations", None)
     applied_skill_ids = values.pop("applied_skill_ids", None)
     values = {key: value for key, value in values.items() if key in allowed_fields}
-    if values.get("verification_url") is not None:
-        values["verification_url"] = str(values["verification_url"])
+    for url_field in ("verification_url", "linkedin_url"):
+        if values.get(url_field) is not None:
+            values[url_field] = str(values[url_field])
     return values, localizations, applied_skill_ids
 
 

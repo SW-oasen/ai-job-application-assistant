@@ -45,12 +45,17 @@ class Settings(BaseSettings):
     dify_metadata_workflow_api_key: SecretStr | None = None
     dify_metadata_workflow_timeout_seconds: int = 120
     semantic_metadata_max_characters: int = 15_000
+    dify_job_extraction_workflow_api_key: SecretStr | None = None
+    dify_job_extraction_workflow_timeout_seconds: int = 180
+    job_extraction_max_characters: int = 30_000
     review_workflows: dict[str, ReviewWorkflowSettings] = Field(default_factory=dict)
     mineru_base_url: AnyHttpUrl = "http://mineru-api:8000"
     mineru_timeout_seconds: int = 300
     mineru_backend: Literal["pipeline", "hybrid-engine"] = "pipeline"
 
     database_url: str | None = None
+    demo_mode: bool = False
+    demo_database_name: str = "application_assistant_demo"
     embedding_provider: str = "disabled"
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = Field(default=1536, ge=1, le=8192)
