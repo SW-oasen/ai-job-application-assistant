@@ -7,7 +7,7 @@ HEADING_PATTERN = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*$")
 BOLD_HEADING_PATTERN = re.compile(r"^\s*\*\*(?P<heading>[^*]{2,60})\*\*\s*.{0,80}$")
 LIST_ITEM_PATTERN = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.+?)\s*$")
 ACTIVITY_HEADINGS = re.compile(
-    r"\b(tasks?|"
+    r"\b(activities?|tasks?|"
     r"aufgaben|tätigkeiten|verantwortung|verantwortlichkeiten|mission|"
     r"(?:deine|ihre) rolle|rolle|ihr aufgabengebiet|das erwartet dich|"
     r"wie sie etwas bewirken können|"
@@ -32,7 +32,7 @@ INLINE_REQUIREMENT_CONTEXT = re.compile(
 )
 REQUIREMENT_HEADINGS = re.compile(
     r"\b("
-    r"anforderungen|qualifikation(?:en)?|kompetenz\w*|profil|das bringst du(?:\s+.{0,80})?\s+mit|"
+    r"anforderungen|qualifikation(?:en)?|kompetenz\w*|profil|du bietest|das bringst du(?:\s+.{0,80})?\s+mit|"
     r"das zeichnet dich aus|ihr profil|was sie mitbringen|"
     r"requirements|qualifications|what you bring|your profile|"
     r"skills?\s*[+&]\s*education|skills?|education|"
@@ -358,7 +358,9 @@ def extract_job_structure(content: str) -> ExtractedJobStructure:
             heading = ""
         blank_line_after_list = False
         normalized = text.casefold()
-        if len(text) < 8 or normalized in seen[section]:
+        # Tech stacks often contain short but material requirements (e.g.
+        # Python, SQL, R). Keep them once a section has established context.
+        if len(text) < 2 or normalized in seen[section]:
             continue
         seen[section].add(normalized)
         if section == "benefit":

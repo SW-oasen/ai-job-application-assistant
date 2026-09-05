@@ -63,8 +63,8 @@
               <datalist id="sourcePortalNames"><option value="LinkedIn"><option value="Indeed"><option value="Instaffo"><option value="StepStone"><option value="XING"><option value="Bundesagentur für Arbeit"></datalist>
             </label>
             <label>Sprache<select id="metadataLanguage"><option value="">Nicht angegeben</option><option value="de">Deutsch</option><option value="en">Englisch</option></select></label>
-            <label>Veröffentlicht am<input id="metadataPublishedAt" type="date"></label>
-            <label>Bewerbungsfrist<input id="metadataDeadline" type="date"></label>
+            <label>Veröffentlicht am<input id="metadataPublishedAt" type="date" min="0001-01-01" max="9999-12-31"></label>
+            <label>Bewerbungsfrist<input id="metadataDeadline" type="date" min="0001-01-01" max="9999-12-31"></label>
           </div>
           <p>
             <button class="button strong" id="saveMetadata" type="submit">Metadaten speichern</button>
@@ -103,7 +103,7 @@
               <option value="rejected">Abgelehnt</option><option value="offer">Angebot erhalten</option>
               <option value="accepted">Angenommen</option><option value="withdrawn">Zurückgezogen</option><option value="closed">Geschlossen</option>
             </select></label>
-            <label>Datum und Uhrzeit<input id="occurredAt" type="datetime-local" required></label>
+            <label>Datum und Uhrzeit<input id="occurredAt" type="datetime-local" min="0001-01-01T00:00" max="9999-12-31T23:59" required></label>
             <label>Kommunikationsweg<select id="channel"><option value="">Nicht angegeben</option><option value="email">E-Mail</option><option value="company_portal">Arbeitgeberportal</option><option value="job_portal">Jobportal</option><option value="phone">Telefon</option><option value="personal">Persönlich</option><option value="other">Sonstiges</option></select></label>
             <label id="portalNameField">Jobportal
               <input id="portalName" maxlength="100" list="jobPortalNames" placeholder="z. B. LinkedIn">
@@ -256,7 +256,7 @@
       document.getElementById("applicationForm").reset();
       document.getElementById("eventType").value="";
       document.getElementById("applicationStatus").value="";
-      document.getElementById("occurredAt").value="";
+      document.getElementById("occurredAt").value=localNow();
       document.getElementById("channel").value="";
       document.getElementById("portalName").value="";
       document.getElementById("contactPerson").value="";

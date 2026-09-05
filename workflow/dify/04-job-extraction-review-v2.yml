@@ -67,10 +67,13 @@ workflow:
             bei strukturell unzureichender Extraktion und konkrete retry_instructions. Nutze
             manual_review bei widersprüchlicher oder nicht sicher korrigierbarer Lage.
 
-            Wichtige Vollständigkeitsregel: Jede Anforderung aus der gelieferten Extraktion, deren
-            evidence wörtlich oder sinngleich im Stellentext belegt ist, muss im corrected_result
-            erhalten bleiben. Du darfst solche Anforderungen nur entfernen, wenn sie nachweislich
-            keine Bewerberanforderung, sondern zum Beispiel ein Benefit oder eine Tätigkeit ist.
+            Wichtige Vollständigkeitsregel: Jede Tätigkeit und jede Anforderung aus der gelieferten
+            Extraktion, deren evidence wörtlich oder sinngleich im Stellentext belegt ist, muss im
+            corrected_result erhalten bleiben. Du darfst solche Einträge nur entfernen, wenn sie
+            nachweislich falsch kategorisiert sind, zum Beispiel ein Benefit statt einer
+            Bewerberanforderung. Prüfe zudem explizit, ob klar abgegrenzte Quellsektionen für
+            Tätigkeiten (etwa "Dein Impact") und Anforderungen (etwa "Dein Skillset") vollständig
+            vertreten sind; eine fehlende ganze Sektion verlangt retry oder correct.
             Dokumentiere dafür pro entfernten oder geänderten Eintrag ein issue mit Feld,
             Begründung und Textbeleg. Ohne mindestens ein konkretes issue ist ausschließlich
             decision=accept zulässig. Kürze Listen niemals aus Relevanzgründen.

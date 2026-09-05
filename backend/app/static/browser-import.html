@@ -22,7 +22,7 @@
       <li>Blende in Firefox die Lesezeichen-Symbolleiste ein.</li>
       <li>Ziehe den blauen Button in die Lesezeichen-Symbolleiste.</li>
       <li>Öffne eine konkrete Stellenanzeige auf einem beliebigen öffentlichen Jobportal oder einer Unternehmensseite.</li>
-      <li>Klicke in der Lesezeichenleiste auf „Stelle importieren“.</li>
+      <li>Klicke in der Lesezeichenleiste auf „Stelle importieren“ und lasse die Stellenanzeige geöffnet.</li>
     </ol>
     <p><a class="bookmarklet" id="bookmarklet" href="#">Stelle importieren</a></p>
     <p class="hint">Der Button überträgt nur beim Anklicken den aktuell gerenderten Seiteninhalt. Anmeldedaten und Firefox-Cookies werden nicht an die Anwendung gesendet.</p>
@@ -38,8 +38,8 @@
 <script>
   fetch("/profiles").then(response=>response.ok?response.json():[]).then(profiles=>{const profile=profiles.find(item=>item.id===localStorage.getItem("managedProfileId"));document.getElementById("active-profile").textContent=profile?`Profil: ${profile.display_name}`:"Kein Profil geladen"}).catch(()=>{});
   const receiverOrigin=location.origin;
-  const receiverUrl=`${receiverOrigin}/browser-import/receive`;
-  const code=`javascript:(()=>{if(!/^https?:$/.test(location.protocol)){alert("Diese Seite kann nicht importiert werden.");return}const o=${JSON.stringify(receiverOrigin)},w=window.open(${JSON.stringify(receiverUrl)},"application-assistant-import","width=560,height=480");if(!w){alert("Das Importfenster wurde blockiert. Bitte Pop-ups für diese Seite erlauben.");return}const h=e=>{if(e.origin!==o||e.source!==w||e.data?.type!=="application-assistant-ready")return;window.removeEventListener("message",h);w.postMessage({type:"application-assistant-capture",source_url:location.href,html:"<!doctype html>\\n"+document.documentElement.outerHTML},o)};window.addEventListener("message",h)})()`;
+  const captureUrl=`${receiverOrigin}/imports/browser-capture`;
+  const code=`javascript:(async()=>{if(!/^https?:$/.test(location.protocol)){alert("Diese Seite kann nicht importiert werden.");return}try{const r=await fetch(${JSON.stringify(captureUrl)},{method:"POST",headers:{"Content-Type":"application/json","X-Browser-Capture":"receiver-v1"},body:JSON.stringify({source_url:location.href,html:"<!doctype html>\\n"+document.documentElement.outerHTML})}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error?.message||"HTTP "+r.status);if(!d.success||!d.job_id)throw Error((d.warnings||[]).join(", ")||"keine verwertbare Stellenanzeige");alert(d.duplicate?"Diese Stelle war bereits gespeichert.":"Stelle erfolgreich importiert.")}catch(e){alert("Import fehlgeschlagen: "+e.message)}})()`;
   document.getElementById("bookmarklet").href=code;
   document.getElementById("code").value=code;
   document.getElementById("copy").onclick=async()=>{

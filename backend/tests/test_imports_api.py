@@ -204,6 +204,20 @@ def test_browser_capture_rejects_missing_receiver_header(client) -> None:
     assert response.json()["error"]["code"] == "browser_capture_forbidden"
 
 
+def test_browser_capture_allows_cors_preflight_from_job_portal(client) -> None:
+    response = client.options(
+        "/imports/browser-capture",
+        headers={
+            "Origin": "https://job.deloitte.com",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 204
+    assert response.headers["access-control-allow-origin"] == "https://job.deloitte.com"
+    assert "X-Browser-Capture" in response.headers["access-control-allow-headers"]
+
+
 def test_browser_capture_rejects_local_source(client) -> None:
     response = client.post(
         "/imports/browser-capture",

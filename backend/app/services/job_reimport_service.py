@@ -5,14 +5,15 @@ from app.database.repositories.jobs import (
     get_stored_job_source,
     persist_imported_job,
 )
+from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_metadata import extract_job_metadata
+from app.parsers.job_portals import normalize_job_document
 from app.parsers.job_seniority import (
     ensure_seniority_requirement,
     extract_job_seniority,
 )
-from app.parsers.job_metadata import extract_job_metadata
-from app.parsers.job_structure import extract_job_structure
-from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.schemas.imports import JobReimportResponse, UrlImportRequest
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
     store_job_extraction_review_history,
@@ -55,43 +56,55 @@ async def reimport_job(job_id: UUID) -> JobReimportResponse:
             code="unsupported_reimport_source",
             status_code=409,
         )
-    if not source.normalized_content.strip():
+    if not source.normalized_content.strip() and not source.raw_content:
         raise ApplicationError(
             "No stored job content is available for reimport.",
             code="job_source_unavailable",
             status_code=409,
         )
 
-    structure = await extract_job_structure_hybrid(source.normalized_content)
+    # Rebuild HTML captures so newly added portal profiles also improve jobs
+    # that were imported before the profile existed.
+    normalized_content = source.normalized_content
+    if source.source_type == "html" and source.raw_content:
+        document = html_to_document(source.raw_content)
+        normalized_content = normalize_job_document(
+            document.markdown, title=document.title, source_url=source.source_url, raw_html=source.raw_content
+        ).markdown
+
+    structure = await extract_job_structure_hybrid(normalized_content)
     extraction = await enrich_job_extraction(
-        content=source.normalized_content,
-        metadata=extract_job_metadata(source.normalized_content, source_filename=source.source_filename, source_url=source.source_url),
+        content=normalized_content,
+        metadata=extract_job_metadata(
+            normalized_content, source_filename=source.source_filename, source_url=source.source_url
+        ),
         activities=structure.activities,
         requirements=structure.requirements,
         source_filename=source.source_filename,
         source_url=source.source_url,
     )
-    seniority = extract_job_seniority(source.normalized_content)
+    seniority = extract_job_seniority(normalized_content)
     reviewed = await review_job_extraction_if_configured(
-        content=source.normalized_content,
-        metadata=extraction.metadata, activities=extraction.activities, requirements=extraction.requirements,
+        content=normalized_content,
+        metadata=extraction.metadata,
+        activities=extraction.activities,
+        requirements=extraction.requirements,
     )
     requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     warnings = [
         warning
         for warning in source.import_warnings
-        if not warning.startswith("semantic_metadata_") and not warning.startswith("job_extraction_llm_")
+        if not warning.startswith("semantic_metadata_")
+        and not warning.startswith("job_extraction_llm_")
     ]
-    warnings.extend(
-        warning for warning in extraction.warnings if warning not in warnings
-    )
+    warnings.extend(warning for warning in extraction.warnings if warning not in warnings)
     persisted = await persist_imported_job(
         source_type=source.source_type,
         source_url=source.source_url,
         source_filename=source.source_filename,
         title=None,
         raw_content=source.raw_content,
-        normalized_content=source.normalized_content,
+        normalized_content=normalized_content,
         content_hash=source.content_hash,
         retrieval_method=source.retrieval_method,
         warnings=warnings,

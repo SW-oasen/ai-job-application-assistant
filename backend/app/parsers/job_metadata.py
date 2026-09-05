@@ -2,15 +2,61 @@ import re
 
 LANGUAGE_MARKERS = {
     "de": {
-        "aber", "als", "auch", "auf", "aus", "bei", "bewerbung", "das", "der", "die",
-        "eine", "einem", "einen", "einer", "für", "ihre", "ihren", "ist", "mit",
-        "oder", "sind", "stelle", "und", "unser", "unsere", "von", "wir", "werden",
+        "aber",
+        "als",
+        "auch",
+        "auf",
+        "aus",
+        "bei",
+        "bewerbung",
+        "das",
+        "der",
+        "die",
+        "eine",
+        "einem",
+        "einen",
+        "einer",
+        "für",
+        "ihre",
+        "ihren",
+        "ist",
+        "mit",
+        "oder",
+        "sind",
+        "stelle",
+        "und",
+        "unser",
+        "unsere",
+        "von",
+        "wir",
+        "werden",
         "zu",
     },
     "en": {
-        "and", "application", "are", "as", "at", "be", "for", "from", "in", "is",
-        "job", "of", "on", "or", "our", "position", "the", "their", "to", "we",
-        "will", "with", "you", "your",
+        "and",
+        "application",
+        "are",
+        "as",
+        "at",
+        "be",
+        "for",
+        "from",
+        "in",
+        "is",
+        "job",
+        "of",
+        "on",
+        "or",
+        "our",
+        "position",
+        "the",
+        "their",
+        "to",
+        "we",
+        "will",
+        "with",
+        "you",
+        "your",
     },
 }
 
@@ -85,7 +131,9 @@ def _clean_title(title: str | None) -> str | None:
     )
     # Portal badge, not part of the actual job title. Only strip it at the
     # title boundaries so a legitimate internal word remains untouched.
-    value = re.sub(r"^(?:\[?NEU\]?\s*[-|·:]?\s+)|(?:\s*[-|·:]?\s*\[?NEU\]?)$", "", value, flags=re.IGNORECASE)
+    value = re.sub(
+        r"^(?:\[?NEU\]?\s*[-|·:]?\s+)|(?:\s*[-|·:]?\s*\[?NEU\]?)$", "", value, flags=re.IGNORECASE
+    )
     return value or None
 
 
@@ -151,8 +199,7 @@ def _section_value(content: str, headings: set[str]) -> str | None:
 
 def _inline_value(content: str, headings: set[str]) -> str | None:
     heading_pattern = "|".join(
-        re.escape(heading)
-        for heading in sorted(headings, key=len, reverse=True)
+        re.escape(heading) for heading in sorted(headings, key=len, reverse=True)
     )
     match = re.search(
         rf"(?im)^[ \t]*(?:>[ \t]*)?(?:{heading_pattern})"
@@ -187,8 +234,15 @@ def _map_link_location(content: str) -> str | None:
 def _location_section_value(content: str, headings: set[str]) -> str | None:
     """Return the useful location from a portal's stacked location fields."""
     country_only = {
-        "deutschland", "germany", "österreich", "austria", "schweiz",
-        "switzerland", "usa", "united states", "vereinigte staaten",
+        "deutschland",
+        "germany",
+        "österreich",
+        "austria",
+        "schweiz",
+        "switzerland",
+        "usa",
+        "united states",
+        "vereinigte staaten",
     }
     lines = content.splitlines()
     for index, line in enumerate(lines):
@@ -225,11 +279,7 @@ def _plain_pdf_header(content: str) -> tuple[str | None, str | None]:
         title_parts = [
             part.lstrip("#").strip()
             for part in lines[:index]
-            if (
-                not part.startswith("[")
-                and not _is_portal_chrome(part)
-                and len(part) <= 100
-            )
+            if (not part.startswith("[") and not _is_portal_chrome(part) and len(part) <= 100)
         ]
         return " ".join(title_parts).strip() or None, line
     return None, None
@@ -240,9 +290,7 @@ def _standalone_legal_company(content: str) -> str | None:
         r"(?:GmbH(?:\s*&\s*Co\.\s*KG)?|UG|AG|SE|KG|OHG|GbR|"
         r"Ltd\.?|Limited|Inc\.?|Corporation|Corp\.?|LLC)"
     )
-    pattern = re.compile(
-        rf"(?im)^\s*(?:>\s*)?([^\r\n]{{2,180}}\b{legal_suffix})\s*$"
-    )
+    pattern = re.compile(rf"(?im)^\s*(?:>\s*)?([^\r\n]{{2,180}}\b{legal_suffix})\s*$")
     candidates = [_clean_line(match.group(1)) for match in pattern.finditer(content)]
     return candidates[-1] if candidates else None
 
@@ -319,7 +367,8 @@ def _contract_term_from_role_scope(content: str) -> str | None:
         (
             index
             for index, line in enumerate(lines)
-            if _normalized_heading(line) in {
+            if _normalized_heading(line)
+            in {
                 "scope of the role",
                 "role scope",
                 "contract details",
@@ -370,7 +419,12 @@ def _company_below_main_title(content: str) -> str | None:
                 break
             if _normalized_heading(value) in non_company_values:
                 continue
-            if "," in value or re.fullmatch(r"[A-Z][A-Za-z .'-]{2,40}", value) and value.casefold() in {"berlin", "munich", "münchen", "hamburg", "cologne", "köln"}:
+            if (
+                "," in value
+                or re.fullmatch(r"[A-Z][A-Za-z .'-]{2,40}", value)
+                and value.casefold()
+                in {"berlin", "munich", "münchen", "hamburg", "cologne", "köln"}
+            ):
                 continue
             if len(value) <= 200 and not re.match(r"^(https?://|www\.)", value):
                 return value
@@ -388,6 +442,29 @@ def _company_from_brand_link(content: str) -> str | None:
         return None
     label = re.sub(r"\s+logo\s*$", "", match.group(1), flags=re.IGNORECASE).strip()
     return label if label and len(label) <= 120 else None
+
+
+def _personio_company_from_role_section(
+    content: str, source_url: str | None
+) -> str | None:
+    """Read the employer introduced in the opening role section on Personio."""
+    if not source_url or not re.search(r"https?://[^/]*personio\.de/", source_url, re.I):
+        return None
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if _normalized_heading(line) != "deine rolle bei uns":
+            continue
+        for candidate in lines[index + 1 : index + 12]:
+            match = re.match(
+                r"\s*Bei\s+([A-Z0-9][A-Z0-9&.-]*(?:\s+[A-Z0-9&.-]+)*)\s+(?=[a-z])",
+                candidate,
+            )
+            if not match:
+                continue
+            company = match.group(1).strip()
+            if company.casefold() not in {"uns", "unsere", "unserem"}:
+                return company
+    return None
 
 
 def _instaffo_metadata(content: str) -> dict[str, str | None]:
@@ -421,6 +498,7 @@ def _source_portal(
 ) -> str | None:
     source = f"{source_filename or ''} {source_url or ''}".casefold()
     portals = (
+        ("personio", "Personio"),
         ("indeed", "Indeed"),
         ("instaffo", "Instaffo"),
         ("linkedin", "LinkedIn"),
@@ -457,30 +535,48 @@ def extract_job_metadata(
         work_model = "Remote möglich"
     else:
         work_model = None
+    profile_work_model = _inline_value(content, {"work model", "arbeitsmodell"})
     plain_title, plain_company = _plain_pdf_header(content)
-    company = instaffo.get("company") or _join_company(content, source_url) or (
-        first_metadata_match(content, COMPANY_PATTERNS)
-        or _company_from_brand_link(content)
-        or _company_below_main_title(content)
-        or _section_value(content, {"informationen", "information", "company information"})
-        or compact["company"]
-        or _legal_company_from_prose(content)
-        or plain_company
-        or _standalone_legal_company(content)
+    company = (
+        instaffo.get("company")
+        or _join_company(content, source_url)
+        or _personio_company_from_role_section(content, source_url)
+        or (
+            first_metadata_match(content, COMPANY_PATTERNS)
+            or _company_from_brand_link(content)
+            or _company_below_main_title(content)
+            or _section_value(content, {"informationen", "information", "company information"})
+            or compact["company"]
+            or _legal_company_from_prose(content)
+            or plain_company
+            or _standalone_legal_company(content)
+        )
     )
     location_headings = {
-        "arbeitsort", "arbeitsorte", "standort", "standorte", "location", "locations"
+        "arbeitsort",
+        "arbeitsorte",
+        "standort",
+        "standorte",
+        "location",
+        "locations",
     }
-    location = instaffo.get("location") or _inline_value(
-        content,
-        location_headings,
-    ) or _location_section_value(
-        content,
-        location_headings,
-    ) or _value_before_heading(
-        content,
-        {"bürostandorte", "standorte", "office locations"},
-    ) or compact["location"] or _map_link_location(content)
+    location = (
+        instaffo.get("location")
+        or _inline_value(
+            content,
+            location_headings,
+        )
+        or _location_section_value(
+            content,
+            location_headings,
+        )
+        or _value_before_heading(
+            content,
+            {"bürostandorte", "standorte", "office locations"},
+        )
+        or compact["location"]
+        or _map_link_location(content)
+    )
     if location and re.match(
         r"^\d+\s*(?:min(?:ute)?n?|stunden?|hours?)\s+ab\b",
         location,
@@ -497,9 +593,13 @@ def extract_job_metadata(
         content,
         {"anstellungsart", "beschäftigungsart", "employment type"},
     )
-    employment_type = instaffo.get("employment_type") or inline_employment_type or _section_value(
-        content,
-        {"anstellungsart", "beschäftigungsart", "employment type"},
+    employment_type = (
+        instaffo.get("employment_type")
+        or inline_employment_type
+        or _section_value(
+            content,
+            {"anstellungsart", "beschäftigungsart", "employment type"},
+        )
     )
     if employment_type is None:
         employment_type = first_metadata_match(
@@ -511,9 +611,7 @@ def extract_job_metadata(
                 ),
             ),
         )
-    employment_type, inferred_contract_term = _split_employment_contract(
-        employment_type
-    )
+    employment_type, inferred_contract_term = _split_employment_contract(employment_type)
     contract_term = _inline_value(
         content,
         {"befristung", "vertragsdauer", "contract term", "contract duration"},
@@ -536,7 +634,7 @@ def extract_job_metadata(
         "location": location,
         "employment_type": employment_type,
         "contract_term": contract_term or inferred_contract_term,
-        "work_model": work_model or compact["work_model"],
+        "work_model": work_model or profile_work_model or compact["work_model"],
         "source_portal": _source_portal(
             source_filename=source_filename,
             source_url=source_url,

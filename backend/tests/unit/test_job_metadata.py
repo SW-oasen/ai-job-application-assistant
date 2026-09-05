@@ -360,3 +360,28 @@ Berlin, Berlin, Germany
 Apply Now
 """
     assert extract_job_metadata(content)["company"] == "GROPYUS"
+
+
+def test_extracts_company_from_personio_role_section() -> None:
+    content = """
+# Full Stack Developer (w/m/d)
+
+Berlin, Hybrid
+
+Vollzeit
+
+## Deine Rolle bei uns
+
+### Baue mit uns digitale Produkte.
+
+Bei DAYONE entstehen keine Konzeptpapiere. Wir bauen digitale Produkte und
+agentische Workflows für Unternehmen.
+"""
+
+    metadata = extract_job_metadata(
+        content,
+        source_url="https://dayone.jobs.personio.de/job/2643273",
+    )
+
+    assert metadata["company"] == "DAYONE"
+    assert metadata["source_portal"] == "Personio"

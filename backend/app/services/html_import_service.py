@@ -8,16 +8,16 @@ from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.database.repositories.jobs import persist_imported_job
 from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_metadata import extract_job_metadata
+from app.parsers.job_portals import normalize_job_document
+from app.parsers.job_role import extract_job_role
 from app.parsers.job_seniority import (
     ensure_seniority_requirement,
     extract_job_seniority,
 )
-from app.parsers.job_role import extract_job_role
-from app.parsers.job_metadata import extract_job_metadata
-from app.parsers.job_structure import extract_job_structure
-from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import HtmlImportResponse
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
     store_job_extraction_review_history,
@@ -84,6 +84,9 @@ async def import_html_content(
         )
 
     document = html_to_document(html)
+    normalized = normalize_job_document(
+        document.markdown, title=document.title, source_url=source_url, raw_html=html
+    )
     quality = assess_text_quality(
         document.plain_text,
         title=document.title,
@@ -95,8 +98,8 @@ async def import_html_content(
     response = HtmlImportResponse(
         success=quality.sufficient,
         filename=filename,
-        title=document.title,
-        markdown=document.markdown,
+        title=normalized.title,
+        markdown=normalized.markdown,
         text_length=quality.text_length,
         content_hash=content_hash or hashlib.sha256(encoded).hexdigest(),
         warnings=warnings,
@@ -104,20 +107,26 @@ async def import_html_content(
     if not quality.sufficient:
         return response
 
-    structure = await extract_job_structure_hybrid(document.markdown)
+    structure = await extract_job_structure_hybrid(normalized.markdown)
     extraction = await enrich_job_extraction(
-        content=document.markdown,
-        metadata=extract_job_metadata(document.markdown, source_filename=filename, source_url=source_url),
+        content=normalized.markdown,
+        metadata=extract_job_metadata(
+            normalized.markdown, source_filename=filename, source_url=source_url
+        ),
         activities=structure.activities,
         requirements=structure.requirements,
         source_filename=filename,
         source_url=source_url,
     )
-    seniority = extract_job_seniority(document.markdown)
-    job_role = extract_job_role(extraction.metadata.get("title") or document.title, document.markdown)
+    seniority = extract_job_seniority(normalized.markdown)
+    job_role = extract_job_role(
+        extraction.metadata.get("title") or normalized.title, normalized.markdown
+    )
     reviewed = await review_job_extraction_if_configured(
-        content=document.markdown,
-        metadata=extraction.metadata, activities=extraction.activities, requirements=extraction.requirements,
+        content=normalized.markdown,
+        metadata=extraction.metadata,
+        activities=extraction.activities,
+        requirements=extraction.requirements,
     )
     requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     response.warnings.extend(
@@ -127,9 +136,9 @@ async def import_html_content(
         source_type="html",
         source_url=source_url,
         source_filename=filename,
-        title=reviewed.metadata.get("title") or document.title,
+        title=reviewed.metadata.get("title") or normalized.title,
         raw_content=html,
-        normalized_content=document.markdown,
+        normalized_content=normalized.markdown,
         content_hash=response.content_hash,
         retrieval_method=retrieval_method,
         warnings=response.warnings,

@@ -59,6 +59,28 @@ def test_extracts_activities_and_requirements_from_markdown_sections() -> None:
     assert all("Flexible Arbeitszeiten" not in str(item) for item in result.requirements)
 
 
+def test_extracts_optional_requirements_after_du_bietest_heading() -> None:
+    result = extract_job_structure("""
+#### **Du bietest**
+- Umfangreiche praktische Erfahrung mit Python unter Linux
+
+**Nice to have:**
+- Vertiefte Kenntnisse in Deep Learning und NLP
+- Erfahrung im Finanzdienstleistungssektor
+""")
+
+    assert [item["requirement"] for item in result.requirements] == [
+        "Umfangreiche praktische Erfahrung mit Python unter Linux",
+        "Vertiefte Kenntnisse in Deep Learning und NLP",
+        "Erfahrung im Finanzdienstleistungssektor",
+    ]
+    assert [item["priority"] for item in result.requirements] == [
+        "should",
+        "nice_to_have",
+        "nice_to_have",
+    ]
+
+
 def test_extracts_benefits_separately() -> None:
     result = extract_job_structure(
         """

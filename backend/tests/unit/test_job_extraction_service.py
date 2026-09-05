@@ -6,6 +6,19 @@ from pydantic import SecretStr
 from app.services import job_extraction_service
 
 
+def test_merge_source_backed_items_keeps_requirements_omitted_by_llm() -> None:
+    merged = job_extraction_service._merge_source_backed_items(
+        [{"requirement": "Python", "evidence": "Python"}],
+        [
+            {"requirement": "Python programming", "evidence": "Python"},
+            {"requirement": "German fluency", "evidence": "Fluency in German"},
+        ],
+        "requirement",
+    )
+
+    assert [item["requirement"] for item in merged] == ["Python", "German fluency"]
+
+
 @pytest.mark.asyncio
 async def test_llm_fallback_enriches_all_job_extraction_sections(monkeypatch) -> None:
     captured = {}

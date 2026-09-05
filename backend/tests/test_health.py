@@ -70,7 +70,7 @@ def test_browser_import_setup_page(client) -> None:
     assert response.status_code == 200
     assert "Browser-Import einrichten" in response.text
     assert "javascript:" in response.text
-    assert "/browser-import/receive" in response.text
+    assert "/imports/browser-capture" in response.text
     assert "beliebigen öffentlichen Jobportal" in response.text
 
 

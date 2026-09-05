@@ -95,9 +95,17 @@ TERM_CONCEPTS = {
     },
 }
 TARGET_FIT_CONCEPTS = {
-    "data_science": {"data science", "data scientist", "datenanalyse", "data analysis", "statistik", "dataset", "evaluation", "benchmark", "experiment"},
+    "data_science": {
+        "data science", "data scientist", "datenanalyse", "data analysis", "statistik",
+        "dataset", "evaluation", "benchmark", "experiment", "datenprojekt",
+        "datenprojekte", "datenplattform", "datenplattformen", "datenverarbeitung",
+        "datenservices", "datensystem", "datensysteme",
+    },
     "machine_learning": {"machine learning", "ai ml", "mlops", "scikit", "pytorch", "tensorflow"},
-    "automation": {"automatisierung", "automation", "automate", "workflow", "pipeline"},
+    "automation": {
+        "automatisierung", "automatisiert", "automatisierte", "automation", "automate",
+        "automated", "workflow", "pipeline",
+    },
     "ai_development": {"ki", "ai", "künstliche intelligenz", "artificial intelligence", "machine learning", "prototyp", "softwaredevelopment", "softwareentwicklung"},
 }
 SENIORITY_RANK = {"entry": 0, "junior": 1, "professional": 2, "senior": 3, "lead": 4}
@@ -619,7 +627,7 @@ def _evaluate(
     category: str = "",
     keyword_terms: set[str] | None = None,
     normalized_value: str | None = None,
-    semantic_candidate_ids: set[str] | None = None,
+    semantic_candidate_ids: set[str] | dict[str, float] | None = None,
 ) -> RequirementMatchResponse:
     keyword_terms = keyword_terms or set()
     minimum_years = _minimum_years(requirement, normalized_value)
@@ -648,12 +656,19 @@ def _evaluate(
     for stored in evidence:
         evidence_terms = _terms(stored.item.evidence_text, stored.item.keywords)
         overlap = requirement_terms & evidence_terms
+        semantic_score = (
+            semantic_candidate_ids.get(str(stored.evidence_id), 0.0)
+            if isinstance(semantic_candidate_ids, dict)
+            else float(bool(semantic_candidate_ids and stored.evidence_id in semantic_candidate_ids))
+        )
         if overlap:
-            scored.append((len(overlap) / len(requirement_terms), stored, overlap))
-        elif semantic_candidate_ids and stored.evidence_id in semantic_candidate_ids:
+            # Semantic similarity reorders otherwise comparable lexical evidence,
+            # while lexical proof remains mandatory for a direct match.
+            scored.append((min(1.0, len(overlap) / len(requirement_terms) + semantic_score * 0.35), stored, overlap))
+        elif semantic_score:
             # Retrieval only establishes relevance; with no lexical proof this
             # candidate can never become a direct/strong match.
-            scored.append((0.0, stored, set()))
+            scored.append((semantic_score * 0.5, stored, set()))
     scored.sort(
         key=lambda pair: (pair[0] * _evidence_weight(pair[1]), _evidence_weight(pair[1])),
         reverse=True,
@@ -1032,14 +1047,14 @@ async def evaluate_matching(payload: MatchingRequest) -> MatchingResponse:
                 session.add(requirement)
                 await session.flush()
 
-            semantic_candidate_ids: set[str] = set()
+            semantic_candidate_ids: dict[str, float] = {}
             if embedding_provider is not None and chroma_store is not None and payload.profile_id:
                 requirement_vector = await asyncio.to_thread(
                     embedding_provider.embed_text,
                     build_requirement_embedding_text(item.requirement),
                 )
                 semantic_candidates = await asyncio.to_thread(chroma_store.query, profile_id=str(payload.profile_id), embedding=requirement_vector, top_k=10)
-                semantic_candidate_ids = {str(candidate.evidence_id) for candidate in semantic_candidates}
+                semantic_candidate_ids = {str(candidate.evidence_id): candidate.semantic_score for candidate in semantic_candidates}
 
             result = _evaluate(
                 str(requirement.id),

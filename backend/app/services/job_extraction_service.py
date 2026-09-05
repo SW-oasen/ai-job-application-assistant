@@ -62,6 +62,32 @@ def _source_backed_items(value: object, key: str, content: str) -> list[dict[str
     return result
 
 
+def _merge_source_backed_items(
+    extracted: list[dict[str, Any]], fallback: list[dict[str, Any]], key: str
+) -> list[dict[str, Any]]:
+    """Retain parser findings when an LLM extraction omits source-backed items.
+
+    A workflow result is useful for categorisation, but it is not allowed to
+    silently shrink a requirement or activity list that has already been
+    grounded in the advert.  Evidence is the best de-duplication key because
+    the LLM may paraphrase the item text while keeping the original quote.
+    """
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in [*extracted, *fallback]:
+        text = item.get(key)
+        if not isinstance(text, str) or not text.strip():
+            continue
+        evidence = item.get("evidence")
+        identity = evidence if isinstance(evidence, str) and evidence.strip() else text
+        normalized = " ".join(identity.casefold().split())
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(item)
+    return result
+
+
 async def enrich_job_extraction(
     *, content: str, metadata: dict[str, str | None], activities: list[dict[str, Any]], requirements: list[dict[str, Any]], source_filename: str | None = None, source_url: str | None = None, retry_instructions: list[str] | None = None,
 ) -> JobExtractionResult:
@@ -100,7 +126,13 @@ async def enrich_job_extraction(
         merged_metadata, details = _accepted_metadata(rules, semantic_metadata, content=content)
         llm_activities = _source_backed_items(extracted.get("activities"), "activity", content)
         llm_requirements = _source_backed_items(extracted.get("requirements"), "requirement", content)
-        return JobExtractionResult(merged_metadata, llm_activities or activities, llm_requirements or requirements, details, ["job_extraction_llm_used"])
+        return JobExtractionResult(
+            merged_metadata,
+            _merge_source_backed_items(llm_activities, activities, "activity"),
+            _merge_source_backed_items(llm_requirements, requirements, "requirement"),
+            details,
+            ["job_extraction_llm_used"],
+        )
     except (httpx.HTTPError, ValueError, json.JSONDecodeError):
         legacy = await enrich_job_metadata(
             content, source_filename=source_filename, source_url=source_url

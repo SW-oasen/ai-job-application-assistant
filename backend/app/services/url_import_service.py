@@ -7,16 +7,16 @@ from app.database.repositories.jobs import persist_imported_job
 from app.importers.http_importer import HttpImporter
 from app.importers.playwright_importer import PlaywrightImporter
 from app.parsers.html_to_markdown import html_to_document
+from app.parsers.job_metadata import extract_job_metadata
+from app.parsers.job_portals import normalize_job_document
+from app.parsers.job_role import extract_job_role
 from app.parsers.job_seniority import (
     ensure_seniority_requirement,
     extract_job_seniority,
 )
-from app.parsers.job_role import extract_job_role
-from app.parsers.job_metadata import extract_job_metadata
-from app.parsers.job_structure import extract_job_structure
-from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.parsers.text_quality import assess_text_quality
 from app.schemas.imports import UrlImportRequest, UrlImportResponse
+from app.services.hybrid_job_extraction import extract_job_structure_hybrid
 from app.services.job_extraction_review_integration import (
     review_job_extraction_if_configured,
     store_job_extraction_review_history,
@@ -102,6 +102,9 @@ def _build_response(
 ) -> UrlImportResponse:
     settings = get_settings()
     document = html_to_document(raw_html)
+    normalized = normalize_job_document(
+        document.markdown, title=document.title, source_url=source_url, raw_html=raw_html
+    )
     quality = assess_text_quality(
         document.plain_text,
         title=document.title,
@@ -115,10 +118,10 @@ def _build_response(
         success=True,
         source_url=source_url,
         retrieval_method=retrieval_method,
-        title=document.title,
+        title=normalized.title,
         raw_html=raw_html,
-        markdown=document.markdown,
-        content_hash=hashlib.sha256(document.markdown.encode("utf-8")).hexdigest(),
+        markdown=normalized.markdown,
+        content_hash=hashlib.sha256(normalized.markdown.encode("utf-8")).hexdigest(),
         text_length=quality.text_length,
         quality_sufficient=quality.sufficient,
         browser_fallback_recommended=False,
@@ -145,10 +148,14 @@ async def _persist_response(
         source_url=response.source_url,
     )
     seniority = extract_job_seniority(response.markdown)
-    job_role = extract_job_role(extraction.metadata.get("title") or response.title, response.markdown)
+    job_role = extract_job_role(
+        extraction.metadata.get("title") or response.title, response.markdown
+    )
     reviewed = await review_job_extraction_if_configured(
         content=response.markdown,
-        metadata=extraction.metadata, activities=extraction.activities, requirements=extraction.requirements,
+        metadata=extraction.metadata,
+        activities=extraction.activities,
+        requirements=extraction.requirements,
     )
     requirements = ensure_seniority_requirement(reviewed.requirements, seniority)
     response.warnings.extend(

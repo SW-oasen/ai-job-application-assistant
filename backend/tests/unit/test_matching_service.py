@@ -167,6 +167,48 @@ def test_target_fit_uses_activity_concepts_and_seniority() -> None:
     assert next(item for item in result["criteria"] if item["key"] == "employment_type")["status"] == "unknown"
 
 
+def test_target_fit_recognizes_data_projects_and_automated_engineering() -> None:
+    job = SimpleNamespace(
+        title="Software Engineer für Datenprojekte",
+        location=None,
+        work_model="Hybrid",
+        employment_type=None,
+        normalized_content=(
+            "Entwicklung von Datenplattformen, Datenverarbeitungsservices und Datensystemen. "
+            "Automatisierte Tests und CI/CD für robuste Cloud-Architekturen."
+        ),
+        extracted_json={},
+    )
+    profile = SimpleNamespace(
+        career_goal=(
+            "Machine Learning, Datenanalyse, Prozessautomatisierung und "
+            "KI-Anwendungsentwicklung sowie daten- und KI-gestützte Lösungen."
+        ),
+        target_roles=["Data Engineer", "Software Engineer"],
+        target_role_preferences=[
+            {"role": "Data Engineer", "level": "Mid", "priority": 2},
+            {"role": "Software Engineer", "level": "Mid", "priority": 2},
+        ],
+        target_industries=[],
+        target_locations=[],
+        preferred_work_models=["hybrid"],
+        preferred_employment_types=[],
+        deal_breakers=[],
+    )
+
+    activities = [
+        SimpleNamespace(
+            activity_text="Entwicklung von Datenplattformen und Datenverarbeitungsservices mit automatisierten Tests."
+        )
+    ]
+    result = _evaluate_target_fit(job, None, profile, activities)
+
+    activity_fit = next(item for item in result["criteria"] if item["key"] == "activities")
+    assert activity_fit["status"] == "partial"
+    assert activity_fit["score"] == 0.6
+    assert result["score"] == 74
+
+
 def test_target_fit_uses_role_context_for_short_activity_headings() -> None:
     job = SimpleNamespace(
         title="Junior AI/ML Engineer, Data and Evaluation",
